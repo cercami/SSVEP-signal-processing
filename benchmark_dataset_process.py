@@ -197,11 +197,11 @@ sig_pick_corr_sp = SPF.corr_coef(sig_total, 'spearman')
 
 
 #%% Prepare for checkboard plot (Pearson method)
-w1_pick_corr_sp = SPF.corr_coef(w1_total, 'pearson')
+#w1_pick_corr_sp = SPF.corr_coef(w1_total, 'pearson')
 #w2_pick_corr_sp = SPF.corr_coef(w2_total, 'pearson')
 #w3_pick_corr_sp = SPF.corr_coef(w3_total, 'pearson')
 
-sig_pick_corr_sp = SPF.corr_coef(sig_total, 'pearson')
+#sig_pick_corr_sp = SPF.corr_coef(sig_total, 'pearson')
 
         
 #%% Spatial filter: multi-linear regression method
@@ -335,7 +335,7 @@ snr_w3_i_t = SPF.snr_time(s_iex_w3, mode='time')
 
 
 #%%*************************Part II: plot figures*************************
-#%% Model descrpition (Comoplex)
+#%% Model descrpition Part I: Boxplot & Histogram
 fig = plt.figure(figsize=(24,24))
 #fig.suptitle(r'$\ Model\ Description$', fontsize=30, fontweight='bold')
 gs = GridSpec(6, 7, figure=fig)
@@ -444,9 +444,9 @@ plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=
 #%% Signal waveform & Time SNR (with zoom-in effect: 0-500ms/0-125points)
 # 1. signal waveform:
     # (1) original
-    # (2) w1 model
-    # (3) w2 model
-    # (4) w3 model
+    # (2) w1 model extract
+    # (3) w2 model extract
+    # (4) w3 model extract
 fig = plt.figure(figsize=(16,16))
 gs = GridSpec(6, 7, figure=fig)
 
@@ -494,15 +494,22 @@ def strain(X):
     return strain
 
 #%%
-snr1 = strain(snr_o_t)
-snr2 = strain(snr_w1_i_t)
-snr3 = strain(snr_w2_i_t)
-snr4 = strain(snr_w3_i_t)
+snr_o_t = strain(snr_o_t)
+snr_w1_i_t = strain(snr_w1_i_t)
+snr_w2_i_t = strain(snr_w2_i_t)
+snr_w3_i_t = strain(snr_w3_i_t)
 
 #%%
-plt.plot(snr1[2,:], label='origin:125-1375')
-plt.plot(snr2[2,:], label='w1:0-125')
-plt.plot(snr3[2,:], label='w2:0-63')
-plt.plot(snr4[2,:], label='w3:63-125')
+plt.plot(snr_o_t[2,:], label='origin')
+plt.plot(snr_w1_i_t[2,:], label='w1')
+plt.plot(snr_w2_i_t[2,:], label='w2')
+plt.plot(snr_w3_i_t[2,:], label='w3')
 plt.tick_params(axis='both', labelsize=20)
 plt.legend(loc='best', fontsize=20)
+
+#%% 
+plt.plot(np.mean(s_ies_w1[2,:,:], axis=0), label='w1', color='dodgerblue')
+plt.plot(np.mean(s_ies_w2[2,:,:], axis=0), label='w2', color='green')
+plt.plot(np.mean(s_ies_w3[2,:,:], axis=0), label='w3', color='red')
+plt.plot(np.mean(sig_o[2,:,:], axis=0), label='origin', color='grey')
+plt.legend(loc='best')
