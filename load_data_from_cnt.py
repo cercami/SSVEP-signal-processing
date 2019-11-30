@@ -1,0 +1,97 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Nov 30 14:50:22 2019
+
+@author: Brynhildr
+"""
+
+#%% load 3rd-part module
+import os
+import numpy as np
+import mne
+import scipy.io as io
+from mne.io import concatenate_raws
+from mne import Epochs, pick_types, find_events
+from mne.baseline import rescale
+
+# %% load data
+filepath = r'D:\dataset'
+
+subjectlist = ['weisiwen']
+
+filefolders = []
+for subindex in subjectlist:
+    filefolder = os.path.join(filepath, subindex)
+    filefolders.append(filefolder)
+
+filelist = []
+for filefolder in filefolders:
+    for file in os.listdir(filefolder):
+        filefullpath = os.path.join(filefolder, file)
+        filelist.append(filefullpath)
+
+raw_cnts = []
+for file in filelist:
+    montage = mne.channels.read_montage('standard_1020')
+    raw_cnt = mne.io.read_raw_cnt(file, montage=montage,
+            eog=['HEO', 'VEO'], emg=['EMG'], ecg=['EKG'],
+            preload=True, verbose=False, stim_channel='True')
+    # misc=['CB1', 'CB2', 'M1', 'M2'],
+    raw_cnts.append(raw_cnt)
+
+raw = concatenate_raws(raw_cnts)
+
+del raw_cnts, file, filefolder, filefolders, filefullpath, filelist
+del filepath, subindex, subjectlist
+
+#%% preprocessing
+raw.filter(l_freq=5, h_freq=40., method='fir', phase='zero',
+           fir_window='hamming', fir_design='firwin', n_jobs=6,
+           skip_by_annotation='edge')
+events = mne.find_events(raw, output='onset')
+
+raw.pick_types(raw.info, emg=False, eeg=True, stim=False, eog=False)
+
+# drop channels
+drop_chans = ['FC6', 'FT8', 'C6', 'T8', 'TP7', 'CP6', 'M1', 'M2']
+raw.drop_channels(drop_chans)
+
+# define labels
+event_id = dict(f8=1, f10=2, f15=3)
+
+#baseline = (-0.2, 0)    # define baseline
+tmin, tmax = -3., 3.    # set the time range
+sfreq = 1000
+
+#%% store data into array
+n_stims = int(len(event_id))
+n_trials = int(events.shape[0] / n_stims)
+n_chans = int(64 - len(drop_chans))
+n_times = int((tmax - tmin) * sfreq + 1)
+
+data = np.zeros((n_stims, n_trials, n_chans, n_times))
+for i in range(len(event_id)):
+
+    epochs = Epochs(raw, events=events, event_id=i+1, tmin=tmin,
+                    tmax=tmax, baseline=None, preload=True)
+    data[i,:,:,:] = epochs.get_data()  # get the 3D array of data
+    # (n_trials, n_chans, n_times)
+    del epochs
+del i
+#del n_stims, n_trials, n_chans, n_times
+
+#%% picked channels' info
+channels = {}
+file = open(r'D:\dataset\channel_info\weisiwen_chans.txt')
+for line in file.readlines():
+    line = line.strip()
+    v = str(int(line.split(' ')[0]) - 1)
+    k = line.split(' ')[1]
+    channels[k] = v
+file.close()
+
+del v, k, file, line       # release RAM
+
+#%% store data into .mat file
+data_path = r'D:\dataset\preprocessed_data\weisiwen'
+io.savemat(data_path, {'raw_data':data})
