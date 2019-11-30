@@ -81,3 +81,6 @@ del n_stims, n_trials, n_chans, n_times
 data_path = r'D:\dataset\preprocessed_data\weisiwen\raw_data'
 io.savemat(data_path, {'raw_data':data})
 print('Extraction Done')
+
+#%% test
+

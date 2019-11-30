@@ -169,23 +169,23 @@ compare_corr = SPF.bina_corr(w1_corr_sp, sig_corr_sp, th=0.03)
 
 # w1 model data: 0-1000ms
 w1_i = w1[:,:,24:29,:]
-w1_o = w1[:,:,54,:]
-w1_total = w1[:,:,[24,25,26,27,28,54],:]
+w1_o = w1[:,:,47,:]
+w1_total = w1[:,:,[24,25,26,27,28,47],:]
 
 # w2 model data: 1000-2000ms
 w2_i = w2[:,:,24:29,:]
-w2_o = w2[:,:,54,:]
-w2_total = w2[:,:,[24,25,26,27,28,54],:]
+w2_o = w2[:,:,47,:]
+w2_total = w2[:,:,[24,25,26,27,28,47],:]
 
 # w3 model data: 2000-3000ms
 w3_i = w3[:,:,24:29,:]
-w3_o = w3[:,:,54,:]
-w3_total = w3[:,:,[24,25,26,27,28,54],:]
+w3_o = w3[:,:,47,:]
+w3_total = w3[:,:,[24,25,26,27,28,47],:]
 
 # signal part data: 3000-6000ms
 sig_i = signal_data[:,:,24:29,:]
-sig_o = signal_data[:,:,54,:]
-sig_total = signal_data[:,:,[24,25,26,27,28,54],:]
+sig_o = signal_data[:,:,47,:]
+sig_total = signal_data[:,:,[24,25,26,27,28,47],:]
 
 
 #%% Prepare for checkboard plot (Spearman method)
@@ -233,23 +233,32 @@ s_mes_w3, s_mex_w3 = SPF.sig_extract(rc_w3, sig_i, sig_o, ri_w3)
 # filter coefficient
 sp_w1 = SPF.inv_spa(w1_i, w1_o)
 # w1 estimate & extract data: (n_events, n_epochs, n_times)
-w1_ies_w1, w1_iex_w1 = SPF.sig_extract(sp_w1, w1_i, w1_o, 0)
+w1_es_w1, w1_ex_w1 = SPF.sig_extract(sp_w1, w1_i, w1_o, 0)
 # w1 model's goodness of fit
-gf_w1 = SPF.fit_goodness(w1_o, w1_ies_w1, chans=5)
+gf_w1 = SPF.fit_goodness(w1_o, w1_es_w1, chans=5)
 
 # the same but w2 part data:
 sp_w2 = SPF.inv_spa(w2_i, w2_o)
-w2_ies_w2, w2_iex_w2 = SPF.sig_extract(sp_w2, w2_i, w2_o, 0)
-gf_w2 = SPF.fit_goodness(w2_o, w2_ies_w2, chans=5)
+w2_es_w2, w2_ex_w2 = SPF.sig_extract(sp_w2, w2_i, w2_o, 0)
+gf_w2 = SPF.fit_goodness(w2_o, w2_es_w2, chans=5)
 
 # the same but w3 part data (use w2):
-w2_ies_w3, w2_iex_w3 = SPF.sig_extract(sp_w2, w3_i, w3_o, 0)
+w2_es_w3, w2_ex_w3 = SPF.sig_extract(sp_w2, w3_i, w3_o, 0)
 
 # the same but w3 part data (use w3):
 sp_w3 = SPF.inv_spa(w3_i, w3_o)
-w3_ies_w3, w3_iex_w3 = SPF.sig_extract(sp_w3, w3_i, w3_o, 0)
-gf_w3 = SPF.fit_goodness(w3_o, w3_ies_w3, chans=5)
+w3_es_w3, w3_ex_w3 = SPF.sig_extract(sp_w3, w3_i, w3_o, 0)
+gf_w3 = SPF.fit_goodness(w3_o, w3_es_w3, chans=5)
 
+#%% save data
+data_path = r'D:\dataset\preprocessed_data\weisiwen\I_model'
+io.savemat(data_path, {'filter_coef_w1':sp_w1, 
+                       'filter_coef_w2':sp_w2,
+                       'filter_coef_w3':sp_w3,
+                       'gf_w1':gf_w1,
+                       'gf_w2':gf_w2,
+                       'gf_w3':gf_w3})
+#%%
 # signal part data (use w1):
 s_ies_w1, s_iex_w1 = SPF.sig_extract(sp_w1, sig_i, sig_o, 0)
 # signal part data (use w2):
@@ -257,7 +266,16 @@ s_ies_w2, s_iex_w2 = SPF.sig_extract(sp_w2, sig_i, sig_o, 0)
 # signal part data (use w3):
 s_ies_w3, s_iex_w3 = SPF.sig_extract(sp_w3, sig_i, sig_o, 0)
 
-
+#%% save data
+data_path = r'D:\dataset\preprocessed_data\weisiwen\I_signal'
+io.savemat(data_path, {'w1sw1':w1_ies_w1,
+                       'w1xw1':w1_iex_w1,
+                       :,
+                       :,
+                       :,
+                       :,
+                       :,
+                       })
 #%% Cosine similarity (background part): normal
 # w1 estimate (w1 model) & w1 original, mlr, normal similarity, the same below
 w1_w1_m_nsim = SPF.cos_sim(w1_o, w1_mes_w1, mode='normal')
