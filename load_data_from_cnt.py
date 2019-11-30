@@ -57,7 +57,7 @@ raw.drop_channels(drop_chans)
 event_id = dict(f8=1, f10=2, f15=3)
 
 #baseline = (-0.2, 0)    # define baseline
-tmin, tmax = -3., 3.    # set the time range
+tmin, tmax = -3., 3.5    # set the time range
 sfreq = 1000
 
 #%% store data into array
@@ -76,18 +76,6 @@ for i in range(len(event_id)):
     del epochs
 del i
 del n_stims, n_trials, n_chans, n_times
-
-#%% picked channels' info
-channels = {}
-file = open(r'D:\dataset\channel_info\weisiwen_chans.txt')
-for line in file.readlines():
-    line = line.strip()
-    v = str(int(line.split(' ')[0]) - 1)
-    k = line.split(' ')[1]
-    channels[k] = v
-file.close()
-
-del v, k, file, line       # release RAM
 
 #%% store data into .mat file
 data_path = r'D:\dataset\preprocessed_data\weisiwen\raw_data'

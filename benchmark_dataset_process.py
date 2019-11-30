@@ -85,55 +85,36 @@ del temp, i, file, filelist, filepath, full_path
 
 #%% load local data (extract from .cnt file)
 eeg = io.loadmat(r'D:\dataset\preprocessed_data\weisiwen\raw_data')
-data = eeg['data']
+data = eeg['raw_data']
 
 del eeg
 
+# basic info
+sfreq = 1000
+
+n_events = data.shape[0]
+n_trials = data.shape[1]
+n_chans = data.shape[2]
+n_times = data.shape[3]
+
 #%% Data preprocessing
 # filtering
-f_data = np.zeros((40,6,64,1500))
-for i in range(data.shape[0]):
+f_data = np.zeros((n_events, n_trials, n_chans, n_times))
+for i in range(n_events):
     f_data[i,:,:,:] = filter_data(data[i,:,:,:], sfreq=sfreq, l_freq=5,
                       h_freq=40, n_jobs=6)
 
-#del data, i
+del i
 
 # get data for linear regression
-w1 = f_data[:,:,:,0:125]
-w2 = f_data[:,:,:,0:63]
-w3 = f_data[:,:,:,63:125]
+w1 = f_data[:,:,:,0:1000]           # -3~-2s
+w2 = f_data[:,:,:,1000:2000]        # -2~-1s
+w3 = f_data[:,:,:,2000:3000]        # -1~0s
 
 # get data for comparision
-signal_data = f_data[:,:,:,125:1375]
+signal_data = f_data[:,:,:,3000:]   # 0~3s
 
 del f_data
-
-# save model data to release RAM, reload before use
-w1_path = r'E:\dataset\model_data\S15\w1'
-w2_path = r'E:\dataset\model_data\S15\w2'
-w3_path = r'E:\dataset\model_data\S15\w3'
-s_path = r'E:\dataset\signal_data\S15'
-
-io.savemat(w1_path, {'w1':w1})
-io.savemat(w2_path, {'w2':w2})
-io.savemat(w3_path, {'w3':w3})
-io.savemat(s_path, {'signal_data':signal_data})
-
-del w1, w2, w3, signal_data
-del w1_path, w2_path, w3_path, s_path
-
-
-#%% Reload data 
-# data size: (n_events, n_epochs, n_chans, n_times) 
-w1 = io.loadmat(r'E:\dataset\model_data\S15\w1.mat')
-w1 = w1['w1']
-w2 = io.loadmat(r'E:\dataset\model_data\S15\w2.mat')
-w2 = w2['w2']
-w3 = io.loadmat(r'E:\dataset\model_data\S15\w3.mat')
-w3 = w3['w3']
-signal_data = io.loadmat(r'E:\dataset\signal_data\S15.mat')
-signal_data = signal_data['signal_data']
-
 
 #%% Inter-channel correlation analysis: Spearman correlation
 w1_corr_sp = SPF.corr_coef(w1, 'spearman')
@@ -143,9 +124,9 @@ w3_corr_sp = SPF.corr_coef(w3, 'spearman')
 sig_corr_sp = SPF.corr_coef(signal_data, mode='spearman')
 
 compare = w1_corr_sp - sig_corr_sp
-
-for i in range(64):
-    for j in range(64):
+#%% binarization
+for i in range(n_chans):
+    for j in range(n_chans):
         if compare[i,j] < 0.03:
             compare[i,j] = 0
 
@@ -159,8 +140,8 @@ sig_corr_sp = SPF.corr_coef(signal_data, mode='pearson')
 
 compare = w1_corr_sp - sig_corr_sp
 
-for i in range(64):
-    for j in range(64):
+for i in range(n_chans):
+    for j in range(n_chans):
         if compare[i,j] < 0.03:
             compare[i,j] = 0
 
