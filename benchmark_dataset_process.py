@@ -50,6 +50,7 @@ freqs = info['freqs'].T
 phases = info['phases'].T
 del eeg, info
 
+
 #%% load channels information from .txt file
 channels = {}
 file = open(r'D:\dataset\channel_info\weisiwen_chans.txt')
@@ -62,6 +63,7 @@ file.close()
 
 del v, k, file, line       # release RAM
      
+
 #%% Load multiple data file & also can be used to process multiple data
 # CAUTION: may lead to RAM crash (5-D array takes more than 6125MB)
 # Now I know why people need 32G's RAM...PLEASE SKIP THIS PART!!!
@@ -83,6 +85,7 @@ for file in filelist:
     
 del temp, i, file, filelist, filepath, full_path
 
+
 #%% load local data (extract from .cnt file)
 eeg = io.loadmat(r'D:\dataset\preprocessed_data\weisiwen\raw_data')
 data = eeg['raw_data']
@@ -97,6 +100,7 @@ n_trials = data.shape[1]
 n_chans = data.shape[2]
 n_times = data.shape[3]
 
+
 #%% Data preprocessing
 # filtering
 f_data = np.zeros((n_events, n_trials, n_chans, n_times))
@@ -107,14 +111,15 @@ for i in range(n_events):
 del i
 
 # get data for linear regression
-w1 = f_data[:,:,:,0:1000]           # -3~-2s
-w2 = f_data[:,:,:,1000:2000]        # -2~-1s
-w3 = f_data[:,:,:,2000:3000]        # -1~0s
+w1 = f_data[:,:,:,0:1000]           # 0-1s
+w2 = f_data[:,:,:,1000:2000]        # 1-2s
+w3 = f_data[:,:,:,2000:3000]        # 2-3s
 
 # get data for comparision
-signal_data = f_data[:,:,:,3000:]   # 0~3s
+signal_data = f_data[:,:,:,3000:]   # 3-6s
 
 del f_data
+
 
 #%% Inter-channel correlation analysis: Spearman correlation
 w1_corr_sp = SPF.corr_coef(w1, 'spearman')
@@ -123,12 +128,23 @@ w3_corr_sp = SPF.corr_coef(w3, 'spearman')
 
 sig_corr_sp = SPF.corr_coef(signal_data, mode='spearman')
 
-compare = w1_corr_sp - sig_corr_sp
+
 #%% binarization
-for i in range(n_chans):
-    for j in range(n_chans):
-        if compare[i,j] < 0.03:
-            compare[i,j] = 0
+def binarization(X):
+    compare = np.zeros((X.shape[0], X.shape[1]))
+    for i in range(n_chans):
+        for j in range(n_chans):
+            if X[i,j] < 0:
+                compare[i,j] = 0
+            else:
+                compare[i,j] = X[i,j]
+    return compare
+
+compare_w1 = binarization(w1_corr_sp - sig_corr_sp)
+compare_w2 = binarization(w2_corr_sp - sig_corr_sp)
+compare_w3 = binarization(w2_corr_sp - sig_corr_sp)
+
+del w1_corr_sp, w2_corr_sp, w3_corr_sp, sig_corr_sp
 
 
 #%% Inter-channel correlation analysis: Pearson correlation
@@ -138,12 +154,6 @@ w3_corr_sp = SPF.corr_coef(w3, 'pearson')
 
 sig_corr_sp = SPF.corr_coef(signal_data, mode='pearson')
 
-compare = w1_corr_sp - sig_corr_sp
-
-for i in range(n_chans):
-    for j in range(n_chans):
-        if compare[i,j] < 0.03:
-            compare[i,j] = 0
 
 #%% Binarization (if neccessary)
 compare_corr = SPF.bina_corr(w1_corr_sp, sig_corr_sp, th=0.03)
@@ -154,34 +164,34 @@ compare_corr = SPF.bina_corr(w1_corr_sp, sig_corr_sp, th=0.03)
 
 #%% Divide input&output data for model according to correlation
 
-# pick input channels: Cz, CP6, TP8, P4, P6, P8
-# choose output channels: Oz
+# pick input channels: C1, Cz, C2, C4, CP5
+# choose output channels: POz
 
-# w1 model data: 0-500ms
-w1_i = w1[:,:,[27,40,41,49,50,51],:]
-w1_o = w1[:,:,61,:]
-w1_total = w1[:,:,[27,40,41,49,50,51,61],:]
+# w1 model data: 0-1000ms
+w1_i = w1[:,:,24:29,:]
+w1_o = w1[:,:,54,:]
+w1_total = w1[:,:,[24,25,26,27,28,54],:]
 
-# w2 model data: 0-250ms
-w2_i = w2[:,:,[27,40,41,49,50,51],:]
-w2_o = w2[:,:,61,:]
-#w2_total = w2[:,:,[27,40,41,49,50,51,61],:]
+# w2 model data: 1000-2000ms
+w2_i = w2[:,:,24:29,:]
+w2_o = w2[:,:,54,:]
+w2_total = w2[:,:,[24,25,26,27,28,54],:]
 
-# w3 model data: 250-500ms
-w3_i = w3[:,:,[27,40,41,49,50,51],:]
-w3_o = w3[:,:,61,:]
-#w3_total = w3[:,:,[27,40,41,49,50,51,61],:]
+# w3 model data: 2000-3000ms
+w3_i = w3[:,:,24:29,:]
+w3_o = w3[:,:,54,:]
+w3_total = w3[:,:,[24,25,26,27,28,54],:]
 
-# signal part data: 500ms-1250ms
-sig_i = signal_data[:,:,[27,40,41,49,50,51],:]
-sig_o = signal_data[:,:,61,:]
-sig_total = signal_data[:,:,[27,40,41,49,50,51,61],:]
+# signal part data: 3000-6000ms
+sig_i = signal_data[:,:,24:29,:]
+sig_o = signal_data[:,:,54,:]
+sig_total = signal_data[:,:,[24,25,26,27,28,54],:]
 
 
 #%% Prepare for checkboard plot (Spearman method)
 w1_pick_corr_sp = SPF.corr_coef(w1_total, 'spearman')
-#w2_pick_corr_sp = SPF.corr_coef(w2_total, 'spearman')
-#w3_pick_corr_sp = SPF.corr_coef(w3_total, 'spearman')
+w2_pick_corr_sp = SPF.corr_coef(w2_total, 'spearman')
+w3_pick_corr_sp = SPF.corr_coef(w3_total, 'spearman')
 
 sig_pick_corr_sp = SPF.corr_coef(sig_total, 'spearman')
 
@@ -275,13 +285,13 @@ w3_w3_i_tsim = SPF.cos_sim(w3_o, w3_ies_w3, mode='tanimoto')
 
 
 #%% Power spectrum density
-w1_p, f = SPF.welch_p(s_iex_w1, sfreq=250, fmin=0, fmax=50, n_fft=2048,
+w1_p, f = SPF.welch_p(s_iex_w1, sfreq=sfreq, fmin=0, fmax=50, n_fft=1000,
                       n_overlap=250, n_per_seg=500)
-w2_p, f = SPF.welch_p(s_iex_w2, sfreq=250, fmin=0, fmax=50, n_fft=2048,
+w2_p, f = SPF.welch_p(s_iex_w2, sfreq=sfreq, fmin=0, fmax=50, n_fft=1000,
                       n_overlap=250, n_per_seg=500)
-w3_p, f = SPF.welch_p(s_iex_w3, sfreq=250, fmin=0, fmax=50, n_fft=2048,
+w3_p, f = SPF.welch_p(s_iex_w3, sfreq=sfreq, fmin=0, fmax=50, n_fft=1000,
                       n_overlap=250, n_per_seg=500)
-sig_p, f = SPF.welch_p(sig_o, sfreq=250, fmin=0, fmax=50, n_fft=2048,
+sig_p, fn = SPF.welch_p(sig_o, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
                        n_overlap=250, n_per_seg=500)
 
 
@@ -337,11 +347,11 @@ Z = gf_w3.flatten()
 
 xmin = min(np.min(X), np.min(Y), np.min(Z)) - 0.05
 
-R2 = np.zeros((720))
-R2[0:240] = X
-R2[240:480] = Y
-R2[480:720] = Z
-model = ['w1' for i in range(240)]+['w2' for i in range(240)]+['w3' for i in range(240)]
+R2 = np.zeros((len(X) + len(Y) + len(Z)))
+R2[0:len(X)] = X
+R2[len(X):(len(X)+len(Y))] = Y
+R2[(len(X)+len(Y)):(len(X) + len(Y) + len(Z))] = Z
+model = ['w1' for i in range(len(X))]+['w2' for i in range(len(Y))]+['w3' for i in range(len(Z))]
 R2 = pd.DataFrame({r'$\ model$': model, r'$\ R^2$': R2})
 
 order=['w1', 'w2', 'w3']
@@ -384,7 +394,7 @@ Z = X - Y
 def func(x, pos):  
     return '{:.4f}'.format(x).replace('0.', '.').replace('1.0000', '').replace('.0000', '')
     
-pick_chans = ['Cz','CP6','TP8','P4','P6','P8','Oz']  # change each time
+pick_chans = ['C1','Cz','C2','C4','CP5','POz']  # change each time
 
 vmin = min(np.min(X), np.min(Y))
 vmax = max(np.max(X), np.max(Y))
@@ -417,7 +427,7 @@ del X, Y, Z
 
 fig.subplots_adjust(top=0.949, bottom=0.05, left=0.049, right=0.990, 
                     hspace=1.000, wspace=0.7)
-plt.savefig(r'E:\dataset\model_description.png', dpi=600)
+plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=600)
 
 
 #%% use sns module to plot heatmap
@@ -444,10 +454,10 @@ ax1 = fig.add_subplot(gs[,])
 ax1.set_title('signal', fontsize=20)
 ax1.set_xlabel('time/ms', fontsize=20)
 ax1.set_ylabel('SNR', fontsize=20)
-ax1.plot(np.mean(sig_o[7,:,:], axis=0), label='origin:125-1375')
-ax1.plot(np.mean(s_iex_w1[7,:,:], axis=0), label='w1:0-125')
-ax1.plot(np.mean(s_iex_w2[7,:,:], axis=0), label='w2:0-63')
-ax1.plot(np.mean(s_iex_w3[7,:,:], axis=0), label='w3:63-125')
+ax1.plot(np.mean(sig_o[7,:,:], axis=0), label='origin:3-6s')
+ax1.plot(np.mean(s_iex_w1[7,:,:], axis=0), label='w1:0-1s')
+ax1.plot(np.mean(s_iex_w2[7,:,:], axis=0), label='w2:1-2s')
+ax1.plot(np.mean(s_iex_w3[7,:,:], axis=0), label='w3:2-3s')
 ax1.tick_params(axis='both', labelsize=20)
 ax1.legend(loc='upper right', fontsize=20)
 
@@ -455,10 +465,10 @@ ax2 = fig.add_subplot(gs[,])
 ax2.set_title('time snr', fontsize=20)
 ax2.set_xlabel('time/ms', fontsize=20)
 ax2.set_ylabel('SNR', fontsize=20)
-ax2.plot(snr_o_t[7,:], label='origin:125-1375')
-ax2.plot(snr_w1_i_t[7,:], label='w1:0-125')
-ax2.plot(snr_w2_i_t[7,:], label='w2:0-63')
-ax2.plot(snr_w3_i_t[7,:], label='w3:63-125')
+ax2.plot(snr_o_t[7,:], label='origin:3-6s')
+ax2.plot(snr_w1_i_t[7,:], label='w1:0-1s')
+ax2.plot(snr_w2_i_t[7,:], label='w2:1-2s')
+ax2.plot(snr_w3_i_t[7,:], label='w3:2-3s')
 ax2.tick_params(axis='both', labelsize=20)
 ax2.legend(loc='best', fontsize=20)
 
@@ -466,21 +476,21 @@ ax2.legend(loc='best', fontsize=20)
 #%% plot PSD
 plt.title('signal psd', fontsize=20)
 plt.xlabel('frequency/Hz', fontsize=20)
-plt.plot(f[1,1,:], np.mean(sig_p[7,:,:], axis=0), label='origin:125-1375')
-plt.plot(f[1,1,:], np.mean(w1_p[7,:,:], axis=0), label='w1:0-125')
-plt.plot(f[1,1,:], np.mean(w2_p[7,:,:], axis=0), label='w2:0-63')
-plt.plot(f[1,1,:], np.mean(w3_p[7,:,:], axis=0), label='w3:63-125')
+plt.plot(fn[1,1,:], np.mean(sig_p[2,:,:], axis=0), label='origin:3-6s', color='red')
+plt.plot(f[1,1,:], np.mean(w1_p[2,:,:], axis=0), label='w1:0-1s', color='blue')
+plt.plot(f[1,1,:], np.mean(w2_p[2,:,:], axis=0), label='w2:1-2s', color='yellow')
+plt.plot(f[1,1,:], np.mean(w3_p[2,:,:], axis=0), label='w3:2-3s', color='green')
 plt.legend(loc='best', fontsize=20)
 
 #%%
 def strain(X):
     strain = np.zeros((40,50))
     
-    for i in range(40):
+    for i in range(X.shape[0]):
         k=0
-        for j in range(50):
-            strain[i,j] = np.mean(X[i,k:k+25])
-            k += 25
+        for j in range(int(X.shape[1]/100)):
+            strain[i,j] = np.mean(X[i,k:k+100])
+            k += 100
     return strain
 
 #%%
@@ -490,9 +500,9 @@ snr3 = strain(snr_w2_i_t)
 snr4 = strain(snr_w3_i_t)
 
 #%%
-plt.plot(snr1[7,:], label='origin:125-1375')
-plt.plot(snr2[7,:], label='w1:0-125')
-plt.plot(snr3[7,:], label='w2:0-63')
-plt.plot(snr4[7,:], label='w3:63-125')
+plt.plot(snr1[2,:], label='origin:125-1375')
+plt.plot(snr2[2,:], label='w1:0-125')
+plt.plot(snr3[2,:], label='w2:0-63')
+plt.plot(snr4[2,:], label='w3:63-125')
 plt.tick_params(axis='both', labelsize=20)
 plt.legend(loc='best', fontsize=20)
