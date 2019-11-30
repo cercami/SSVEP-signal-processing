@@ -45,9 +45,6 @@ del raw_cnts, file, filefolder, filefolders, filefullpath, filelist
 del filepath, subindex, subjectlist
 
 #%% preprocessing
-raw.filter(l_freq=5, h_freq=40., method='fir', phase='zero',
-           fir_window='hamming', fir_design='firwin', n_jobs=6,
-           skip_by_annotation='edge')
 events = mne.find_events(raw, output='onset')
 
 raw.pick_types(raw.info, emg=False, eeg=True, stim=False, eog=False)
@@ -78,7 +75,7 @@ for i in range(len(event_id)):
     # (n_trials, n_chans, n_times)
     del epochs
 del i
-#del n_stims, n_trials, n_chans, n_times
+del n_stims, n_trials, n_chans, n_times
 
 #%% picked channels' info
 channels = {}
@@ -93,5 +90,6 @@ file.close()
 del v, k, file, line       # release RAM
 
 #%% store data into .mat file
-data_path = r'D:\dataset\preprocessed_data\weisiwen'
+data_path = r'D:\dataset\preprocessed_data\weisiwen\raw_data'
 io.savemat(data_path, {'raw_data':data})
+print('Extraction Done')

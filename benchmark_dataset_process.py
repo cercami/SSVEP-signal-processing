@@ -48,21 +48,20 @@ data = data.transpose((2, 3, 0, 1))
 sfreq = 250
 freqs = info['freqs'].T
 phases = info['phases'].T
+del eeg, info
 
-# load channels information from .txt file
+#%% load channels information from .txt file
 channels = {}
-file = open(r'E:\dataset\64-channels.txt')
+file = open(r'D:\dataset\channel_info\weisiwen_chans.txt')
 for line in file.readlines():
     line = line.strip()
-    v = line.split(' ')[0]
+    v = str(int(line.split(' ')[0]) - 1)
     k = line.split(' ')[1]
     channels[k] = v
 file.close()
 
 del v, k, file, line       # release RAM
-del eeg, info     
-
-
+     
 #%% Load multiple data file & also can be used to process multiple data
 # CAUTION: may lead to RAM crash (5-D array takes more than 6125MB)
 # Now I know why people need 32G's RAM...PLEASE SKIP THIS PART!!!
@@ -84,6 +83,11 @@ for file in filelist:
     
 del temp, i, file, filelist, filepath, full_path
 
+#%% load local data (extract from .cnt file)
+eeg = io.loadmat(r'D:\dataset\preprocessed_data\weisiwen\raw_data')
+data = eeg['data']
+
+del eeg
 
 #%% Data preprocessing
 # filtering
