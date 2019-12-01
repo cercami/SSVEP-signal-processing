@@ -214,7 +214,7 @@ w3_pick_corr = SPF.corr_coef(w3_total, 'spearman')
 
 sig_pick_corr = SPF.corr_coef(sig_total, 'spearman')
 
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\pick_chan.mat'
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\pick_chan_corr.mat'
 io.savemat(data_path, {'w1':w1_pick_corr,
                        'w2':w2_pick_corr,
                        'w3':w3_pick_corr,
