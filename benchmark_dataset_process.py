@@ -170,10 +170,12 @@ corr = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr.mat'
 w1_corr = corr['w1']
 w2_corr = corr['w2']
 w3_corr = corr['w3']
+w_corr = corr['w']
 
 w1_sub_corr = corr['w1_sub']
 w2_sub_corr = corr['w2_sub']
 w3_sub_corr = corr['w3_sub']
+w_sub_corr = corr['w_sub']
 
 del corr
 
@@ -271,19 +273,19 @@ w3_es_w3, w3_ex_w3 = SPF.sig_extract(sp_w3, w3_i, w3_o, 0)
 gf_w3 = SPF.fit_goodness(w3_o, w3_es_w3, chans=5)
 
 # signal part data (use w1):
-s_ies_w1, s_iex_w1 = SPF.sig_extract(sp_w1, sig_i, sig_o, 0)
+s_es_w1, s_ex_w1 = SPF.sig_extract(sp_w1, sig_i, sig_o, 0)
 # signal part data (use w2):
-s_ies_w2, s_iex_w2 = SPF.sig_extract(sp_w2, sig_i, sig_o, 0)
+s_es_w2, s_ex_w2 = SPF.sig_extract(sp_w2, sig_i, sig_o, 0)
 # signal part data (use w3):
-s_ies_w3, s_iex_w3 = SPF.sig_extract(sp_w3, sig_i, sig_o, 0)
+s_es_w3, s_ex_w3 = SPF.sig_extract(sp_w3, sig_i, sig_o, 0)
 
 
 #%% Cosine similarity (background part): normal
 # w1 estimate (w1 model) & w1 original, mlr, normal similarity, the same below
-w1_w1_m_nsim = SPF.cos_sim(w1_o, w1_mes_w1, mode='normal')
-w2_w2_m_nsim = SPF.cos_sim(w2_o, w2_mes_w2, mode='normal')
-w2_w3_m_nsim = SPF.cos_sim(w3_o, w2_mes_w3, mode='normal')
-w3_w3_m_nsim = SPF.cos_sim(w3_o, w3_mes_w3, mode='normal')
+#w1_w1_m_nsim = SPF.cos_sim(w1_o, w1_mes_w1, mode='normal')
+#w2_w2_m_nsim = SPF.cos_sim(w2_o, w2_mes_w2, mode='normal')
+#w2_w3_m_nsim = SPF.cos_sim(w3_o, w2_mes_w3, mode='normal')
+#w3_w3_m_nsim = SPF.cos_sim(w3_o, w3_mes_w3, mode='normal')
 
 w1_w1_i_nsim = SPF.cos_sim(w1_o, w1_ies_w1, mode='normal')
 w2_w2_i_nsim = SPF.cos_sim(w2_o, w2_ies_w2, mode='normal')
@@ -293,10 +295,10 @@ w3_w3_i_nsim = SPF.cos_sim(w3_o, w3_ies_w3, mode='normal')
 
 #%% Cosine similarity (background part): Tanimoto (generalized Jaccard)
 # w1 estimate (w1 model) & w1 original, mlr, Tanimoto, the same below
-w1_w1_m_tsim = SPF.cos_sim(w1_o, w1_mes_w1, mode='tanimoto')
-w2_w2_m_tsim = SPF.cos_sim(w2_o, w2_mes_w2, mode='tanimoto')
-w2_w3_m_tsim = SPF.cos_sim(w3_o, w2_mes_w3, mode='tanimoto')
-w3_w3_m_tsim = SPF.cos_sim(w3_o, w3_mes_w3, mode='tanimoto')
+#w1_w1_m_tsim = SPF.cos_sim(w1_o, w1_mes_w1, mode='tanimoto')
+#w2_w2_m_tsim = SPF.cos_sim(w2_o, w2_mes_w2, mode='tanimoto')
+#w2_w3_m_tsim = SPF.cos_sim(w3_o, w2_mes_w3, mode='tanimoto')
+#w3_w3_m_tsim = SPF.cos_sim(w3_o, w3_mes_w3, mode='tanimoto')
 
 w1_w1_i_tsim = SPF.cos_sim(w1_o, w1_ies_w1, mode='tanimoto')
 w2_w2_i_tsim = SPF.cos_sim(w2_o, w2_ies_w2, mode='tanimoto')
@@ -504,7 +506,7 @@ plt.legend(loc='best', fontsize=20)
 
 #%%
 def strain(X):
-    strain = np.zeros((40,50))
+    strain = np.zeros((X.shape[0],int((X.shape[1]-1)/100)))
     
     for i in range(X.shape[0]):
         k=0
