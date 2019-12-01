@@ -53,7 +53,7 @@ del eeg, info
 
 #%% load channels information from .txt file
 channels = {}
-file = open(r'D:\dataset\channel_info\weisiwen_chans.txt')
+file = open(r'F:\SSVEP\dataset\channel_info\weisiwen_chans.txt')
 for line in file.readlines():
     line = line.strip()
     v = str(int(line.split(' ')[0]) - 1)
@@ -87,8 +87,12 @@ del temp, i, file, filelist, filepath, full_path
 
 
 #%% load local data (extract from .cnt file)
-eeg = io.loadmat(r'D:\dataset\preprocessed_data\weisiwen\raw_data')
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
+
 data = eeg['raw_data']
+data *= 1e6
+
+channels = eeg['chan_info']
 
 del eeg
 
@@ -114,22 +118,14 @@ del i
 w1 = f_data[:,:,:,0:1000]           # 0-1s
 w2 = f_data[:,:,:,1000:2000]        # 1-2s
 w3 = f_data[:,:,:,2000:3000]        # 2-3s
+w = f_data[:,:,:,0:3000]
 
 # get data for comparision
 signal_data = f_data[:,:,:,3000:]   # 3-6s
 
-del f_data
+del f_data, data
 
-
-#%% Inter-channel correlation analysis: Spearman correlation
-w1_corr_sp = SPF.corr_coef(w1, 'spearman')
-w2_corr_sp = SPF.corr_coef(w2, 'spearman')
-w3_corr_sp = SPF.corr_coef(w3, 'spearman')
-
-sig_corr_sp = SPF.corr_coef(signal_data, mode='spearman')
-
-
-#%% binarization
+#%% Correlation binarization
 def binarization(X):
     compare = np.zeros((X.shape[0], X.shape[1]))
     for i in range(n_chans):
@@ -140,29 +136,49 @@ def binarization(X):
                 compare[i,j] = X[i,j]
     return compare
 
-compare_w1 = binarization(w1_corr_sp - sig_corr_sp)
-compare_w2 = binarization(w2_corr_sp - sig_corr_sp)
-compare_w3 = binarization(w2_corr_sp - sig_corr_sp)
+#%% Inter-channel correlation analysis: Spearman correlation coefficient
+w1_corr = SPF.corr_coef(w1, 'spearman')
+w2_corr = SPF.corr_coef(w2, 'spearman')
+w3_corr = SPF.corr_coef(w3, 'spearman')
+w_corr = SPF.corr_coef(w, 'spearman')
 
-del w1_corr_sp, w2_corr_sp, w3_corr_sp, sig_corr_sp
+sig_corr = SPF.corr_coef(signal_data, mode='spearman')
+
+compare_w1 = binarization(w1_corr - sig_corr)
+compare_w2 = binarization(w2_corr - sig_corr)
+compare_w3 = binarization(w2_corr - sig_corr)
+compare = binarization(w_corr - sig_corr)
+
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr_sp.mat'
+io.savemat(data_path, {'signal':sig_corr,
+                       'w1':w1_corr,
+                       'w2':w2_corr,
+                       'w3':w3_corr,
+                       'w':w_corr,
+                       'w1_sub':compare_w1,
+                       'w2_sub':compare_w2,
+                       'w3_sub':compare_w3,
+                       'w_sub':compare})
+    
+del w1_corr, w2_corr, w3_corr, sig_corr, w_corr
+del compare_w1, compare_w2, compare_w3, compare
 
 
-#%% Inter-channel correlation analysis: Pearson correlation
-w1_corr_sp = SPF.corr_coef(w1, 'pearson')
-w2_corr_sp = SPF.corr_coef(w2, 'pearson')
-w3_corr_sp = SPF.corr_coef(w3, 'pearson')
+#%% Reload correlation data (1st time)
+corr = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr.mat')
 
-sig_corr_sp = SPF.corr_coef(signal_data, mode='pearson')
+w1_corr = corr['w1']
+w2_corr = corr['w2']
+w3_corr = corr['w3']
 
+w1_sub_corr = corr['w1_sub']
+w2_sub_corr = corr['w2_sub']
+w3_sub_corr = corr['w3_sub']
 
-#%% Binarization (if neccessary)
-compare_corr = SPF.bina_corr(w1_corr_sp, sig_corr_sp, th=0.03)
+del corr
 
+#%% Automatically pick estimate channel and target channel
 
-#%% Inter-channel correlation analysis: canonical correlation analysis (CCA)
-            
-
-#%% Divide input&output data for model according to correlation
 
 # pick input channels: C1, Cz, C2, C4, CP5
 # choose output channels: POz
@@ -187,24 +203,28 @@ sig_i = signal_data[:,:,24:29,:]
 sig_o = signal_data[:,:,47,:]
 sig_total = signal_data[:,:,[24,25,26,27,28,47],:]
 
+# release RAM
+#del w1_sub_corr, w2_sub_corr, w3_sub_corr
+ 
 
 #%% Prepare for checkboard plot (Spearman method)
-w1_pick_corr_sp = SPF.corr_coef(w1_total, 'spearman')
-w2_pick_corr_sp = SPF.corr_coef(w2_total, 'spearman')
-w3_pick_corr_sp = SPF.corr_coef(w3_total, 'spearman')
+w1_pick_corr = SPF.corr_coef(w1_total, 'spearman')
+w2_pick_corr = SPF.corr_coef(w2_total, 'spearman')
+w3_pick_corr = SPF.corr_coef(w3_total, 'spearman')
 
-sig_pick_corr_sp = SPF.corr_coef(sig_total, 'spearman')
+sig_pick_corr = SPF.corr_coef(sig_total, 'spearman')
+
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\pick_chan.mat'
+io.savemat(data_path, {'w1':w1_pick_corr,
+                       'w2':w2_pick_corr,
+                       'w3':w3_pick_corr,
+                       'sig':sig_pick_corr})
+    
+del w1_pick_corr, w2_pick_corr, w3_pick_corr, sig_pick_corr
 
 
-#%% Prepare for checkboard plot (Pearson method)
-#w1_pick_corr_sp = SPF.corr_coef(w1_total, 'pearson')
-#w2_pick_corr_sp = SPF.corr_coef(w2_total, 'pearson')
-#w3_pick_corr_sp = SPF.corr_coef(w3_total, 'pearson')
-
-#sig_pick_corr_sp = SPF.corr_coef(sig_total, 'pearson')
-
-        
 #%% Spatial filter: multi-linear regression method
+
 # regression coefficient, intercept, R^2
 rc_w1, ri_w1, r2_w1 = SPF.mlr_analysis(w1_i, w1_o)
 # w1 estimate & extract data: (n_events, n_epochs, n_times)
@@ -250,15 +270,6 @@ sp_w3 = SPF.inv_spa(w3_i, w3_o)
 w3_es_w3, w3_ex_w3 = SPF.sig_extract(sp_w3, w3_i, w3_o, 0)
 gf_w3 = SPF.fit_goodness(w3_o, w3_es_w3, chans=5)
 
-#%% save data
-data_path = r'D:\dataset\preprocessed_data\weisiwen\I_model'
-io.savemat(data_path, {'filter_coef_w1':sp_w1, 
-                       'filter_coef_w2':sp_w2,
-                       'filter_coef_w3':sp_w3,
-                       'gf_w1':gf_w1,
-                       'gf_w2':gf_w2,
-                       'gf_w3':gf_w3})
-#%%
 # signal part data (use w1):
 s_ies_w1, s_iex_w1 = SPF.sig_extract(sp_w1, sig_i, sig_o, 0)
 # signal part data (use w2):
@@ -266,16 +277,7 @@ s_ies_w2, s_iex_w2 = SPF.sig_extract(sp_w2, sig_i, sig_o, 0)
 # signal part data (use w3):
 s_ies_w3, s_iex_w3 = SPF.sig_extract(sp_w3, sig_i, sig_o, 0)
 
-#%% save data
-data_path = r'D:\dataset\preprocessed_data\weisiwen\I_signal'
-io.savemat(data_path, {'w1sw1':w1_ies_w1,
-                       'w1xw1':w1_iex_w1,
-                       :,
-                       :,
-                       :,
-                       :,
-                       :,
-                       })
+
 #%% Cosine similarity (background part): normal
 # w1 estimate (w1 model) & w1 original, mlr, normal similarity, the same below
 w1_w1_m_nsim = SPF.cos_sim(w1_o, w1_mes_w1, mode='normal')

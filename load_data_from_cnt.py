@@ -15,7 +15,7 @@ from mne import Epochs, pick_types, find_events
 from mne.baseline import rescale
 
 # %% load data
-filepath = r'D:\dataset'
+filepath = r'F:\SSVEP\dataset'
 
 subjectlist = ['weisiwen']
 
@@ -47,11 +47,12 @@ del filepath, subindex, subjectlist
 #%% preprocessing
 events = mne.find_events(raw, output='onset')
 
-raw.pick_types(raw.info, emg=False, eeg=True, stim=False, eog=False)
-
 # drop channels
 drop_chans = ['FC6', 'FT8', 'C6', 'T8', 'TP7', 'CP6', 'M1', 'M2']
-raw.drop_channels(drop_chans)
+
+picks = mne.pick_types(raw.info, emg=False, eeg=True, stim=False, eog=False,
+                       exclude=drop_chans)
+picks_ch_names = [raw.ch_names[i] for i in picks]  # layout picked chans' name
 
 # define labels
 event_id = dict(f8=1, f10=2, f15=3)
@@ -69,7 +70,7 @@ n_times = int((tmax - tmin) * sfreq + 1)
 data = np.zeros((n_stims, n_trials, n_chans, n_times))
 for i in range(len(event_id)):
 
-    epochs = Epochs(raw, events=events, event_id=i+1, tmin=tmin,
+    epochs = Epochs(raw, events=events, event_id=i+1, tmin=tmin, picks=picks,
                     tmax=tmax, baseline=None, preload=True)
     data[i,:,:,:] = epochs.get_data()  # get the 3D array of data
     # (n_trials, n_chans, n_times)
@@ -78,8 +79,9 @@ del i
 del n_stims, n_trials, n_chans, n_times
 
 #%% store data into .mat file
-data_path = r'D:\dataset\preprocessed_data\weisiwen\raw_data'
-io.savemat(data_path, {'raw_data':data})
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat'
+io.savemat(data_path, {'raw_data':data,
+                       'chan_info':picks_ch_names})
 print('Extraction Done')
 
 #%% test
