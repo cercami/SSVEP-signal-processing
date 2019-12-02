@@ -311,10 +311,10 @@ ax2.legend(loc='best', fontsize=20)
 #%% plot PSD
 plt.title('signal psd', fontsize=20)
 plt.xlabel('frequency/Hz', fontsize=20)
-plt.plot(fn[1,1,:], np.mean(sig_p[2,:,:], axis=0), label='origin:3-6s', color='red')
-plt.plot(f[1,1,:], np.mean(w1_p[2,:,:], axis=0), label='w1:0-1s', color='blue')
-plt.plot(f[1,1,:], np.mean(w2_p[2,:,:], axis=0), label='w2:1-2s', color='yellow')
-plt.plot(f[1,1,:], np.mean(w3_p[2,:,:], axis=0), label='w3:2-3s', color='green')
+plt.plot(fs[1,1,:], np.mean(sig_p[2,:,:], axis=0), label='origin:3-6s', color='red')
+plt.plot(fs[1,1,:], np.mean(w1_p[2,:,:], axis=0), label='w1:0-1s', color='blue')
+plt.plot(fs[1,1,:], np.mean(w2_p[2,:,:], axis=0), label='w2:1-2s', color='yellow')
+plt.plot(fs[1,1,:], np.mean(w3_p[2,:,:], axis=0), label='w3:2-3s', color='green')
 plt.legend(loc='best', fontsize=20)
 
 #%%

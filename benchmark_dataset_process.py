@@ -152,33 +152,6 @@ compare_w2 = binarization(w2_corr - sig_corr)
 compare_w3 = binarization(w2_corr - sig_corr)
 compare = binarization(w_corr - sig_corr)
 
-
-#%% Automatically pick estimate channel and target channel
-
-
-# pick input channels: C1, Cz, C2, C4, CP5
-# choose output channels: POz
-
-# w1 model data: 0-1000ms
-w1_i = w1[:,:,24:29,:]
-w1_o = w1[:,:,47,:]
-w1_total = w1[:,:,[24,25,26,27,28,47],:]
-
-# w2 model data: 1000-2000ms
-w2_i = w2[:,:,24:29,:]
-w2_o = w2[:,:,47,:]
-w2_total = w2[:,:,[24,25,26,27,28,47],:]
-
-# w3 model data: 2000-3000ms
-w3_i = w3[:,:,24:29,:]
-w3_o = w3[:,:,47,:]
-w3_total = w3[:,:,[24,25,26,27,28,47],:]
-
-# signal part data: 3000-6000ms
-sig_i = signal_data[:,:,24:29,:]
-sig_o = signal_data[:,:,47,:]
-sig_total = signal_data[:,:,[24,25,26,27,28,47],:]
-
 # save data
 data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr.mat'
 io.savemat(data_path, {'signal':sig_corr,
@@ -191,9 +164,49 @@ io.savemat(data_path, {'signal':sig_corr,
                        'w3_sub':compare_w3,
                        'w_sub':compare})
     
+#%% reload full-chan-correlation data
+data = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr.mat')
+w_sub = data['w_sub']
+
+del data
+
+
+#%% Automatically pick estimate channel and target channel
+
+
+# pick input channels: C1, Cz, C2, C4, CP5
+# choose output channels: Oz
+
+# w1 model data: 0-1000ms
+w1_i = w1[:,:,24:29,:]
+w1_o = w1[:,:,53,:]
+w1_total = w1[:,:,[24,25,26,27,28,53],:]
+
+# w2 model data: 1000-2000ms
+w2_i = w2[:,:,24:29,:]
+w2_o = w2[:,:,53,:]
+w2_total = w2[:,:,[24,25,26,27,28,53],:]
+
+# w3 model data: 2000-3000ms
+w3_i = w3[:,:,24:29,:]
+w3_o = w3[:,:,53,:]
+w3_total = w3[:,:,[24,25,26,27,28,53],:]
+
+# signal part data: 3000-6000ms
+sig_i = signal_data[:,:,24:29,:]
+sig_o = signal_data[:,:,53,:]
+sig_total = signal_data[:,:,[24,25,26,27,28,53],:]
+
+# save data
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\model_data.mat'
+io.savemat(data_path, {'w1_i':w1_i, 'w1_o':w1_o, 'w1_total':w1_total,
+                       'w2_i':w2_i, 'w2_o':w2_o, 'w2_total':w2_total,
+                       'w3_i':w3_i, 'w3_o':w3_o, 'w3_total':w3_total,
+                       'sig_i':sig_i, 'sig_o':sig_o, 'sig_total':sig_total})
+    
 # release RAM
-del w1_corr, w2_corr, w3_corr, sig_corr, w_corr
-del compare_w1, compare_w2, compare_w3, compare
+del w1, w2, w3, w, signal_data
+del w_sub
 
 #%% Prepare for checkboard plot (Spearman method)
 w1_pick_corr = SPF.corr_coef(w1_total, 'spearman')
@@ -209,6 +222,7 @@ io.savemat(data_path, {'w1':w1_pick_corr,
                        'sig':sig_pick_corr})
     
 del w1_pick_corr, w2_pick_corr, w3_pick_corr, sig_pick_corr
+del w1_total, w2_total, w3_total, sig_total
 
 
 #%% Spatial filter: multi-linear regression method
@@ -216,128 +230,188 @@ del w1_pick_corr, w2_pick_corr, w3_pick_corr, sig_pick_corr
 # regression coefficient, intercept, R^2
 rc_w1, ri_w1, r2_w1 = SPF.mlr_analysis(w1_i, w1_o)
 # w1 estimate & extract data: (n_events, n_epochs, n_times)
-w1_mes_w1, w1_mex_w1 = SPF.sig_extract(rc_w1, w1_i, w1_o, ri_w1)
+w1_es_w1, w1_ex_w1 = SPF.sig_extract_mlr(rc_w1, w1_i, w1_o, ri_w1)
 
-# the same but w2 part data:
-rc_w2, ri_w2, r2_w2 = SPF.mlr_analysis(w2_i, w2_o, w2_i, 0)
-w2_mes_w2, w2_mex_w2 = SPF.sig_extract(rc_w2, w2_i, w2_o, ri_w2)
+# w1-w2
+w1_es_w2, w1_ex_w2 = SPF.sig_extract_mlr(rc_w1, w2_i, w2_o, ri_w1)
 
-# the same but w3 part data (use w2)
-w2_mes_w3, w2_mex_w3 = SPF.sig_extract(rc_w2, w3_i, w3_o, ri_w2)
+# w1-w3
+w1_es_w3, w1_ex_w3 = SPF.sig_extract_mlr(rc_w1, w3_i, w3_o, ri_w1)
 
-# the same but w3 part data (use w3)
-rc_w3, ri_w3, r2_w3 = SPF.mlr_analysis(w3_i, w3_o, w3_i, 0)
-w3_mes_w3, w3_mex_w3 = SPF.sig_extract(rc_w3, w3_i, w3_o, ri_w3)
+# w2-w2
+rc_w2, ri_w2, r2_w2 = SPF.mlr_analysis(w2_i, w2_o)
+w2_es_w2, w2_ex_w2 = SPF.sig_extract_mlr(rc_w2, w2_i, w2_o, ri_w2)
 
-# signal part data (use w1):
-s_mes_w1, s_mex_w1 = SPF.sig_extract(rc_w1, sig_i, sig_o, ri_w1)
-# signal part data (use w2):
-s_mes_w2, s_mex_w2 = SPF.sig_extract(rc_w2, sig_i, sig_o, ri_w2)
-# signal part data (use w3): 
-s_mes_w3, s_mex_w3 = SPF.sig_extract(rc_w3, sig_i, sig_o, ri_w3)
+# w2-w3
+w2_es_w3, w2_ex_w3 = SPF.sig_extract_mlr(rc_w2, w3_i, w3_o, ri_w2)
+
+# w3-w3
+rc_w3, ri_w3, r2_w3 = SPF.mlr_analysis(w3_i, w3_o)
+w3_es_w3, w3_ex_w3 = SPF.sig_extract_mlr(rc_w3, w3_i, w3_o, ri_w3)
+
+# w1-s
+w1_es_s, w1_ex_s = SPF.sig_extract_mlr(rc_w1, sig_i, sig_o, ri_w1)
+# w2-s
+w2_es_s, w2_ex_s = SPF.sig_extract_mlr(rc_w2, sig_i, sig_o, ri_w2)
+# w3-s
+w3_es_s, w3_ex_s = SPF.sig_extract_mlr(rc_w3, sig_i, sig_o, ri_w3)
+
+# save data
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\MLR_model.mat'
+io.savemat(data_path, {'rc_w1':rc_w1, 'rc_w2':rc_w2, 'rc_w3':rc_w3,
+                       'ri_w1':ri_w1, 'ri_w2':ri_w2, 'ri_w3':ri_w3,
+                       'r2_w1':r2_w1, 'r2_w2':r2_w2, 'r2_w3':r2_w3,
+                       'w1_es_w1':w1_es_w1, 'w1_es_w2':w1_es_w2, 'w1_es_w3':w1_es_w3,
+                       'w2_es_w2':w2_es_w2, 'w2_es_w3':w2_es_w3, 
+                       'w3_es_w3':w3_es_w3,
+                       'w1_ex_w1':w1_ex_w1, 'w1_ex_w2':w1_ex_w2, 'w1_ex_w3':w1_ex_w3,
+                       'w2_ex_w2':w2_ex_w2, 'w2_ex_w3':w2_ex_w3, 
+                       'w3_ex_w3':w3_ex_w3,
+                       'w1_es_s':w1_es_s, 'w2_es_s':w1_es_s, 'w3_es_s':w3_es_s,
+                       'w1_ex_s':w1_ex_s, 'w2_ex_s':w2_ex_s, 'w3_ex_s':w3_ex_s})
+    
+# release RAM
+del rc_w1, rc_w2, rc_w3, ri_w1, ri_w2, ri_w3, r2_w1, r2_w2, r2_w3
+del w1_ex_w1, w1_ex_w2, w1_ex_w3, w2_ex_w2, w2_ex_w3, w3_ex_w3
 
 
 #%% Spatial filter: inverse array method
 # filter coefficient
 sp_w1 = SPF.inv_spa(w1_i, w1_o)
 # w1 estimate & extract data: (n_events, n_epochs, n_times)
-w1_es_w1, w1_ex_w1 = SPF.sig_extract(sp_w1, w1_i, w1_o, 0)
+w1_es_w1, w1_ex_w1 = SPF.sig_extract_ia(sp_w1, w1_i, w1_o)
 # w1 model's goodness of fit
 gf_w1 = SPF.fit_goodness(w1_o, w1_es_w1, chans=5)
 
-# the same but w2 part data:
+# w1-w2:
+w1_es_w2, w1_ex_w2 = SPF.sig_extract_ia(sp_w1, w2_i, w2_o)
+
+# w1-w3:
+w1_es_w3, w1_ex_w3 = SPF.sig_extract_ia(sp_w1, w3_i, w3_o)
+
+# w2-w2:
 sp_w2 = SPF.inv_spa(w2_i, w2_o)
-w2_es_w2, w2_ex_w2 = SPF.sig_extract(sp_w2, w2_i, w2_o, 0)
+w2_es_w2, w2_ex_w2 = SPF.sig_extract_ia(sp_w2, w2_i, w2_o)
 gf_w2 = SPF.fit_goodness(w2_o, w2_es_w2, chans=5)
 
-# the same but w3 part data (use w2):
-w2_es_w3, w2_ex_w3 = SPF.sig_extract(sp_w2, w3_i, w3_o, 0)
+# w2-w3:
+w2_es_w3, w2_ex_w3 = SPF.sig_extract_ia(sp_w2, w3_i, w3_o)
 
-# the same but w3 part data (use w3):
+# w3-w3:
 sp_w3 = SPF.inv_spa(w3_i, w3_o)
-w3_es_w3, w3_ex_w3 = SPF.sig_extract(sp_w3, w3_i, w3_o, 0)
+w3_es_w3, w3_ex_w3 = SPF.sig_extract_ia(sp_w3, w3_i, w3_o)
 gf_w3 = SPF.fit_goodness(w3_o, w3_es_w3, chans=5)
 
-# signal part data (use w1):
-s_es_w1, s_ex_w1 = SPF.sig_extract(sp_w1, sig_i, sig_o, 0)
-# signal part data (use w2):
-s_es_w2, s_ex_w2 = SPF.sig_extract(sp_w2, sig_i, sig_o, 0)
-# signal part data (use w3):
-s_es_w3, s_ex_w3 = SPF.sig_extract(sp_w3, sig_i, sig_o, 0)
+# w1-s
+w1_es_s, w1_ex_s = SPF.sig_extract_ia(sp_w1, sig_i, sig_o)
+# w2-s
+w2_es_s, w2_ex_s = SPF.sig_extract_ia(sp_w2, sig_i, sig_o)
+# w3-s
+w3_es_s, w3_ex_s = SPF.sig_extract_ia(sp_w3, sig_i, sig_o)
+
+# save data
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\inver_array_model.mat'
+io.savemat(data_path, {'sp_w1':sp_w1, 'sp_w2':sp_w2, 'sp_w3':sp_w3,
+                       'gf_w1':gf_w1, 'gf_w2':gf_w2, 'gf_w3':gf_w3,
+                       'w1_es_w1':w1_es_w1, 'w1_es_w2':w1_es_w2, 'w1_es_w3':w1_es_w3,
+                       'w2_es_w2':w2_es_w2, 'w2_es_w3':w2_es_w3, 
+                       'w3_es_w3':w3_es_w3,
+                       'w1_ex_w1':w1_ex_w1, 'w1_ex_w2':w1_ex_w2, 'w1_ex_w3':w1_ex_w3,
+                       'w2_ex_w2':w2_ex_w2, 'w2_ex_w3':w2_ex_w3, 
+                       'w3_ex_w3':w3_ex_w3,
+                       'w1_es_s':w1_es_s, 'w2_es_s':w1_es_s, 'w3_es_s':w3_es_s,
+                       'w1_ex_s':w1_ex_s, 'w2_ex_s':w2_ex_s, 'w3_ex_s':w3_ex_s})
+    
+# release RAM
+del sp_w1, sp_w2, sp_w3, gf_w1, gf_w2, gf_w3
+del w1_ex_w1, w1_ex_w2, w1_ex_w3, w2_ex_w2, w2_ex_w3, w3_ex_w3
 
 
-#%% Cosine similarity (background part): normal
+#%% Cosine similarity (background part)
 # w1 estimate (w1 model) & w1 original, mlr, normal similarity, the same below
-#w1_w1_m_nsim = SPF.cos_sim(w1_o, w1_mes_w1, mode='normal')
-#w2_w2_m_nsim = SPF.cos_sim(w2_o, w2_mes_w2, mode='normal')
-#w2_w3_m_nsim = SPF.cos_sim(w3_o, w2_mes_w3, mode='normal')
-#w3_w3_m_nsim = SPF.cos_sim(w3_o, w3_mes_w3, mode='normal')
+w1_w1_nsim = SPF.cos_sim(w1_o, w1_es_w1, mode='normal')
+w1_w2_nsim = SPF.cos_sim(w2_o, w1_es_w2, mode='normal')
+w1_w3_nsim = SPF.cos_sim(w3_o, w1_es_w3, mode='normal')
 
-w1_w1_i_nsim = SPF.cos_sim(w1_o, w1_ies_w1, mode='normal')
-w2_w2_i_nsim = SPF.cos_sim(w2_o, w2_ies_w2, mode='normal')
-w2_w3_i_nsim = SPF.cos_sim(w3_o, w2_ies_w3, mode='normal')
-w3_w3_i_nsim = SPF.cos_sim(w3_o, w3_ies_w3, mode='normal')
+w2_w2_nsim = SPF.cos_sim(w2_o, w2_es_w2, mode='normal')
+w2_w3_nsim = SPF.cos_sim(w3_o, w2_es_w3, mode='normal')
 
+w3_w3_nsim = SPF.cos_sim(w3_o, w3_es_w3, mode='normal')
 
-#%% Cosine similarity (background part): Tanimoto (generalized Jaccard)
 # w1 estimate (w1 model) & w1 original, mlr, Tanimoto, the same below
-#w1_w1_m_tsim = SPF.cos_sim(w1_o, w1_mes_w1, mode='tanimoto')
-#w2_w2_m_tsim = SPF.cos_sim(w2_o, w2_mes_w2, mode='tanimoto')
-#w2_w3_m_tsim = SPF.cos_sim(w3_o, w2_mes_w3, mode='tanimoto')
-#w3_w3_m_tsim = SPF.cos_sim(w3_o, w3_mes_w3, mode='tanimoto')
+w1_w1_tsim = SPF.cos_sim(w1_o, w1_es_w1, mode='tanimoto')
+w1_w2_tsim = SPF.cos_sim(w2_o, w1_es_w2, mode='tanimoto')
+w1_w3_tsim = SPF.cos_sim(w3_o, w1_es_w3, mode='tanimoto')
 
-w1_w1_i_tsim = SPF.cos_sim(w1_o, w1_ies_w1, mode='tanimoto')
-w2_w2_i_tsim = SPF.cos_sim(w2_o, w2_ies_w2, mode='tanimoto')
-w2_w3_i_tsim = SPF.cos_sim(w3_o, w2_ies_w3, mode='tanimoto')
-w3_w3_i_tsim = SPF.cos_sim(w3_o, w3_ies_w3, mode='tanimoto')
+w2_w2_tsim = SPF.cos_sim(w2_o, w2_es_w2, mode='tanimoto')
+w2_w3_tsim = SPF.cos_sim(w3_o, w2_es_w3, mode='tanimoto')
+
+w3_w3_tsim = SPF.cos_sim(w3_o, w3_es_w3, mode='tanimoto')
+
+# save data
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\cos_sim_mlr.mat'
+#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\cos_sim_ia.mat'
+io.savemat(data_path, {'w1_w1_nsim':w1_w1_nsim, 'w1_w2_nsim':w1_w2_nsim, 'w1_w3_nsim':w1_w3_nsim,
+                       'w2_w2_nsim':w2_w2_nsim, 'w2_w3_nsim':w2_w3_nsim,
+                       'w3_w3_nsim':w3_w3_nsim,
+                       'w1_w1_tsim':w1_w1_tsim, 'w1_w2_tsim':w1_w2_tsim, 'w1_w3_tsim':w1_w3_tsim,
+                       'w2_w2_tsim':w2_w2_tsim, 'w2_w3_tsim':w2_w3_tsim,
+                       'w3_w3_tsim':w3_w3_tsim})
+
+# release RAM
+del w1_w1_nsim, w1_w2_nsim, w1_w3_nsim, w2_w2_nsim, w2_w3_nsim, w3_w3_nsim
+del w1_w1_tsim, w1_w2_tsim, w1_w3_tsim, w2_w2_tsim, w2_w3_tsim, w3_w3_tsim
+del w1_es_w1, w1_es_w2, w1_es_w3, w2_es_w2, w2_es_w3, w3_es_w3
+del w1_i, w2_i, w3_i, w1_o, w2_o, w3_o, sig_i
 
 
 #%% Power spectrum density
-w1_p, f = SPF.welch_p(s_iex_w1, sfreq=sfreq, fmin=0, fmax=50, n_fft=1000,
+w1_p, fs = SPF.welch_p(w1_ex_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
                       n_overlap=250, n_per_seg=500)
-w2_p, f = SPF.welch_p(s_iex_w2, sfreq=sfreq, fmin=0, fmax=50, n_fft=1000,
+w2_p, fs = SPF.welch_p(w2_ex_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
                       n_overlap=250, n_per_seg=500)
-w3_p, f = SPF.welch_p(s_iex_w3, sfreq=sfreq, fmin=0, fmax=50, n_fft=1000,
+w3_p, fs = SPF.welch_p(w3_ex_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
                       n_overlap=250, n_per_seg=500)
-sig_p, fn = SPF.welch_p(sig_o, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
+sig_p, fs = SPF.welch_p(sig_o, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
                        n_overlap=250, n_per_seg=500)
+
+# save data
+#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\psd_mlr.mat'
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\psd_ia.mat'
+io.savemat(data_path, {'w1':w1_p, 'w2':w2_p, 'w3':w3_p, 'sig':sig_p, 'fs':fs})
 
 
 #%% Precise FFT transform
 
-#%% Variance
-# original signal variance
-var_o_t = var_estimation(sig_o)
-
-# extract signal variance (w1 model) 
-var_w1_m_t = var_estimation(w1_mex_w1)
-var_w1_i_t = var_estimation(w1_iex_w1)
-
-# extract signal variance (w2 model) 
-var_w2_m_t = var_estimation(w2_mex_w2)
-var_w2_i_t = var_estimation(w2_iex_w2)
-
-# extract signal variance (w3 model) 
-var_w3_m_t = var_estimation(w3_mex_w3)
-var_w3_i_t = var_estimation(w3_iex_w3)
-
 
 #%% SNR in time domain
 # original signal snr
-snr_o_t = SPF.snr_time(sig_o, mode='time')
+snr_o = SPF.snr_time(sig_o, mode='time')
+# w1-s
+snr_w1 = SPF.snr_time(w1_ex_s, mode='time')
+# w2-s
+snr_w2 = SPF.snr_time(w2_ex_s, mode='time')
+# w3-s
+snr_w3 = SPF.snr_time(w3_ex_s, mode='time')
 
-# extract signal snr (w1 model) 
-#snr_w1_m_t = snr_time(s_mex_w1, mode='time')
-snr_w1_i_t = SPF.snr_time(s_iex_w1, mode='time')
+# save data
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_mlr.mat'
+#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_ia.mat'
+io.savemat(data_path, {'origin':snr_o, 'w1':snr_w1, 'w2':snr_w2, 'w3':snr_w3})
 
-# extract signal snr (w2 model) 
-#snr_w2_m_t = snr_time(s_mex_w2, mode='time')
-snr_w2_i_t = SPF.snr_time(s_iex_w2, mode='time')
-
-# extract signal snr (w3 model) 
-#snr_w3_m_t = snr_time(s_mex_w3, mode='time')
-snr_w3_i_t = SPF.snr_time(s_iex_w3, mode='time')
+# release RAM
+del snr_o, snr_w1, snr_w2, snr_w3
+del sig_o
+del w1_es_s, w2_es_s, w3_es_s, w1_ex_s, w2_ex_s, w3_ex_s 
 
 
 #%% SNR in frequency domain
 
+# save data
+#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_f_mlr.mat'
+#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_f_ia.mat'
+#io.savemat(data_path, {'origin':snr_o, 'w1':snr_w1, 'w2':snr_w2, 'w3':snr_w3})
+
+# release RAM
+del w1_p, w2_p, w3_p, sig_p
+del fm, fs

@@ -142,7 +142,7 @@ def mlr_analysis(data, target):
 
 
 #%% signal extraction
-def sig_extract(coef, data, target, intercept):
+def sig_extract_mlr(coef, data, target, intercept):
     '''
     :param coef: from spatial filter or regression (n_events, n_epochs, n_chans)
     :param data: input data (n_events, n_epochs, n_chans, n_times)
@@ -155,11 +155,19 @@ def sig_extract(coef, data, target, intercept):
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
             estimate[i,j,:] = (np.mat(coef[i,j,:]) * np.mat(data[i,j,:,:])).A
-            if intercept == 0:
-                continue
-            else:
-                estimate[i,j,:] += intercept[i,j]
+            estimate[i,j,:] += intercept[i,j]
     
+    extract =  target - estimate
+
+    return estimate, extract
+
+def sig_extract_ia(coef, data, target):
+    estimate = np.zeros((data.shape[0], data.shape[1], data.shape[3]))
+
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            estimate[i,j,:] = (np.mat(coef[i,j,:]) * np.mat(data[i,j,:,:])).A
+
     extract =  target - estimate
 
     return estimate, extract
