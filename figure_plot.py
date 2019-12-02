@@ -30,6 +30,7 @@ import signal_processing_function as SPF
 
 #%% Fig 1: Full-channels' correlation heatmap (after substraction)
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -38,11 +39,12 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\full_chan_corr.png', dpi=600)
 
 # release RAM
-del
+del data
 
 
 #%% Fig 2: Heatmaps (inter-channel correlation comparisions)
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -51,11 +53,12 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\inter-chan-corr.png', dpi=600)
 
 # release RAM
-del
+del data
 
 
 #%% Fig 3: Boxplots (R^2 or goodness of fit of models)
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -64,11 +67,12 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\goodness.png', dpi=600)
 
 # release RAM
-del 
+del data
 
 
 #%% Fig 4: Barplot (Bias of estimation)
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -77,10 +81,11 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\bias.png', dpi=600)
 
 # release RAM
-del 
+del data
 
 #%% Fig 5: Barplot (Cosine similarity (Normal & Tanimoto))
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -89,11 +94,12 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\cos_sim.png', dpi=600)
 
 # release RAM
-del
+del data
 
 
 #%% Fig 6: Waveform of signal (Origin & estimate) (With zoom-in effect)
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -102,11 +108,12 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\waveform_o&es.png', dpi=600)
 
 # release RAM
-del
+del data
 
 
 #%% Fig 7: Waveform of signal (Origin & extract) (With zoom-in effect)
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -115,11 +122,12 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\waveform_o&ex.png', dpi=600)
 
 # release RAM
-del
+del data
 
 
 #%% Fig 8: Power of spectrum density (Origin & extract)
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -128,11 +136,12 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\psd.png', dpi=600)
 
 # release RAM
-del
+del data
 
 
 #%% Fig 9: SNR in time domain (Origin & extract) (full & strain)
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -141,11 +150,12 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\snr_t.png', dpi=600)
 
 # release RAM
-del
+del data
 
 
 #%% Fig 10: SNR in frequency domain (Line chart)
 # load data
+data = io.loadmat()
 
 # plot
 
@@ -154,7 +164,7 @@ fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\snr_f.png', dpi=600)
 
 # release RAM
-del
+del data
 
 
 
