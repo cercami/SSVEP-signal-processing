@@ -357,5 +357,3 @@ snr_w3_i_t = SPF.snr_time(s_iex_w3, mode='time')
 
 #%% SNR in frequency domain
 
-
-#%%*************************Part II: plot figures*************************

@@ -61,7 +61,7 @@ del
 
 # save figure
 fig.subplots_adjust()
-plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\goodness.png', dpi=600)
 
 # release RAM
 del 
@@ -74,7 +74,7 @@ del
 
 # save figure
 fig.subplots_adjust()
-plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\bias.png', dpi=600)
 
 # release RAM
 del 
@@ -86,7 +86,7 @@ del
 
 # save figure
 fig.subplots_adjust()
-plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\cos_sim.png', dpi=600)
 
 # release RAM
 del
@@ -99,7 +99,7 @@ del
 
 # save figure
 fig.subplots_adjust()
-plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\waveform_o&es.png', dpi=600)
 
 # release RAM
 del
@@ -112,7 +112,7 @@ del
 
 # save figure
 fig.subplots_adjust()
-plt.savefig(r'F:\SSVEP\figures\weisiwen\model_description.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\waveform_o&ex.png', dpi=600)
 
 # release RAM
 del
@@ -125,7 +125,7 @@ del
 
 # save figure
 fig.subplots_adjust()
-plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\psd.png', dpi=600)
 
 # release RAM
 del
@@ -138,7 +138,7 @@ del
 
 # save figure
 fig.subplots_adjust()
-plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\snr_t.png', dpi=600)
 
 # release RAM
 del
@@ -151,7 +151,7 @@ del
 
 # save figure
 fig.subplots_adjust()
-plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\snr_f.png', dpi=600)
 
 # release RAM
 del
