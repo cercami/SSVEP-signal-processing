@@ -89,10 +89,11 @@ del temp, i, file, filelist, filepath, full_path
 
 
 #%% load local data (extract from .cnt file)
+# BEGIN FROM HERE!
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
 
 data = eeg['raw_data']
-data *= 1e6
+data *= 1e6  # reset unit
 
 channels = eeg['chan_info']
 
@@ -151,35 +152,6 @@ compare_w2 = binarization(w2_corr - sig_corr)
 compare_w3 = binarization(w2_corr - sig_corr)
 compare = binarization(w_corr - sig_corr)
 
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr_sp.mat'
-io.savemat(data_path, {'signal':sig_corr,
-                       'w1':w1_corr,
-                       'w2':w2_corr,
-                       'w3':w3_corr,
-                       'w':w_corr,
-                       'w1_sub':compare_w1,
-                       'w2_sub':compare_w2,
-                       'w3_sub':compare_w3,
-                       'w_sub':compare})
-    
-del w1_corr, w2_corr, w3_corr, sig_corr, w_corr
-del compare_w1, compare_w2, compare_w3, compare
-
-
-#%% Reload correlation data (1st time)
-corr = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr.mat')
-
-w1_corr = corr['w1']
-w2_corr = corr['w2']
-w3_corr = corr['w3']
-w_corr = corr['w']
-
-w1_sub_corr = corr['w1_sub']
-w2_sub_corr = corr['w2_sub']
-w3_sub_corr = corr['w3_sub']
-w_sub_corr = corr['w_sub']
-
-del corr
 
 #%% Automatically pick estimate channel and target channel
 
@@ -207,9 +179,21 @@ sig_i = signal_data[:,:,24:29,:]
 sig_o = signal_data[:,:,47,:]
 sig_total = signal_data[:,:,[24,25,26,27,28,47],:]
 
+# save data
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr.mat'
+io.savemat(data_path, {'signal':sig_corr,
+                       'w1':w1_corr,
+                       'w2':w2_corr,
+                       'w3':w3_corr,
+                       'w':w_corr,
+                       'w1_sub':compare_w1,
+                       'w2_sub':compare_w2,
+                       'w3_sub':compare_w3,
+                       'w_sub':compare})
+    
 # release RAM
-#del w1_sub_corr, w2_sub_corr, w3_sub_corr
- 
+del w1_corr, w2_corr, w3_corr, sig_corr, w_corr
+del compare_w1, compare_w2, compare_w3, compare
 
 #%% Prepare for checkboard plot (Spearman method)
 w1_pick_corr = SPF.corr_coef(w1_total, 'spearman')
