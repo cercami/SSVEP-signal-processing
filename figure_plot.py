@@ -35,28 +35,44 @@ w_corr = data['w']
 signal_corr = data['signal']
 compare = w_corr - signal_corr
 
-del data
+del data, signal_corr, w_corr
 
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
-pick_chans = eeg['chan_info'].tolist()
+chan = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
+pick_chans = chan['chan_info'].tolist()
 
-del eeg
-
-#%% prepare for plot
+del chan
 
 # plot
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(24,24))
 
-im, _ = SPF.check_plot(data=compare, row_labels=pick_chans, col_labels=pick_chans,
-                       ax=ax, cmap='r_RdBu', vmin=vmin, vmax=vmax)
+im = ax.imshow(compare, cmap='Blues')
+
+ax.set_xticks(np.arange(compare.shape[1]))
+ax.set_yticks(np.arange(compare.shape[0]))
+    
+ax.set_xticklabels(pick_chans, fontsize=24)
+ax.set_yticklabels(pick_chans, fontsize=24)
+
+ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
+    
+plt.setp(ax.get_xticklabels(), rotation=-60, ha='right', rotation_mode='anchor')
+
+for edge, spine in ax.spines.items():
+    spine.set_visible(False)
+        
+ax.set_xticks(np.arange(compare.shape[1]+1)-.5, minor=True)
+ax.set_yticks(np.arange(compare.shape[0]+1)-.5, minor=True)
+ax.grid(which='minor', color='w', linestyle='-', linewidth=3)
+ax.tick_params(which='minor', bottom=False, left=False)
+
 plt.show()
 
-#%% save figure
-fig.subplots_adjust()
+# save figure
+fig.tight_layout()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\full_chan_corr.png', dpi=600)
 
 # release RAM
-del data
+del pick_chans, compare, vmin, vmax, edge
 
 
 #%% Fig 2: Heatmaps (inter-channel correlation comparisions)

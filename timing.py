@@ -106,7 +106,7 @@ io.savemat(data_path, {'signal':sig_corr, 'w':w_corr, 'w_sub':compare_corr})
     
 #del w1_corr, w2_corr, w3_corr, w_corr, sig_corr
 #del comprare_w1, compare_w2, compare_w3, compare
-#del w_corr, sig_corr, compare_corr, w
+del w_corr, sig_corr, compare_corr, w
 
 print('Correlation computation finished')
 
