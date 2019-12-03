@@ -77,16 +77,102 @@ del pick_chans, compare, vmin, vmax, edge
 
 #%% Fig 2: Heatmaps (inter-channel correlation comparisions)
 # load data
-data = io.loadmat()
+data = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__POz\pick_chan_corr.mat')
+
+w1 = data['w1']
+w2 = data['w2']
+w3 = data['w3']
+sig = data['sig']
+# pick_chans = data['chan_info'].tolist()
+
+pick_chans = ['C1', 'Cz', 'C2', 'C4', 'CP5', 'POz']
+
+del data
+
+# preparation
+compare_w1 = w1 - sig
+compare_w2 = w2 - sig
+compare_w3 = w3 - sig
+#sns.set(style='white')
 
 # plot
+fig = plt.figure(figsize=(27,27))
+gs = GridSpec(9, 9, figure=fig)
+
+# format decimal number & remove leading zeros & hide the diagonal elements
+def func(x, pos):
+    return '{:.4f}'.format(x).replace('0.', '.').replace('1.0000', '').replace('.0000', '')
+
+vmin = min(np.min(w1), np.min(w2), np.min(w3))
+vmax = max(np.max(w1), np.max(w2), np.max(w3))
+vmin_n = min(np.min(compare_w1), np.min(compare_w2), np.min(compare_w3))
+vmax_n = max(np.max(compare_w1), np.max(compare_w2), np.max(compare_w3))
+
+ax1 = fig.add_subplot(gs[0:3,0:3])
+im, _ = SPF.check_plot(data=w1, row_labels=pick_chans, col_labels=pick_chans,
+                       ax=ax1, cmap='Blues', vmin=vmin, vmax=vmax)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax1.set_xlabel(r'$\ w1\ correlation$', fontsize=30)
+ax1.set_ylabel(r'$\ Channels$', fontsize=26)
+ax1.tick_params(axis='both', labelsize=22)
+
+ax2 = fig.add_subplot(gs[0:3,3:6])
+im, _ = SPF.check_plot(data=w2, row_labels=pick_chans, col_labels=pick_chans,
+                       ax=ax2, cmap='Blues', vmin=vmin, vmax=vmax)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax2.set_xlabel(r'$\ w2\ correlation$', fontsize=30)
+ax2.set_ylabel(r'$\ Channels$', fontsize=26)
+ax2.tick_params(axis='both', labelsize=22)
+
+ax3 = fig.add_subplot(gs[0:3,6:])
+im, _ = SPF.check_plot(data=w3, row_labels=pick_chans, col_labels=pick_chans,
+                       ax=ax3, cmap='Blues', vmin=vmin, vmax=vmax)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax3.set_xlabel(r'$\ w3\ correlation$', fontsize=30)
+ax3.set_ylabel(r'$\ Channels$', fontsize=26)
+ax3.tick_params(axis='both', labelsize=22)
+
+ax4 = fig.add_subplot(gs[3:6,3:6])
+im, _ = SPF.check_plot(data=sig, row_labels=pick_chans, col_labels=pick_chans,
+                       ax=ax4, cmap='Greens', vmin=np.min(sig), vmax=np.max(sig))
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax4.set_xlabel(r'$\ signal\ correlation$', fontsize=30)
+ax4.set_ylabel(r'$\ Channels$', fontsize=26)
+ax4.tick_params(axis='both', labelsize=22)
+
+ax5 = fig.add_subplot(gs[6:,0:3])
+im, _ = SPF.check_plot(data=compare_w1, row_labels=pick_chans, col_labels=pick_chans,
+                       ax=ax5, cmap='Reds', vmin=vmin_n, vmax=vmax_n)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax5.set_xlabel(r'$\ w1\ substraction$', fontsize=30)
+ax5.set_ylabel(r'$\ Channels$', fontsize=26)
+ax5.tick_params(axis='both', labelsize=22)
+
+ax6 = fig.add_subplot(gs[6:,3:6])
+im, _ = SPF.check_plot(data=compare_w2, row_labels=pick_chans, col_labels=pick_chans,
+                       ax=ax6, cmap='Reds', vmin=vmin_n, vmax=vmax_n)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax6.set_xlabel(r'$\ w2\ substraction$', fontsize=30)
+ax6.set_ylabel(r'$\ Channels$', fontsize=26)
+ax6.tick_params(axis='both', labelsize=22)
+
+ax7 = fig.add_subplot(gs[6:,6:])
+im, _ = SPF.check_plot(data=compare_w3, row_labels=pick_chans, col_labels=pick_chans,
+                       ax=ax7, cmap='Reds', vmin=vmin_n, vmax=vmax_n)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax7.set_xlabel(r'$\ w3\ substraction$', fontsize=30)
+ax7.set_ylabel(r'$\ Channels$', fontsize=26)
+ax7.tick_params(axis='both', labelsize=22)
+
+plt.show()
 
 # save figure
-fig.subplots_adjust()
+fig.subplots_adjust(top=0.949, bottom=0.05, left=0.049, right=0.990, 
+                    hspace=1.000, wspace=0.7)
 plt.savefig(r'F:\SSVEP\figures\weisiwen\inter-chan-corr.png', dpi=600)
 
 # release RAM
-del data
+#del data
 
 
 #%% Fig 3: Boxplots (R^2 or goodness of fit of models)
