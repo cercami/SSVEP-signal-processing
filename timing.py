@@ -1,91 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Nov 11 20:06:59 2019
+Created on Tue Dec  3 11:24:52 2019
 
-This program is used to process data
-
+This program is used to timing
 @author: Brynhildr
 """
 
 #%% Import third part module
 import numpy as np
-from numpy import transpose
 import scipy.io as io
 import pandas as pd
 
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from matplotlib import cm
-from matplotlib.colors import ListedColormap, LinearSegmentedColormap
-import seaborn as sns
-
-import os
-
-import mne
 from mne.filter import filter_data
-from sklearn.linear_model import LinearRegression
 
 import signal_processing_function as SPF 
 
-#%% prevent ticking 'F5'
-???
-
-#%% Load benchmark dataset & relative information
-# load data from .mat file
-eeg = io.loadmat(r'E:\dataset\data\S15.mat')
-info = io.loadmat(r'E:\dataset\Freq_Phase.mat')
-
-data = eeg['data']
-# (64, 1500, 40, 6) = (n_chans, n_times, n_events, n_blocks)
-# total trials = n_conditions x n_blocks = 240
-# all epochs are down-sampled to 250 Hz, HOLLY SHIT!
-
-# reshape data array: (n_events, n_epochs, n_chans, n_times)
-data = data.transpose((2, 3, 0, 1))  
-
-# combine data array: np.concatenate(X, Y, axis=)
-
-# condition infomation
-sfreq = 250
-freqs = info['freqs'].T
-phases = info['phases'].T
-del eeg, info
+import time
 
 
-#%% load channels information from .txt file
-channels = {}
-file = open(r'F:\SSVEP\dataset\channel_info\weisiwen_chans.txt')
-for line in file.readlines():
-    line = line.strip()
-    v = str(int(line.split(' ')[0]) - 1)
-    k = line.split(' ')[1]
-    channels[k] = v
-file.close()
-
-del v, k, file, line       # release RAM
-     
-
-#%% Load multiple data file & also can be used to process multiple data
-# CAUTION: may lead to RAM crash (5-D array takes more than 6125MB)
-# Now I know why people need 32G's RAM...PLEASE SKIP THIS PART!!!
-filepath = r'E:\dataset\data'
-
-filelist = []
-for file in os.listdir(filepath):
-    full_path = os.path.join(filepath, file)
-    filelist.append(full_path)
-
-i = 0
-eeg = np.zeros((35, 64, 1500, 40, 6))
-for file in filelist:
-    temp = io.loadmat(file)
-    eeg[i,:,:,:,:] = temp['data']
-    i += 1
-    
-# add more codes here to achieve multiple data processing (PLEASE DON'T)
-    
-del temp, i, file, filelist, filepath, full_path
+#%% timing
+start = time.clock()
 
 
 #%% load local data (extract from .cnt file)
@@ -99,6 +33,8 @@ del eeg
 
 chans = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
 chans = chans['chan_info'].tolist()
+
+del chans
 
 # basic info
 sfreq = 1000
@@ -128,45 +64,51 @@ w = f_data[:,:,:,0:3000]
 signal_data = f_data[:,:,:,3000:]   # 3-6s
 
 del f_data, data
+del n_events, n_trials, n_times, n_chans
 
-#%% Correlation binarization
-def binarization(X):
-    compare = np.zeros((X.shape[0], X.shape[1]))
-    for i in range(n_chans):
-        for j in range(n_chans):
-            if X[i,j] < 0:
-                compare[i,j] = 0
-            else:
-                compare[i,j] = X[i,j]
-    return compare
+print('Filtering finished')
+
 
 #%% Inter-channel correlation analysis: Spearman correlation coefficient
-w1_corr = SPF.corr_coef(w1, 'spearman')
-w2_corr = SPF.corr_coef(w2, 'spearman')
-w3_corr = SPF.corr_coef(w3, 'spearman')
-w_corr = SPF.corr_coef(w, 'spearman')
+def target_corr(X, chan, method):
+    '''
+    choose one channel to compute inter-channel correlation
+    X: (n_chans, n_times)
+    chan: channel's serial number
+    method: str, pearson or spearman
+    '''
+    corr = np.zeros((X.shape[0]))
+    target = pd.DataFrame(np.mat(X[chan,:]))
+    for i in range(X.shape[0]):
+        temp = pd.DataFrame(np.mat(X[i,:]))
+        corr[i] = target.corrwith(temp, axis=1, method=method)
+                
+    del temp
+    return corr
+    
+#%%
+#w1_corr = SPF.corr_coef(w1, 'spearman')
+#w2_corr = SPF.corr_coef(w2, 'spearman')
+#w3_corr = SPF.corr_coef(w3, 'spearman')
 
-sig_corr = SPF.corr_coef(signal_data, mode='spearman')
+w_corr = target_corr(w[0,0,:,:], chan=47, method='spearman')
 
-compare_w1 = binarization(w1_corr - sig_corr)
-compare_w2 = binarization(w2_corr - sig_corr)
-compare_w3 = binarization(w2_corr - sig_corr)
-compare = binarization(w_corr - sig_corr)
+sig_corr = target_corr(signal_data[0,0,:,:], chan=47, method='spearman')
+
+#compare_w1 = binarization(w1_corr - sig_corr)
+#compare_w2 = binarization(w2_corr - sig_corr)
+#compare_w3 = binarization(w2_corr - sig_corr)
+compare_corr = w_corr - sig_corr
 
 # save data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr.mat'
-io.savemat(data_path, {'signal':sig_corr,
-                       'w1':w1_corr,
-                       'w2':w2_corr,
-                       'w3':w3_corr,
-                       'w':w_corr,
-                       'w1_sub':compare_w1,
-                       'w2_sub':compare_w2,
-                       'w3_sub':compare_w3,
-                       'w_sub':compare})
+data_path = r'F:\64chan_corr.mat'
+io.savemat(data_path, {'signal':sig_corr, 'w':w_corr, 'w_sub':compare_corr})
+    
+#del w1_corr, w2_corr, w3_corr, w_corr, sig_corr
+#del comprare_w1, compare_w2, compare_w3, compare
+#del w_corr, sig_corr, compare_corr, w
 
-del w1_corr, w2_corr, w3_corr, w_corr, sig_corr
-del comprare_w1, compare_w2, compare_w3, compare
+print('Correlation computation finished')
 
 
 #%% reload full-chan-correlation data
@@ -203,15 +145,18 @@ sig_o = signal_data[:,:,53,:]
 sig_total = signal_data[:,:,[34,35,36,43,44,53],:]
 
 # save data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\model_data.mat'
+data_path = r'F:\model_data.mat'
 io.savemat(data_path, {'w1_i':w1_i, 'w1_o':w1_o, 'w1_total':w1_total,
                        'w2_i':w2_i, 'w2_o':w2_o, 'w2_total':w2_total,
                        'w3_i':w3_i, 'w3_o':w3_o, 'w3_total':w3_total,
                        'sig_i':sig_i, 'sig_o':sig_o, 'sig_total':sig_total})
     
 # release RAM
-#del w1, w2, w3, signal_data
-#del w_sub
+del w1, w2, w3, signal_data
+del w_sub
+
+print('Channels seletion finished')
+
 
 #%% Prepare for checkboard plot (Spearman method)
 w1_pick_corr = SPF.corr_coef(w1_total, 'spearman')
@@ -220,7 +165,7 @@ w3_pick_corr = SPF.corr_coef(w3_total, 'spearman')
 
 sig_pick_corr = SPF.corr_coef(sig_total, 'spearman')
 
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\pick_chan_corr.mat'
+data_path = r'F:\pick_chan_corr.mat'
 io.savemat(data_path, {'w1':w1_pick_corr,
                        'w2':w2_pick_corr,
                        'w3':w3_pick_corr,
@@ -229,55 +174,7 @@ io.savemat(data_path, {'w1':w1_pick_corr,
 del w1_pick_corr, w2_pick_corr, w3_pick_corr, sig_pick_corr
 del w1_total, w2_total, w3_total, sig_total
 
-
-#%% Spatial filter: multi-linear regression method
-
-# regression coefficient, intercept, R^2
-rc_w1, ri_w1, r2_w1 = SPF.mlr_analysis(w1_i, w1_o)
-# w1 estimate & extract data: (n_events, n_epochs, n_times)
-w1_es_w1, w1_ex_w1 = SPF.sig_extract_mlr(rc_w1, w1_i, w1_o, ri_w1)
-
-# w1-w2
-w1_es_w2, w1_ex_w2 = SPF.sig_extract_mlr(rc_w1, w2_i, w2_o, ri_w1)
-
-# w1-w3
-w1_es_w3, w1_ex_w3 = SPF.sig_extract_mlr(rc_w1, w3_i, w3_o, ri_w1)
-
-# w2-w2
-rc_w2, ri_w2, r2_w2 = SPF.mlr_analysis(w2_i, w2_o)
-w2_es_w2, w2_ex_w2 = SPF.sig_extract_mlr(rc_w2, w2_i, w2_o, ri_w2)
-
-# w2-w3
-w2_es_w3, w2_ex_w3 = SPF.sig_extract_mlr(rc_w2, w3_i, w3_o, ri_w2)
-
-# w3-w3
-rc_w3, ri_w3, r2_w3 = SPF.mlr_analysis(w3_i, w3_o)
-w3_es_w3, w3_ex_w3 = SPF.sig_extract_mlr(rc_w3, w3_i, w3_o, ri_w3)
-
-# w1-s
-w1_es_s, w1_ex_s = SPF.sig_extract_mlr(rc_w1, sig_i, sig_o, ri_w1)
-# w2-s
-w2_es_s, w2_ex_s = SPF.sig_extract_mlr(rc_w2, sig_i, sig_o, ri_w2)
-# w3-s
-w3_es_s, w3_ex_s = SPF.sig_extract_mlr(rc_w3, sig_i, sig_o, ri_w3)
-
-# save data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\MLR_model.mat'
-io.savemat(data_path, {'rc_w1':rc_w1, 'rc_w2':rc_w2, 'rc_w3':rc_w3,
-                       'ri_w1':ri_w1, 'ri_w2':ri_w2, 'ri_w3':ri_w3,
-                       'r2_w1':r2_w1, 'r2_w2':r2_w2, 'r2_w3':r2_w3,
-                       'w1_es_w1':w1_es_w1, 'w1_es_w2':w1_es_w2, 'w1_es_w3':w1_es_w3,
-                       'w2_es_w2':w2_es_w2, 'w2_es_w3':w2_es_w3, 
-                       'w3_es_w3':w3_es_w3,
-                       'w1_ex_w1':w1_ex_w1, 'w1_ex_w2':w1_ex_w2, 'w1_ex_w3':w1_ex_w3,
-                       'w2_ex_w2':w2_ex_w2, 'w2_ex_w3':w2_ex_w3, 
-                       'w3_ex_w3':w3_ex_w3,
-                       'w1_es_s':w1_es_s, 'w2_es_s':w1_es_s, 'w3_es_s':w3_es_s,
-                       'w1_ex_s':w1_ex_s, 'w2_ex_s':w2_ex_s, 'w3_ex_s':w3_ex_s})
-    
-# release RAM
-del rc_w1, rc_w2, rc_w3, ri_w1, ri_w2, ri_w3, r2_w1, r2_w2, r2_w3
-del w1_ex_w1, w1_ex_w2, w1_ex_w3, w2_ex_w2, w2_ex_w3, w3_ex_w3
+print('Checkboard materials preparation finished')
 
 
 #%% Spatial filter: inverse array method
@@ -315,7 +212,7 @@ w2_es_s, w2_ex_s = SPF.sig_extract_ia(sp_w2, sig_i, sig_o)
 w3_es_s, w3_ex_s = SPF.sig_extract_ia(sp_w3, sig_i, sig_o)
 
 # save data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\inver_array_model.mat'
+data_path = r'F:\inver_array_model.mat'
 io.savemat(data_path, {'sp_w1':sp_w1, 'sp_w2':sp_w2, 'sp_w3':sp_w3,
                        'gf_w1':gf_w1, 'gf_w2':gf_w2, 'gf_w3':gf_w3,
                        'w1_es_w1':w1_es_w1, 'w1_es_w2':w1_es_w2, 'w1_es_w3':w1_es_w3,
@@ -330,6 +227,9 @@ io.savemat(data_path, {'sp_w1':sp_w1, 'sp_w2':sp_w2, 'sp_w3':sp_w3,
 # release RAM
 del sp_w1, sp_w2, sp_w3, gf_w1, gf_w2, gf_w3
 del w1_ex_w1, w1_ex_w2, w1_ex_w3, w2_ex_w2, w2_ex_w3, w3_ex_w3
+del w1_i, w2_i, w3_i, sig_i
+
+print('Inverse array model finished')
 
 
 #%% Cosine similarity (background part)
@@ -354,8 +254,7 @@ w2_w3_tsim = SPF.cos_sim(w3_o, w2_es_w3, mode='tanimoto')
 w3_w3_tsim = SPF.cos_sim(w3_o, w3_es_w3, mode='tanimoto')
 
 # save data
-#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\cos_sim_mlr.mat'
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\cos_sim_ia.mat'
+data_path = r'F:\cos_sim_ia.mat'
 io.savemat(data_path, {'w1_w1_nsim':w1_w1_nsim, 'w1_w2_nsim':w1_w2_nsim, 'w1_w3_nsim':w1_w3_nsim,
                        'w2_w2_nsim':w2_w2_nsim, 'w2_w3_nsim':w2_w3_nsim,
                        'w3_w3_nsim':w3_w3_nsim,
@@ -367,7 +266,9 @@ io.savemat(data_path, {'w1_w1_nsim':w1_w1_nsim, 'w1_w2_nsim':w1_w2_nsim, 'w1_w3_
 del w1_w1_nsim, w1_w2_nsim, w1_w3_nsim, w2_w2_nsim, w2_w3_nsim, w3_w3_nsim
 del w1_w1_tsim, w1_w2_tsim, w1_w3_tsim, w2_w2_tsim, w2_w3_tsim, w3_w3_tsim
 del w1_es_w1, w1_es_w2, w1_es_w3, w2_es_w2, w2_es_w3, w3_es_w3
-#del w1_i, w2_i, w3_i, w1_o, w2_o, w3_o, sig_i
+del w1_o, w2_o, w3_o
+
+print('Cosine similarity computaion finished')
 
 
 #%% Power spectrum density
@@ -381,12 +282,13 @@ sig_p, fs = SPF.welch_p(sig_o, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
                        n_overlap=250, n_per_seg=500)
 
 # save data
-#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\psd_mlr.mat'
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\psd_ia.mat'
+data_path = r'F:\psd_ia.mat'
 io.savemat(data_path, {'w1':w1_p, 'w2':w2_p, 'w3':w3_p, 'sig':sig_p, 'fs':fs})
 
+del w1_p, w2_p, w3_p, sig_p, fs
+del sfreq
 
-#%% Precise FFT transform
+print('PSD computation finished')
 
 
 #%% SNR in time domain
@@ -400,23 +302,17 @@ snr_w2 = SPF.snr_time(w2_ex_s, mode='time')
 snr_w3 = SPF.snr_time(w3_ex_s, mode='time')
 
 # save data
-#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_mlr.mat'
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_ia.mat'
+data_path = r'F:\snr_t_ia.mat'
 io.savemat(data_path, {'origin':snr_o, 'w1':snr_w1, 'w2':snr_w2, 'w3':snr_w3})
 
 # release RAM
 del snr_o, snr_w1, snr_w2, snr_w3
-#del sig_o
-del w1_es_s, w2_es_s, w3_es_s, w1_ex_s, w2_ex_s, w3_ex_s 
+del sig_o
+del w1_es_s, w2_es_s, w3_es_s, w1_ex_s, w2_ex_s, w3_ex_s
 
+print('Time-domain SNR computation finished')
+print('Program complete')
 
-#%% SNR in frequency domain
-
-# save data
-#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_f_mlr.mat'
-#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_f_ia.mat'
-#io.savemat(data_path, {'origin':snr_o, 'w1':snr_w1, 'w2':snr_w2, 'w3':snr_w3})
-
-# release RAM
-del w1_p, w2_p, w3_p, sig_p
-del fs
+#%% timing
+end = time.clock()
+print('Running time: ' + str(end - start) + 's')

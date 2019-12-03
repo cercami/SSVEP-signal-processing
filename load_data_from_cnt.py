@@ -82,14 +82,15 @@ for i in range(len(event_id)):
     data[i,:,:,:] = epochs.get_data()  # get the 3D array of data
     # (n_trials, n_chans, n_times)
     del epochs
-del i
-del n_stims, n_trials, n_chans, n_times
+    
+del raw, picks, i, n_stims, n_trials, n_chans, n_times
 
 
 #%% store data into .mat file
 data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat'
 io.savemat(data_path, {'raw_data':data})
-    
+del data
+
 data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat'
 io.savemat(data_path, {'chan_info':picks_ch_names})
 
