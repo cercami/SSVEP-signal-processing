@@ -95,9 +95,10 @@ eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
 data = eeg['raw_data']
 data *= 1e6  # reset unit
 
-channels = eeg['chan_info']
-
 del eeg
+
+chans = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
+chans = chans['chan_info'].tolist()
 
 # basic info
 sfreq = 1000
@@ -178,24 +179,24 @@ del data
 # choose output channels: Oz
 
 # w1 model data: 0-1000ms
-w1_i = w1[:,:,24:29,:]
+w1_i = w1[:,:,[34,35,36,43,44],:]
 w1_o = w1[:,:,53,:]
-w1_total = w1[:,:,[24,25,26,27,28,53],:]
+w1_total = w1[:,:,[34,35,36,43,44,53],:]
 
 # w2 model data: 1000-2000ms
-w2_i = w2[:,:,24:29,:]
+w2_i = w2[:,:,[34,35,36,43,44],:]
 w2_o = w2[:,:,53,:]
-w2_total = w2[:,:,[24,25,26,27,28,53],:]
+w2_total = w2[:,:,[34,35,36,43,44,53],:]
 
 # w3 model data: 2000-3000ms
-w3_i = w3[:,:,24:29,:]
+w3_i = w3[:,:,[34,35,36,43,44],:]
 w3_o = w3[:,:,53,:]
-w3_total = w3[:,:,[24,25,26,27,28,53],:]
+w3_total = w3[:,:,[34,35,36,43,44,53],:]
 
 # signal part data: 3000-6000ms
-sig_i = signal_data[:,:,24:29,:]
+sig_i = signal_data[:,:,[34,35,36,43,44],:]
 sig_o = signal_data[:,:,53,:]
-sig_total = signal_data[:,:,[24,25,26,27,28,53],:]
+sig_total = signal_data[:,:,[34,35,36,43,44,53],:]
 
 # save data
 data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\model_data.mat'
@@ -205,8 +206,8 @@ io.savemat(data_path, {'w1_i':w1_i, 'w1_o':w1_o, 'w1_total':w1_total,
                        'sig_i':sig_i, 'sig_o':sig_o, 'sig_total':sig_total})
     
 # release RAM
-del w1, w2, w3, w, signal_data
-del w_sub
+#del w1, w2, w3, signal_data
+#del w_sub
 
 #%% Prepare for checkboard plot (Spearman method)
 w1_pick_corr = SPF.corr_coef(w1_total, 'spearman')
@@ -349,8 +350,8 @@ w2_w3_tsim = SPF.cos_sim(w3_o, w2_es_w3, mode='tanimoto')
 w3_w3_tsim = SPF.cos_sim(w3_o, w3_es_w3, mode='tanimoto')
 
 # save data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\cos_sim_mlr.mat'
-#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\cos_sim_ia.mat'
+#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\cos_sim_mlr.mat'
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\cos_sim_ia.mat'
 io.savemat(data_path, {'w1_w1_nsim':w1_w1_nsim, 'w1_w2_nsim':w1_w2_nsim, 'w1_w3_nsim':w1_w3_nsim,
                        'w2_w2_nsim':w2_w2_nsim, 'w2_w3_nsim':w2_w3_nsim,
                        'w3_w3_nsim':w3_w3_nsim,
@@ -362,7 +363,7 @@ io.savemat(data_path, {'w1_w1_nsim':w1_w1_nsim, 'w1_w2_nsim':w1_w2_nsim, 'w1_w3_
 del w1_w1_nsim, w1_w2_nsim, w1_w3_nsim, w2_w2_nsim, w2_w3_nsim, w3_w3_nsim
 del w1_w1_tsim, w1_w2_tsim, w1_w3_tsim, w2_w2_tsim, w2_w3_tsim, w3_w3_tsim
 del w1_es_w1, w1_es_w2, w1_es_w3, w2_es_w2, w2_es_w3, w3_es_w3
-del w1_i, w2_i, w3_i, w1_o, w2_o, w3_o, sig_i
+#del w1_i, w2_i, w3_i, w1_o, w2_o, w3_o, sig_i
 
 
 #%% Power spectrum density
@@ -395,13 +396,13 @@ snr_w2 = SPF.snr_time(w2_ex_s, mode='time')
 snr_w3 = SPF.snr_time(w3_ex_s, mode='time')
 
 # save data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_mlr.mat'
-#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_ia.mat'
+#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_mlr.mat'
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_ia.mat'
 io.savemat(data_path, {'origin':snr_o, 'w1':snr_w1, 'w2':snr_w2, 'w3':snr_w3})
 
 # release RAM
 del snr_o, snr_w1, snr_w2, snr_w3
-del sig_o
+#del sig_o
 del w1_es_s, w2_es_s, w3_es_s, w1_ex_s, w2_ex_s, w3_ex_s 
 
 
@@ -414,4 +415,4 @@ del w1_es_s, w2_es_s, w3_es_s, w1_ex_s, w2_ex_s, w3_ex_s
 
 # release RAM
 del w1_p, w2_p, w3_p, sig_p
-del fm, fs
+del fs

@@ -13,6 +13,11 @@ import scipy.io as io
 from mne.io import concatenate_raws
 from mne import Epochs, pick_types, find_events
 from mne.baseline import rescale
+import time
+
+#%% timing
+start = time.clock()
+
 
 # %% load data
 filepath = r'F:\SSVEP\dataset'
@@ -44,6 +49,7 @@ raw = concatenate_raws(raw_cnts)
 del raw_cnts, file, filefolder, filefolders, filefullpath, filelist
 del filepath, subindex, subjectlist
 
+
 #%% preprocessing
 events = mne.find_events(raw, output='onset')
 
@@ -60,6 +66,7 @@ event_id = dict(f8=1, f10=2, f15=3)
 #baseline = (-0.2, 0)    # define baseline
 tmin, tmax = -3., 3.5    # set the time range
 sfreq = 1000
+
 
 #%% store data into array
 n_stims = int(len(event_id))
@@ -78,11 +85,15 @@ for i in range(len(event_id)):
 del i
 del n_stims, n_trials, n_chans, n_times
 
+
 #%% store data into .mat file
 data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat'
-io.savemat(data_path, {'raw_data':data,
-                       'chan_info':picks_ch_names})
-print('Extraction Done')
+io.savemat(data_path, {'raw_data':data})
+    
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat'
+io.savemat(data_path, {'chan_info':picks_ch_names})
 
-#%% test
 
+#%% timing
+end = time.clock()
+print('Running time: ' + str(end - start) + 's')

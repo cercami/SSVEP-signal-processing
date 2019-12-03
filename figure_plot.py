@@ -30,11 +30,28 @@ import signal_processing_function as SPF
 
 #%% Fig 1: Full-channels' correlation heatmap (after substraction)
 # load data
-data = io.loadmat()
+data = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\64chan_corr.mat')
+w_corr = data['w']
+signal_corr = data['signal']
+compare = w_corr - signal_corr
+
+del data
+
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
+pick_chans = eeg['chan_info'].tolist()
+
+del eeg
+
+#%% prepare for plot
 
 # plot
+fig, ax = plt.subplots()
 
-# save figure
+im, _ = SPF.check_plot(data=compare, row_labels=pick_chans, col_labels=pick_chans,
+                       ax=ax, cmap='r_RdBu', vmin=vmin, vmax=vmax)
+plt.show()
+
+#%% save figure
 fig.subplots_adjust()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\full_chan_corr.png', dpi=600)
 
