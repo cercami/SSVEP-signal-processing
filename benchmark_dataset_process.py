@@ -184,23 +184,24 @@ del data
 
 # w1 model data: 0-1000ms
 w1_i = w1[:,:,[34,35,36,43,44],:]
-w1_o = w1[:,:,53,:]
-w1_total = w1[:,:,[34,35,36,43,44,53],:]
+w1_o = w1[:,:,47,:]
+w1_total = w1[:,:,[34,35,36,43,44,47],:]
+w_total = w[:,:,[34,35,36,43,44,47],:]
 
 # w2 model data: 1000-2000ms
 w2_i = w2[:,:,[34,35,36,43,44],:]
-w2_o = w2[:,:,53,:]
-w2_total = w2[:,:,[34,35,36,43,44,53],:]
+w2_o = w2[:,:,47,:]
+w2_total = w2[:,:,[34,35,36,43,44,47],:]
 
 # w3 model data: 2000-3000ms
 w3_i = w3[:,:,[34,35,36,43,44],:]
-w3_o = w3[:,:,53,:]
-w3_total = w3[:,:,[34,35,36,43,44,53],:]
+w3_o = w3[:,:,47,:]
+w3_total = w3[:,:,[34,35,36,43,44,47],:]
 
 # signal part data: 3000-6000ms
 sig_i = signal_data[:,:,[34,35,36,43,44],:]
-sig_o = signal_data[:,:,53,:]
-sig_total = signal_data[:,:,[34,35,36,43,44,53],:]
+sig_o = signal_data[:,:,47,:]
+sig_total = signal_data[:,:,[34,35,36,43,44,47],:]
 
 # save data
 data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\model_data.mat'
@@ -211,23 +212,22 @@ io.savemat(data_path, {'w1_i':w1_i, 'w1_o':w1_o, 'w1_total':w1_total,
     
 # release RAM
 #del w1, w2, w3, signal_data
+del w1_total, w2_total, w3_total
 #del w_sub
 
 #%% Prepare for checkboard plot (Spearman method)
-w1_pick_corr = SPF.corr_coef(w1_total, 'spearman')
-w2_pick_corr = SPF.corr_coef(w2_total, 'spearman')
-w3_pick_corr = SPF.corr_coef(w3_total, 'spearman')
+#w1_pick_corr = SPF.corr_coef(w1_total, 'spearman')
+#w2_pick_corr = SPF.corr_coef(w2_total, 'spearman')
+#w3_pick_corr = SPF.corr_coef(w3_total, 'spearman')
+w_pick_corr = SPF.corr_coef(w_total, 'spearman')
 
 sig_pick_corr = SPF.corr_coef(sig_total, 'spearman')
 
 data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\pick_chan_corr.mat'
-io.savemat(data_path, {'w1':w1_pick_corr,
-                       'w2':w2_pick_corr,
-                       'w3':w3_pick_corr,
-                       'sig':sig_pick_corr})
+io.savemat(data_path, {'w':w_pick_corr, 'sig':sig_pick_corr})
     
-del w1_pick_corr, w2_pick_corr, w3_pick_corr, sig_pick_corr
-del w1_total, w2_total, w3_total, sig_total
+#del w1_pick_corr, w2_pick_corr, w3_pick_corr, sig_pick_corr
+del w_pick_corr, sig_pick_corr, sig_total
 
 
 #%% Spatial filter: multi-linear regression method
