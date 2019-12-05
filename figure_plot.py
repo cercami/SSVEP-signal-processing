@@ -145,7 +145,7 @@ del w3_gf_A, w3_gf_a, w3_gf_B, w3_gf_b, w3_gf_C, w3_gf_c, w3_gf_D, w3_gf_d
 gf = np.hstack((gf_1, gf_2, gf_3))
 del gf_1, gf_2, gf_3
 
-data = pd.DataFrame({'label':label, 'Goodness of fit':gf, r'$\ Channel$':channel})
+data = pd.DataFrame({'label':label, 'Goodness of fit':gf, 'Channel':channel})
 
 del gf, channel, label
 
@@ -153,20 +153,19 @@ del gf, channel, label
 sns.set(style='whitegrid')
 
 fig, ax = plt.subplots(figsize=(21,21))
-ax.set_title(r'$\ Model\ description:\ multi-linear\ regression$', fontsize=34)
-ax.set_title(r'$\ Model\ description:\ inverse\ array\ method$', fontsize=34)
+ax.set_title('Model description: multi-linear regression', fontsize=34)
 ax.tick_params(axis='both', labelsize=28)
 ax.set_ylim((0, 1.))
-ax = sns.boxplot(x='label', y='Goodness of fit', hue=r'$\ Channel$', data=data,
+ax = sns.boxplot(x='label', y='Goodness of fit', hue='Channel', data=data,
                  palette='Set3', notch=True, fliersize=12)
-ax.set_xlabel(r'$\ Test\ group$', fontsize=30)
-ax.set_ylabel(r'$\ Goodness\ of\ fit$', fontsize=30)
+ax.set_xlabel('Test group', fontsize=30)
+ax.set_ylabel('Goodness of fit', fontsize=30)
 ax.legend(loc='lower right', fontsize=32)
 
 fig.tight_layout()
 plt.show()
 
-plt.savefig(r'F:\SSVEP\figures\weisiwen\model description_IA.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\model description_MLR.png', dpi=600)
 
 del data
 
@@ -240,7 +239,7 @@ del w3_gf_A, w3_gf_a, w3_gf_B, w3_gf_b, w3_gf_C, w3_gf_c, w3_gf_D, w3_gf_d
 gf = np.hstack((gf_1, gf_2, gf_3))
 del gf_1, gf_2, gf_3
 
-data = pd.DataFrame({'label':label, 'Goodness of fit':gf, r'$\ Channel$':channel})
+data = pd.DataFrame({'label':label, 'Goodness of fit':gf, 'Channel':channel})
 
 del gf, channel, label
 
@@ -248,14 +247,13 @@ del gf, channel, label
 sns.set(style='whitegrid')
 
 fig, ax = plt.subplots(figsize=(21,21))
-ax.set_title(r'$\ Model\ description:\ multi-linear\ regression$', fontsize=34)
-ax.set_title(r'$\ Model\ description:\ inverse\ array\ method$', fontsize=34)
+ax.set_title('Model description: inverse array method', fontsize=34)
 ax.tick_params(axis='both', labelsize=28)
 ax.set_ylim((0, 1.))
-ax = sns.boxplot(x='label', y='Goodness of fit', hue=r'$\ Channel$', data=data,
+ax = sns.boxplot(x='label', y='Goodness of fit', hue='Channel', data=data,
                  palette='Set3', notch=True, fliersize=12)
-ax.set_xlabel(r'$\ Test\ group$', fontsize=30)
-ax.set_ylabel(r'$\ Goodness\ of\ fit$', fontsize=30)
+ax.set_xlabel('Test group', fontsize=30)
+ax.set_ylabel('Goodness of fit', fontsize=30)
 ax.legend(loc='lower right', fontsize=32)
 
 fig.tight_layout()
@@ -268,28 +266,28 @@ del data
 
 #%% Fig 3: Heatmap
 # load data
-corr_A = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__POZ\pick_chan_corr.mat')
+corr_A = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__OZ\pick_chan_corr.mat')
 w_A = corr_A['w']
 sig_A = corr_A['sig']
 # pick_chans_A = corr_A['chan_info'].tolist()
 pick_chans_A = ['FT7', 'FC5', 'FC3', 'FC1', 'FCZ', 'OZ']
 del corr_A
 
-corr_B = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__POZ\pick_chan_corr.mat')
+corr_B = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__OZ\pick_chan_corr.mat')
 w_B = corr_B['w']
 sig_B = corr_B['sig']
 # pick_chans_B = corr_B['chan_info'].tolist()
 pick_chans_B = ['FC2', 'FC4', 'T7', 'C5', 'C3', 'OZ']
 del corr_B
 
-corr_C = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__POZ\pick_chan_corr.mat')
+corr_C = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__OZ\pick_chan_corr.mat')
 w_C = corr_C['w']
 sig_C = corr_C['sig']
 # pick_chans_C = corr_C['chan_info'].tolist()
 pick_chans_C = ['C1', 'CZ', 'C2', 'C4', 'CP5', 'OZ']
 del corr_C
 
-corr_D = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POZ\pick_chan_corr.mat')
+corr_D = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__OZ\pick_chan_corr.mat')
 w_D = corr_D['w']
 sig_D = corr_D['sig']
 # pick_chans_D = corr_D['chan_info'].tolist()
@@ -328,21 +326,21 @@ ax1 = fig.add_subplot(gs[0:2,0:3])
 im, _ = SPF.check_plot(data=w_A, row_labels=pick_chans_A, col_labels=pick_chans_A,
                        ax=ax1, cmap='Blues', vmin=vmin_A, vmax=vmax_A)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax1.set_xlabel(r'$\ Background\ correlation\ (A)$', fontsize=22)
+ax1.set_xlabel('Background correlation (A)', fontsize=22)
 ax1.tick_params(axis='both', labelsize=18)
 
 ax2 = fig.add_subplot(gs[2:4,0:3])
 im, _ = SPF.check_plot(data=sig_A, row_labels=pick_chans_A, col_labels=pick_chans_A,
                        ax=ax2, cmap='Blues', vmin=vmin_A, vmax=vmax_A)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax2.set_xlabel(r'$\ Signal\ correlation\ (A)$', fontsize=22)
+ax2.set_xlabel('Signal correlation (A)', fontsize=22)
 ax2.tick_params(axis='both', labelsize=18)
 
 ax3 = fig.add_subplot(gs[4:6,0:3])
 im, _ = SPF.check_plot(data=compare_A, row_labels=pick_chans_A, col_labels=pick_chans_A,
-                       ax=ax3, cmap='Greens', vmin=np.min(compare_A), vmax=np.max(compare_A))
+                       ax=ax3, cmap='Reds', vmin=np.min(compare_A), vmax=np.max(compare_A))
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax3.set_xlabel(r'$\ Substraction\ (A)$', fontsize=22)
+ax3.set_xlabel('Substraction (A)', fontsize=22)
 ax3.tick_params(axis='both', labelsize=18)
 
 del w_A, sig_A, compare_A, pick_chans_A, vmin_A, vmax_A
@@ -351,21 +349,21 @@ ax4 = fig.add_subplot(gs[0:2,3:6])
 im, _ = SPF.check_plot(data=w_B, row_labels=pick_chans_B, col_labels=pick_chans_B,
                        ax=ax4, cmap='Blues', vmin=vmin_B, vmax=vmax_B)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax4.set_xlabel(r'$\ Background\ correlation\ (B)$', fontsize=22)
+ax4.set_xlabel('Background correlation (B)', fontsize=22)
 ax4.tick_params(axis='both', labelsize=18)
 
 ax5 = fig.add_subplot(gs[2:4,3:6])
 im, _ = SPF.check_plot(data=sig_B, row_labels=pick_chans_B, col_labels=pick_chans_B,
                        ax=ax5, cmap='Blues', vmin=vmin_B, vmax=vmax_B)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax5.set_xlabel(r'$\ Signal\ correlation\ (B)$', fontsize=22)
+ax5.set_xlabel('Signal correlation (B)', fontsize=22)
 ax5.tick_params(axis='both', labelsize=18)
 
 ax6 = fig.add_subplot(gs[4:6,3:6])
 im, _ = SPF.check_plot(data=compare_B, row_labels=pick_chans_B, col_labels=pick_chans_B,
-                       ax=ax6, cmap='Greens', vmin=np.min(compare_B), vmax=np.max(compare_B))
+                       ax=ax6, cmap='Reds', vmin=np.min(compare_B), vmax=np.max(compare_B))
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax6.set_xlabel(r'$\ Substraction\ (B)$', fontsize=22)
+ax6.set_xlabel('Substraction (B)', fontsize=22)
 ax6.tick_params(axis='both', labelsize=18)
 
 del w_B, sig_B, compare_B, pick_chans_B, vmin_B, vmax_B
@@ -374,21 +372,21 @@ ax7 = fig.add_subplot(gs[0:2,6:9])
 im, _ = SPF.check_plot(data=w_C, row_labels=pick_chans_C, col_labels=pick_chans_C,
                        ax=ax7, cmap='Blues', vmin=vmin_C, vmax=vmax_C)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax7.set_xlabel(r'$\ Background\ correlation\ (C)$', fontsize=22)
+ax7.set_xlabel('Background correlation (C)', fontsize=22)
 ax7.tick_params(axis='both', labelsize=18)
 
 ax8 = fig.add_subplot(gs[2:4,6:9])
 im, _ = SPF.check_plot(data=sig_C, row_labels=pick_chans_C, col_labels=pick_chans_C,
                        ax=ax8, cmap='Blues', vmin=vmin_C, vmax=vmax_C)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax8.set_xlabel(r'$\ Signal\ correlation\ (C)$', fontsize=22)
+ax8.set_xlabel('Signal correlation (C)', fontsize=22)
 ax8.tick_params(axis='both', labelsize=18)
 
 ax9 = fig.add_subplot(gs[4:6,6:9])
 im, _ = SPF.check_plot(data=compare_C, row_labels=pick_chans_C, col_labels=pick_chans_C,
-                       ax=ax9, cmap='Greens', vmin=np.min(compare_C), vmax=np.max(compare_C))
+                       ax=ax9, cmap='Reds', vmin=np.min(compare_C), vmax=np.max(compare_C))
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax9.set_xlabel(r'$\ Substraction\ (C)$', fontsize=22)
+ax9.set_xlabel('Substraction (C)', fontsize=22)
 ax9.tick_params(axis='both', labelsize=18)
 
 del w_C, sig_C, compare_C, pick_chans_C, vmin_C, vmax_C
@@ -397,21 +395,21 @@ ax10 = fig.add_subplot(gs[0:2,9:])
 im, _ = SPF.check_plot(data=w_D, row_labels=pick_chans_D, col_labels=pick_chans_D,
                        ax=ax10, cmap='Blues', vmin=vmin_D, vmax=vmax_D)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax10.set_xlabel(r'$\ Background\ correlation\ (D)$', fontsize=22)
+ax10.set_xlabel('Background correlation (D)', fontsize=22)
 ax10.tick_params(axis='both', labelsize=18)
 
 ax11 = fig.add_subplot(gs[2:4,9:])
 im, _ = SPF.check_plot(data=sig_D, row_labels=pick_chans_D, col_labels=pick_chans_D,
                        ax=ax11, cmap='Blues', vmin=vmin_D, vmax=vmax_D)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax11.set_xlabel(r'$\ Signal\ correlation\ (D)$', fontsize=22)
+ax11.set_xlabel('Signal correlation (D)', fontsize=22)
 ax11.tick_params(axis='both', labelsize=18)
 
 ax12 = fig.add_subplot(gs[4:6,9:])
 im, _ = SPF.check_plot(data=compare_D, row_labels=pick_chans_D, col_labels=pick_chans_D,
-                       ax=ax12, cmap='Greens', vmin=np.min(compare_D), vmax=np.max(compare_D))
+                       ax=ax12, cmap='Reds', vmin=np.min(compare_D), vmax=np.max(compare_D))
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax12.set_xlabel(r'$\ Substraction\ (D)$', fontsize=22)
+ax12.set_xlabel('Substraction (D)', fontsize=22)
 ax12.tick_params(axis='both', labelsize=18)
 
 del w_D, sig_D, compare_D, pick_chans_D, vmin_D, vmax_D
@@ -421,7 +419,7 @@ plt.show()
 # save figure
 fig.subplots_adjust(top=0.949, bottom=0.035, left=0.049, right=0.990, 
                     hspace=1.000, wspace=1.000)
-plt.savefig(r'F:\SSVEP\figures\weisiwen\inter-chan-corr.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\inter-chan-corr_OZ.png', dpi=600)
 
 
 #%% Fig 4-1: Line chart (Bias of estimation) (MLR)
@@ -617,7 +615,124 @@ bias_w3_D = pd.DataFrame({'bias':Dbias_w3, 'type':type_w3, 'channel':channel_w3}
 del Dbias_w3, type_w3, channel_w3
 
 # plot
-fig = plt.figure(figsize=())
+fig = plt.figure(figsize=(12,16))
+gs = GridSpec(8,6, figure=fig)
+
+sns.set(style='whitegrid')
+
+ax1 = fig.add_subplot(gs[0:2, 0:3])
+ax1.tick_params(axis='both', labelsize=18)
+ax1 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_A, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax1.set_ylabel('A', fontsize=22)
+ax1.legend(loc='best', fontsize=22)
+del bias_w1_A
+
+ax2 = fig.add_subplot(gs[0:2, 3:5])
+ax2.tick_params(axis='both', labelsize=18)
+ax2 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_A, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax2.set_ylabel('A', fontsize=22)
+ax2.legend(loc='best', fontsize=22)
+del bias_w2_A
+
+ax3 = fig.add_subplot(gs[0:2, 5:])
+ax3.tick_params(axis='both', labelsize=18)
+ax3 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_A, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax3.set_ylabel('A', fontsize=22)
+ax3.legend(loc='best', fontsize=22)
+del bias_w3_A
+
+ax4 = fig.add_subplot(gs[2:4, 0:3])
+ax4.tick_params(axis='both', labelsize=18)
+ax4 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_B, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax4.set_ylabel('B', fontsize=22)
+ax4.legend(loc='best', fontsize=22)
+del bias_w1_B
+
+ax5 = fig.add_subplot(gs[2:4, 3:5])
+ax5.tick_params(axis='both', labelsize=18)
+ax5 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_B, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax5.set_ylabel('B', fontsize=22)
+ax5.legend(loc='best', fontsize=22)
+del bias_w2_B
+
+ax6 = fig.add_subplot(gs[2:4, 5:])
+ax6.tick_params(axis='both', labelsize=18)
+ax6 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_B, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax6.set_ylabel('B', fontsize=22)
+ax6.legend(loc='best', fontsize=22)
+del bias_w3_B
+
+ax7 = fig.add_subplot(gs[4:6, 0:3])
+ax7.tick_params(axis='both', labelsize=18)
+ax7 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_C, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax7.set_ylabel('C', fontsize=22)
+ax7.legend(loc='best', fontsize=22)
+del bias_w1_C
+
+ax8 = fig.add_subplot(gs[4:6, 3:5])
+ax8.tick_params(axis='both', labelsize=18)
+ax8 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_C, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax8.set_ylabel('C', fontsize=22)
+ax8.legend(loc='best', fontsize=22)
+del bias_w2_C
+
+ax9 = fig.add_subplot(gs[4:6, 5:])
+ax9.tick_params(axis='both', labelsize=18)
+ax9 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_C, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax9.set_ylabel('C', fontsize=22)
+ax9.legend(loc='best', fontsize=22)
+del bias_w3_C
+
+ax10 = fig.add_subplot(gs[6:, 0:3])
+ax10.tick_params(axis='both', labelsize=18)
+ax10 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_D, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax10.set_ylabel('D', fontsize=22)
+ax10.legend(loc='best', fontsize=22)
+del bias_w1_D
+
+ax11 = fig.add_subplot(gs[6:, 3:5])
+ax11.tick_params(axis='both', labelsize=18)
+ax11 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_D, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax11.set_ylabel('D', fontsize=22)
+ax11.legend(loc='best', fontsize=22)
+del bias_w2_D
+
+ax12 = fig.add_subplot(gs[6:, 5:])
+ax12.tick_params(axis='both', labelsize=18)
+ax12 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_D, dodge=True,
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    ci=95, capsize=.2)
+ax12.set_ylabel('D', fontsize=22)
+ax12.legend(loc='best', fontsize=22)
+del bias_w3_D
+
+fig.tight_layout()
+plt.show()
+
+plt.savefig(r'F:\SSVEP\figures\weisiwen\bias_MLR.png', dpi=600)
+
 #%% Fig 4: Barplot (Cosine similarity (Normal & Tanimoto))
 # load data
 data = io.loadmat()
@@ -700,104 +815,6 @@ plt.savefig(r'F:\SSVEP\figures\weisiwen\snr_f.png', dpi=600)
 
 # release RAM
 del data
-
-
-
-
-
-
-fig = plt.figure(figsize=(24,24))
-#fig.suptitle(r'$\ Model\ Description$', fontsize=30, fontweight='bold')
-gs = GridSpec(6, 7, figure=fig)
-
-# 1. Boxplot of R^2 
-X = gf_w1.flatten()
-Y = gf_w2.flatten()
-Z = gf_w3.flatten()
-
-xmin = min(np.min(X), np.min(Y), np.min(Z)) - 0.05
-
-R2 = np.zeros((len(X) + len(Y) + len(Z)))
-R2[0:len(X)] = X
-R2[len(X):(len(X)+len(Y))] = Y
-R2[(len(X)+len(Y)):(len(X) + len(Y) + len(Z))] = Z
-model = ['w1' for i in range(len(X))]+['w2' for i in range(len(Y))]+['w3' for i in range(len(Z))]
-R2 = pd.DataFrame({r'$\ model$': model, r'$\ R^2$': R2})
-
-order=['w1', 'w2', 'w3']
-sns.set(style='whitegrid')
-
-ax1 = fig.add_subplot(gs[0:4, 0:4])
-ax1.set_title(r"$\ 3\ model's\ R^2$", fontsize=30)
-ax1.tick_params(axis='both', labelsize=22)
-ax1.set_xlim((xmin, 1.05))
-ax1 = sns.boxplot(x=r'$\ R^2$', y=r'$\ model$', data=R2, notch=True,
-                  linewidth=2.5, orient='h', fliersize=10)
-ax1 = sns.swarmplot(x=r'$\ R^2$', y=r'$\ model$', data=R2, color='dimgrey',
-                    orient='h', size=5)
-ax1.set_xlabel(r'$\ R^2\ values$', fontsize=26)
-ax1.set_ylabel(r'$\ Models$', fontsize=26)
-
-
-# 2. Histogram of R^2
-ax2 = fig.add_subplot(gs[4:, 0:4])
-ax2.set_title(r'$\ Distribution\ of\ R^2$', fontsize=30)
-ax2.set_xlabel(r'$\ R^2\ values$', fontsize=26)
-ax2.set_ylabel(r'$\ Frequence$', fontsize=26)
-ax2.tick_params(axis='both', labelsize=22)
-ax2.set_xlim((xmin, 1.05))
-ax2 = sns.kdeplot(X, shade=True, label=r'$\ w1$')
-ax2 = sns.kdeplot(Y, shade=True, label=r'$\ w2$')
-ax2 = sns.kdeplot(Z, shade=True, label=r'$\ w3$')
-ax2.legend(loc='best', fontsize=20)
-
-del X, Y, Z
-
-
-# 3. Inter-channel correlation (2 parts + comparision)
-sns.set(style='white')
-X = w1_pick_corr_sp
-Y = sig_pick_corr_sp
-Z = X - Y
-
-# format decimal number & remove leading zeros & hide the diagonal elements
-def func(x, pos):  
-    return '{:.4f}'.format(x).replace('0.', '.').replace('1.0000', '').replace('.0000', '')
-    
-pick_chans = ['C1','Cz','C2','C4','CP5','POz']  # change each time
-
-vmin = min(np.min(X), np.min(Y))
-vmax = max(np.max(X), np.max(Y))
-
-ax3 = fig.add_subplot(gs[0:2, 4:])
-im, _ = SPF.check_plot(data=X, row_labels=pick_chans, col_labels=pick_chans,
-                       ax=ax3, cmap='Blues', vmin=vmin, vmax=vmax)
-SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax3.set_xlabel(r'$\ w1\ part\ inter-channel\ correlation$', fontsize=30)
-ax3.set_ylabel(r'$\ Channels$', fontsize=26)
-ax3.tick_params(axis='both', labelsize=22)
-
-ax4 = fig.add_subplot(gs[2:4, 4:])
-im, _ = SPF.check_plot(data=Y, row_labels=pick_chans, col_labels=pick_chans,
-                       ax=ax4, cmap='Blues', vmin=vmin, vmax=vmax)
-SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax4.set_xlabel(r'$\ SSVEP\ part\ inter-channel\ correlation$', fontsize=30)
-ax4.set_ylabel(r'$\ Channels$', fontsize=26)
-ax4.tick_params(axis='both', labelsize=22)
-
-ax5 = fig.add_subplot(gs[4:, 4:])
-im, _ = SPF.check_plot(data=Z, row_labels=pick_chans, col_labels=pick_chans,
-                       ax=ax5, cmap='Reds', vmin=np.min(Z), vmax=np.max(Z))
-SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax5.set_xlabel(r'$\ Correlation\ comparision\ (w1-SSVEP)$', fontsize=30)
-ax5.set_ylabel(r'$\ Channels$', fontsize=23)
-ax5.tick_params(axis='both', labelsize=22)
-
-del X, Y, Z
-
-fig.subplots_adjust(top=0.949, bottom=0.05, left=0.049, right=0.990, 
-                    hspace=1.000, wspace=0.7)
-plt.savefig(r'D:\dataset\preprocessed_data\weisiwen\model_description.png', dpi=600)
 
 
 #%% use sns module to plot heatmap
