@@ -76,10 +76,10 @@ plt.savefig(r'F:\SSVEP\figures\weisiwen\full_chan_corr.png', dpi=600)
 del pick_chans, compare, vmin, vmax, edge
 
 
-#%% Fig 1: Boxplot
+#%% Fig 2-1: Boxplot (MLR)
 # load data
-mlr_A = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14-18__POz\MLR_model.mat')
-mlr_a = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14-18__Oz\MLR_model.mat')
+mlr_A = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__POZ\MLR_model.mat')
+mlr_a = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__OZ\MLR_model.mat')
 w1_gf_A = mlr_A['r2_w1'].flatten()
 w2_gf_A = mlr_A['r2_w2'].flatten()
 w3_gf_A = mlr_A['r2_w3'].flatten()
@@ -88,18 +88,18 @@ w2_gf_a = mlr_a['r2_w2'].flatten()
 w3_gf_a = mlr_a['r2_w3'].flatten()
 del mlr_A, mlr_a
 
-mlr_B = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19-23__POz\MLR_model.mat')
-mlr_b = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19-23__Oz\MLR_model.mat')
+mlr_B = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__POZ\MLR_model.mat')
+mlr_b = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__OZ\MLR_model.mat')
 w1_gf_B = mlr_B['r2_w1'].flatten()
 w2_gf_B = mlr_B['r2_w2'].flatten()
 w3_gf_B = mlr_B['r2_w3'].flatten()
-w1_gf_b = mlr_B['r2_w1'].flatten()
-w2_gf_b = mlr_B['r2_w2'].flatten()
-w3_gf_b = mlr_B['r2_w3'].flatten()
+w1_gf_b = mlr_b['r2_w1'].flatten()
+w2_gf_b = mlr_b['r2_w2'].flatten()
+w3_gf_b = mlr_b['r2_w3'].flatten()
 del mlr_B, mlr_b
 
-mlr_C = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__POz\MLR_model.mat')
-mlr_c = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__Oz\MLR_model.mat')
+mlr_C = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__POZ\MLR_model.mat')
+mlr_c = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__OZ\MLR_model.mat')
 w1_gf_C = mlr_C['r2_w1'].flatten()
 w2_gf_C = mlr_C['r2_w2'].flatten()
 w3_gf_C = mlr_C['r2_w3'].flatten()
@@ -108,8 +108,8 @@ w2_gf_c = mlr_c['r2_w2'].flatten()
 w3_gf_c = mlr_c['r2_w3'].flatten()
 del mlr_C, mlr_c
 
-mlr_D = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POz\MLR_model.mat')
-mlr_d = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__Oz\MLR_model.mat')
+mlr_D = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POZ\MLR_model.mat')
+mlr_d = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__OZ\MLR_model.mat')
 w1_gf_D = mlr_D['r2_w1'].flatten()
 w2_gf_D = mlr_D['r2_w2'].flatten()
 w3_gf_D = mlr_D['r2_w3'].flatten()
@@ -119,58 +119,31 @@ w3_gf_d = mlr_d['r2_w3'].flatten()
 del mlr_D, mlr_d
 
 # data refrom
-A = ['w1: POz' for i in range(300)]
-B = ['w2: POz' for i in range(300)]
-C = ['w3: POz' for i in range(300)]
-D = ['w1: Oz' for i in range(300)]
-E = ['w2: Oz' for i in range(300)]
-F = ['w3: Oz' for i in range(300)]
-channel = A+D+A+D+A+D+A+D+B+E+B+E+B+E+B+E+C+F+C+F+C+F+C+F
-del A, B, C, D, E, F
+W1 = ['w1: POZ' for i in range(300)] + ['w1: OZ' for i in range(300)]
+W2 = ['w2: POZ' for i in range(300)] + ['w2: OZ' for i in range(300)]
+W3 = ['w3: POZ' for i in range(300)] + ['w3: OZ' for i in range(300)]
+channel = W1 + W1 + W1 + W1 + W2 + W2 + W2 + W2 + W3 + W3 + W3 + W3
+del W1, W2, W3
 
-A = ['A' for i in range(300)]
-B = ['B' for i in range(300)]
-C = ['C' for i in range(300)]
-D = ['D' for i in range(300)]
-P = A+A+B+B+C+C+D+D
-label = P+P+P
+A = ['A' for i in range(600)]
+B = ['B' for i in range(600)]
+C = ['C' for i in range(600)]
+D = ['D' for i in range(600)]
+P = A + B + C + D
+label = P + P + P
 del A, B, C, D, P
 
-gf = np.zeros((7200))
+gf_1 = np.hstack((w1_gf_A, w1_gf_a, w1_gf_B, w1_gf_b, w1_gf_C, w1_gf_c, w1_gf_D, w1_gf_d))
+del w1_gf_A, w1_gf_a, w1_gf_B, w1_gf_b, w1_gf_C, w1_gf_c, w1_gf_D, w1_gf_d
 
-gf[0:300] = w1_gf_A
-gf[300:600] = w1_gf_a
-gf[600:900] = w1_gf_B
-gf[900:1200] = w1_gf_b
-gf[1200:1500] = w1_gf_C
-gf[1500:1800] = w1_gf_c
-gf[1800:2100] = w1_gf_D
-gf[2100:2400] = w1_gf_d
+gf_2 = np.hstack((w2_gf_A, w2_gf_a, w2_gf_B, w2_gf_b, w2_gf_C, w2_gf_c, w2_gf_D, w2_gf_d))
+del w2_gf_A, w2_gf_a, w2_gf_B, w2_gf_b, w2_gf_C, w2_gf_c, w2_gf_D, w2_gf_d
 
-gf[2400:2700] = w2_gf_A
-gf[2700:3000] = w2_gf_a
-gf[3000:3300] = w2_gf_B
-gf[3300:3600] = w2_gf_b
-gf[3600:3900] = w2_gf_C
-gf[3900:4200] = w2_gf_c
-gf[4200:4500] = w2_gf_D
-gf[4500:4800] = w2_gf_d
+gf_3 = np.hstack((w3_gf_A, w3_gf_a, w3_gf_B, w3_gf_b, w3_gf_C, w3_gf_c, w3_gf_D, w3_gf_d))
+del w3_gf_A, w3_gf_a, w3_gf_B, w3_gf_b, w3_gf_C, w3_gf_c, w3_gf_D, w3_gf_d
 
-gf[4800:5100] = w3_gf_A
-gf[5100:5400] = w3_gf_a
-gf[5400:5700] = w3_gf_B
-gf[5700:6000] = w3_gf_b
-gf[6000:6300] = w3_gf_C
-gf[6300:6600] = w3_gf_c
-gf[6600:6900] = w3_gf_D
-gf[6900:7200] = w3_gf_d
-
-del w1_gf_A, w1_gf_B, w1_gf_C, w1_gf_D
-del w2_gf_A, w2_gf_B, w2_gf_C, w2_gf_D
-del w3_gf_A, w3_gf_B, w3_gf_C, w3_gf_D
-del w1_gf_a, w1_gf_b, w1_gf_c, w1_gf_d
-del w2_gf_a, w2_gf_b, w2_gf_c, w2_gf_d
-del w3_gf_a, w3_gf_b, w3_gf_c, w3_gf_d
+gf = np.hstack((gf_1, gf_2, gf_3))
+del gf_1, gf_2, gf_3
 
 data = pd.DataFrame({'label':label, 'Goodness of fit':gf, r'$\ Channel$':channel})
 
@@ -180,7 +153,8 @@ del gf, channel, label
 sns.set(style='whitegrid')
 
 fig, ax = plt.subplots(figsize=(21,21))
-ax.set_title(r'$\ Model\ description$', fontsize=34)
+ax.set_title(r'$\ Model\ description:\ multi-linear\ regression$', fontsize=34)
+ax.set_title(r'$\ Model\ description:\ inverse\ array\ method$', fontsize=34)
 ax.tick_params(axis='both', labelsize=28)
 ax.set_ylim((0, 1.))
 ax = sns.boxplot(x='label', y='Goodness of fit', hue=r'$\ Channel$', data=data,
@@ -192,147 +166,458 @@ ax.legend(loc='lower right', fontsize=32)
 fig.tight_layout()
 plt.show()
 
-plt.savefig(r'F:\SSVEP\figures\weisiwen\model description.png', dpi=600)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\model description_IA.png', dpi=600)
 
 del data
 
 
-#%% Fig 2: Heatmap
+#%% Fig 2-2: Boxplot (IA)
 # load data
-corr_A = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POz\pick_chan_corr.mat')
-w = corr_A['w']
-sig = corr_A['sig']
-# pick_chans = data['chan_info'].tolist()
-del corr
+mlr_A = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__POZ\inver_array_model.mat')
+mlr_a = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__OZ\inver_array_model.mat')
+w1_gf_A = mlr_A['gf_w1'].flatten()
+w2_gf_A = mlr_A['gf_w2'].flatten()
+w3_gf_A = mlr_A['gf_w3'].flatten()
+w1_gf_a = mlr_a['gf_w1'].flatten()
+w2_gf_a = mlr_a['gf_w2'].flatten()
+w3_gf_a = mlr_a['gf_w3'].flatten()
+del mlr_A, mlr_a
 
-pick_chans_A = ['TP8', 'P7', 'P5', 'P8', 'PO7', 'POz']
+mlr_B = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__POZ\inver_array_model.mat')
+mlr_b = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__OZ\inver_array_model.mat')
+w1_gf_B = mlr_B['gf_w1'].flatten()
+w2_gf_B = mlr_B['gf_w2'].flatten()
+w3_gf_B = mlr_B['gf_w3'].flatten()
+w1_gf_b = mlr_b['gf_w1'].flatten()
+w2_gf_b = mlr_b['gf_w2'].flatten()
+w3_gf_b = mlr_b['gf_w3'].flatten()
+del mlr_B, mlr_b
 
-# reform data
-compare = w - sig
+mlr_C = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__POZ\inver_array_model.mat')
+mlr_c = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__OZ\inver_array_model.mat')
+w1_gf_C = mlr_C['gf_w1'].flatten()
+w2_gf_C = mlr_C['gf_w2'].flatten()
+w3_gf_C = mlr_C['gf_w3'].flatten()
+w1_gf_c = mlr_c['gf_w1'].flatten()
+w2_gf_c = mlr_c['gf_w2'].flatten()
+w3_gf_c = mlr_c['gf_w3'].flatten()
+del mlr_C, mlr_c
 
-x1 = w1_r2.flatten()  # length=300
-x2 = w1_gf.flatten()
+mlr_D = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POZ\inver_array_model.mat')
+mlr_d = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__OZ\inver_array_model.mat')
+w1_gf_D = mlr_D['gf_w1'].flatten()
+w2_gf_D = mlr_D['gf_w2'].flatten()
+w3_gf_D = mlr_D['gf_w3'].flatten()
+w1_gf_d = mlr_d['gf_w1'].flatten()
+w2_gf_d = mlr_d['gf_w2'].flatten()
+w3_gf_d = mlr_d['gf_w3'].flatten()
+del mlr_D, mlr_d
 
-y1 = w2_r2.flatten()
-y2 = w2_gf.flatten()
+# data refrom
+W1 = ['w1: POZ' for i in range(300)] + ['w1: OZ' for i in range(300)]
+W2 = ['w2: POZ' for i in range(300)] + ['w2: OZ' for i in range(300)]
+W3 = ['w3: POZ' for i in range(300)] + ['w3: OZ' for i in range(300)]
+channel = W1 + W1 + W1 + W1 + W2 + W2 + W2 + W2 + W3 + W3 + W3 + W3
+del W1, W2, W3
 
-z1 = w3_r2.flatten()
-z2 = w3_gf.flatten()
+A = ['A' for i in range(600)]
+B = ['B' for i in range(600)]
+C = ['C' for i in range(600)]
+D = ['D' for i in range(600)]
+P = A + B + C + D
+label = P + P + P
+del A, B, C, D, P
 
-del w1_r2, w2_r2, w3_r2, w1_gf, w2_gf, w3_gf 
+gf_1 = np.hstack((w1_gf_A, w1_gf_a, w1_gf_B, w1_gf_b, w1_gf_C, w1_gf_c, w1_gf_D, w1_gf_d))
+del w1_gf_A, w1_gf_a, w1_gf_B, w1_gf_b, w1_gf_C, w1_gf_c, w1_gf_D, w1_gf_d
 
-GF = np.zeros((1800))
+gf_2 = np.hstack((w2_gf_A, w2_gf_a, w2_gf_B, w2_gf_b, w2_gf_C, w2_gf_c, w2_gf_D, w2_gf_d))
+del w2_gf_A, w2_gf_a, w2_gf_B, w2_gf_b, w2_gf_C, w2_gf_c, w2_gf_D, w2_gf_d
 
-GF[0:300] = x1          # w1 r2
-GF[300:600] = y1        # w2 r2
-GF[600:900] = z1        # w3 r2
-GF[900:1200] = x2       # w1 gf
-GF[1200:1500] = y2      # w2 gf
-GF[1500:1800] = z2      # w3 gf
+gf_3 = np.hstack((w3_gf_A, w3_gf_a, w3_gf_B, w3_gf_b, w3_gf_C, w3_gf_c, w3_gf_D, w3_gf_d))
+del w3_gf_A, w3_gf_a, w3_gf_B, w3_gf_b, w3_gf_C, w3_gf_c, w3_gf_D, w3_gf_d
 
-w1 = ['w1' for i in range(300)]
-w2 = ['w2' for i in range(300)]
-w3 = ['w3' for i in range(300)]
+gf = np.hstack((gf_1, gf_2, gf_3))
+del gf_1, gf_2, gf_3
 
-model = w1 + w2 + w3 + w1 + w2 + w3
-method = [r'$\ MLR$' for i in range(900)] + [r'$\ IA$' for i in range(900)]
+data = pd.DataFrame({'label':label, 'Goodness of fit':gf, r'$\ Channel$':channel})
 
-box_data = pd.DataFrame({r'$\ Model$':model, r'$\ Goodness\ of\ fit$':GF, r'$\ Method$':method})
-
-del w1, w2, w3, x1, x2, y1, y2, z1, z2
-del model, method, GF
+del gf, channel, label
 
 # plot
-fig = plt.figure(figsize=(21,21))
-gs = GridSpec(6, 9, figure=fig)
-
 sns.set(style='whitegrid')
 
-#palette = sns.color_palette('yellow', 'blue')
-ax1 = fig.add_subplot(gs[:, 0:6])
-ax1.set_title(r'$\ Model\ description$', fontsize=30)
-ax1.tick_params(axis='both', labelsize=26)
-ax1.set_xlim((0.5, 1.))
-ax1 = sns.boxplot(x=r'$\ Goodness\ of\ fit$', y=r'$\ Model$', hue=r'$\ Method$',
-                  data=box_data, palette='Set3', notch=True, fliersize=10)
+fig, ax = plt.subplots(figsize=(21,21))
+ax.set_title(r'$\ Model\ description:\ multi-linear\ regression$', fontsize=34)
+ax.set_title(r'$\ Model\ description:\ inverse\ array\ method$', fontsize=34)
+ax.tick_params(axis='both', labelsize=28)
+ax.set_ylim((0, 1.))
+ax = sns.boxplot(x='label', y='Goodness of fit', hue=r'$\ Channel$', data=data,
+                 palette='Set3', notch=True, fliersize=12)
+ax.set_xlabel(r'$\ Test\ group$', fontsize=30)
+ax.set_ylabel(r'$\ Goodness\ of\ fit$', fontsize=30)
+ax.legend(loc='lower right', fontsize=32)
 
-ax1.set_xlabel(r'$\ Goodness\ of\ fit$', fontsize=28)
-ax1.set_ylabel(r'$\ Time\ part$', fontsize=28)
-ax1.legend(loc='best', fontsize=26)
+fig.tight_layout()
+plt.show()
+
+plt.savefig(r'F:\SSVEP\figures\weisiwen\model description_IA.png', dpi=600)
+
+del data
+
+
+#%% Fig 3: Heatmap
+# load data
+corr_A = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__POZ\pick_chan_corr.mat')
+w_A = corr_A['w']
+sig_A = corr_A['sig']
+# pick_chans_A = corr_A['chan_info'].tolist()
+pick_chans_A = ['FT7', 'FC5', 'FC3', 'FC1', 'FCZ', 'OZ']
+del corr_A
+
+corr_B = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__POZ\pick_chan_corr.mat')
+w_B = corr_B['w']
+sig_B = corr_B['sig']
+# pick_chans_B = corr_B['chan_info'].tolist()
+pick_chans_B = ['FC2', 'FC4', 'T7', 'C5', 'C3', 'OZ']
+del corr_B
+
+corr_C = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__POZ\pick_chan_corr.mat')
+w_C = corr_C['w']
+sig_C = corr_C['sig']
+# pick_chans_C = corr_C['chan_info'].tolist()
+pick_chans_C = ['C1', 'CZ', 'C2', 'C4', 'CP5', 'OZ']
+del corr_C
+
+corr_D = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POZ\pick_chan_corr.mat')
+w_D = corr_D['w']
+sig_D = corr_D['sig']
+# pick_chans_D = corr_D['chan_info'].tolist()
+pick_chans_D = ['TP8', 'P7', 'P5', 'P8', 'PO7', 'OZ']
+del corr_D
+
+# reform data
+compare_A = w_A - sig_A
+compare_B = w_B - sig_B
+compare_C = w_C - sig_C
+compare_D = w_D - sig_D
+
+vmin_A = min(np.min(w_A), np.min(sig_A))
+vmax_A = max(np.max(w_A), np.max(sig_A))
+
+vmin_B = min(np.min(w_B), np.min(sig_B))
+vmax_B = max(np.max(w_B), np.max(sig_B))
+
+vmin_C = min(np.min(w_C), np.min(sig_C))
+vmax_C = max(np.max(w_C), np.max(sig_C))
+
+vmin_D = min(np.min(w_D), np.min(sig_D))
+vmax_D = max(np.max(w_D), np.max(sig_D))
+
+# plot
+fig = plt.figure(figsize=(24,15))
+gs = GridSpec(6, 12, figure=fig)
 
 # format decimal number & remove leading zeros & hide the diagonal elements
 def func(x, pos):
     return '{:.4f}'.format(x).replace('0.', '.').replace('1.0000', '').replace('.0000', '')
 
-vmin = min(np.min(w), np.min(sig))
-vmax = max(np.max(w), np.max(sig))
-
 sns.set(style='white')
 
-ax2 = fig.add_subplot(gs[0:2,6:])
-im, _ = SPF.check_plot(data=w, row_labels=pick_chans, col_labels=pick_chans,
-                       ax=ax2, cmap='Blues', vmin=vmin, vmax=vmax)
+ax1 = fig.add_subplot(gs[0:2,0:3])
+im, _ = SPF.check_plot(data=w_A, row_labels=pick_chans_A, col_labels=pick_chans_A,
+                       ax=ax1, cmap='Blues', vmin=vmin_A, vmax=vmax_A)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax2.set_xlabel(r'$\ Background\ correlation$', fontsize=30)
-ax2.tick_params(axis='both', labelsize=22)
+ax1.set_xlabel(r'$\ Background\ correlation\ (A)$', fontsize=22)
+ax1.tick_params(axis='both', labelsize=18)
 
-ax3 = fig.add_subplot(gs[2:4,6:])
-im, _ = SPF.check_plot(data=sig, row_labels=pick_chans, col_labels=pick_chans,
-                       ax=ax3, cmap='Blues', vmin=vmin, vmax=vmax)
+ax2 = fig.add_subplot(gs[2:4,0:3])
+im, _ = SPF.check_plot(data=sig_A, row_labels=pick_chans_A, col_labels=pick_chans_A,
+                       ax=ax2, cmap='Blues', vmin=vmin_A, vmax=vmax_A)
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax3.set_xlabel(r'$\ Signal\ correlation$', fontsize=30)
-ax3.tick_params(axis='both', labelsize=22)
+ax2.set_xlabel(r'$\ Signal\ correlation\ (A)$', fontsize=22)
+ax2.tick_params(axis='both', labelsize=18)
 
-ax4 = fig.add_subplot(gs[4:6,6:])
-im, _ = SPF.check_plot(data=compare, row_labels=pick_chans, col_labels=pick_chans,
-                       ax=ax4, cmap='Greens', vmin=np.min(compare), vmax=np.max(compare))
+ax3 = fig.add_subplot(gs[4:6,0:3])
+im, _ = SPF.check_plot(data=compare_A, row_labels=pick_chans_A, col_labels=pick_chans_A,
+                       ax=ax3, cmap='Greens', vmin=np.min(compare_A), vmax=np.max(compare_A))
 SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
-ax4.set_xlabel(r'$\ Substraction$', fontsize=30)
-ax4.tick_params(axis='both', labelsize=22)
+ax3.set_xlabel(r'$\ Substraction\ (A)$', fontsize=22)
+ax3.tick_params(axis='both', labelsize=18)
+
+del w_A, sig_A, compare_A, pick_chans_A, vmin_A, vmax_A
+
+ax4 = fig.add_subplot(gs[0:2,3:6])
+im, _ = SPF.check_plot(data=w_B, row_labels=pick_chans_B, col_labels=pick_chans_B,
+                       ax=ax4, cmap='Blues', vmin=vmin_B, vmax=vmax_B)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax4.set_xlabel(r'$\ Background\ correlation\ (B)$', fontsize=22)
+ax4.tick_params(axis='both', labelsize=18)
+
+ax5 = fig.add_subplot(gs[2:4,3:6])
+im, _ = SPF.check_plot(data=sig_B, row_labels=pick_chans_B, col_labels=pick_chans_B,
+                       ax=ax5, cmap='Blues', vmin=vmin_B, vmax=vmax_B)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax5.set_xlabel(r'$\ Signal\ correlation\ (B)$', fontsize=22)
+ax5.tick_params(axis='both', labelsize=18)
+
+ax6 = fig.add_subplot(gs[4:6,3:6])
+im, _ = SPF.check_plot(data=compare_B, row_labels=pick_chans_B, col_labels=pick_chans_B,
+                       ax=ax6, cmap='Greens', vmin=np.min(compare_B), vmax=np.max(compare_B))
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax6.set_xlabel(r'$\ Substraction\ (B)$', fontsize=22)
+ax6.tick_params(axis='both', labelsize=18)
+
+del w_B, sig_B, compare_B, pick_chans_B, vmin_B, vmax_B
+
+ax7 = fig.add_subplot(gs[0:2,6:9])
+im, _ = SPF.check_plot(data=w_C, row_labels=pick_chans_C, col_labels=pick_chans_C,
+                       ax=ax7, cmap='Blues', vmin=vmin_C, vmax=vmax_C)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax7.set_xlabel(r'$\ Background\ correlation\ (C)$', fontsize=22)
+ax7.tick_params(axis='both', labelsize=18)
+
+ax8 = fig.add_subplot(gs[2:4,6:9])
+im, _ = SPF.check_plot(data=sig_C, row_labels=pick_chans_C, col_labels=pick_chans_C,
+                       ax=ax8, cmap='Blues', vmin=vmin_C, vmax=vmax_C)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax8.set_xlabel(r'$\ Signal\ correlation\ (C)$', fontsize=22)
+ax8.tick_params(axis='both', labelsize=18)
+
+ax9 = fig.add_subplot(gs[4:6,6:9])
+im, _ = SPF.check_plot(data=compare_C, row_labels=pick_chans_C, col_labels=pick_chans_C,
+                       ax=ax9, cmap='Greens', vmin=np.min(compare_C), vmax=np.max(compare_C))
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax9.set_xlabel(r'$\ Substraction\ (C)$', fontsize=22)
+ax9.tick_params(axis='both', labelsize=18)
+
+del w_C, sig_C, compare_C, pick_chans_C, vmin_C, vmax_C
+
+ax10 = fig.add_subplot(gs[0:2,9:])
+im, _ = SPF.check_plot(data=w_D, row_labels=pick_chans_D, col_labels=pick_chans_D,
+                       ax=ax10, cmap='Blues', vmin=vmin_D, vmax=vmax_D)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax10.set_xlabel(r'$\ Background\ correlation\ (D)$', fontsize=22)
+ax10.tick_params(axis='both', labelsize=18)
+
+ax11 = fig.add_subplot(gs[2:4,9:])
+im, _ = SPF.check_plot(data=sig_D, row_labels=pick_chans_D, col_labels=pick_chans_D,
+                       ax=ax11, cmap='Blues', vmin=vmin_D, vmax=vmax_D)
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax11.set_xlabel(r'$\ Signal\ correlation\ (D)$', fontsize=22)
+ax11.tick_params(axis='both', labelsize=18)
+
+ax12 = fig.add_subplot(gs[4:6,9:])
+im, _ = SPF.check_plot(data=compare_D, row_labels=pick_chans_D, col_labels=pick_chans_D,
+                       ax=ax12, cmap='Greens', vmin=np.min(compare_D), vmax=np.max(compare_D))
+SPF.check_annotate(im, valfmt=matplotlib.ticker.FuncFormatter(func), size=16)
+ax12.set_xlabel(r'$\ Substraction\ (D)$', fontsize=22)
+ax12.tick_params(axis='both', labelsize=18)
+
+del w_D, sig_D, compare_D, pick_chans_D, vmin_D, vmax_D
 
 plt.show()
 
 # save figure
-fig.subplots_adjust(top=0.949, bottom=0.05, left=0.049, right=0.990, 
+fig.subplots_adjust(top=0.949, bottom=0.035, left=0.049, right=0.990, 
                     hspace=1.000, wspace=1.000)
 plt.savefig(r'F:\SSVEP\figures\weisiwen\inter-chan-corr.png', dpi=600)
 
-# release RAM
-del box_data, compare, pick_chans
-del w, sig, vmin, vmax
 
+#%% Fig 4-1: Line chart (Bias of estimation) (MLR)
+# load data & reform
+length = 300000
 
-#%% Fig 3: Barplot (Bias of estimation)
-# load data
-mlr = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__POz\MLR_model.mat')
-w1w1_mlr = mlr['w1_ex_w1']
-w1w2_mlr = mlr['w1_ex_w2']
-w1w3_mlr = mlr['w1_ex_w3']
-w2w2_mlr = mlr['w2_ex_w2']
-w2w3_mlr = mlr['w2_ex_w3']
-w3w3_mlr = mlr['w3_ex_w3']
-del mlr
+w1_w1 = ['w1-w1' for i in range(2*length)]
+w1_w2 = ['w1-w2' for i in range(2*length)]
+w1_w3 = ['w1-w3' for i in range(2*length)]
+poz = ['POZ' for i in range(length)]
+oz = ['OZ' for i in range(length)]
+channel_w1 = poz + oz + poz + oz + poz + oz
+type_w1 = w1_w1 + w1_w2 + w1_w3 
+del w1_w1, w1_w2, w1_w3
 
-ia = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__POz\MLR_model.mat')
-w1w1_ia = ia['w1_ex_w1']
-w1w2_ia = ia['w1_ex_w2']
-w1w3_ia = ia['w1_ex_w3']
-w2w2_ia = ia['w2_ex_w2']
-w2w3_ia = ia['w2_ex_w3']
-w3w3_ia = ia['w3_ex_w3']
-del ia
+w2_w2 = ['w2-w2' for i in range(2*length)]
+w2_w3 = ['w2-w3' for i in range(2*length)]
+channel_w2 = poz + oz + poz + oz
+type_w2 = w2_w2 + w2_w3
+del w2_w2, w2_w3
 
-# data reform
+w3_w3 = ['w3-w3' for i in range(2*length)]
+channel_w3 = poz + oz
+type_w3 = w3_w3
+del w3_w3, length
+
+# Group A
+poz = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__POZ\MLR_model.mat')
+oz = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__OZ\MLR_model.mat')
+
+w1w1_p = poz['w1_ex_w1'].flatten()
+w1w1_o = oz['w1_ex_w1'].flatten()
+Abias_w1 = np.hstack((w1w1_p, w1w1_o))
+del w1w1_p, w1w1_o
+
+w1w2_p = poz['w1_ex_w2'].flatten()
+w1w2_o = oz['w1_ex_w2'].flatten()
+Abias_w1 = np.hstack((Abias_w1, w1w2_p, w1w2_o))
+del w1w2_p, w1w2_o
+
+w1w3_p = poz['w1_ex_w3'].flatten()
+w1w3_o = oz['w1_ex_w3'].flatten()
+Abias_w1 = np.hstack((Abias_w1, w1w3_p, w1w3_o))
+del w1w3_p, w1w3_o
+
+w2w2_p = poz['w2_ex_w2'].flatten()
+w2w2_o = oz['w2_ex_w2'].flatten()
+Abias_w2 = np.hstack((w2w2_p, w2w2_o))
+del w2w2_p, w2w2_o
+
+w2w3_p = poz['w2_ex_w3'].flatten()
+w2w3_o = oz['w2_ex_w3'].flatten()
+Abias_w2 = np.hstack((Abias_w2, w2w3_p, w2w3_o))
+del w2w3_p, w2w3_o
+
+w3w3_p = poz['w3_ex_w3'].flatten()
+w3w3_o = oz['w3_ex_w3'].flatten()
+Abias_w3 = np.hstack((w3w3_p, w3w3_o))
+del w3w3_p, w3w3_o
+del poz, oz
+
+bias_w1_A = pd.DataFrame({'bias':Abias_w1, 'type':type_w1, 'channel':channel_w1})
+del Abias_w1
+bias_w2_A = pd.DataFrame({'bias':Abias_w2, 'type':type_w2, 'channel':channel_w2})
+del Abias_w2
+bias_w3_A = pd.DataFrame({'bias':Abias_w3, 'type':type_w3, 'channel':channel_w3})
+del Abias_w3
+
+# Group B
+poz = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__POZ\MLR_model.mat')
+oz = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__OZ\MLR_model.mat')
+
+w1w1_p = poz['w1_ex_w1'].flatten()
+w1w1_o = oz['w1_ex_w1'].flatten()
+Bbias_w1 = np.hstack((w1w1_p, w1w1_o))
+del w1w1_p, w1w1_o
+
+w1w2_p = poz['w1_ex_w2'].flatten()
+w1w2_o = oz['w1_ex_w2'].flatten()
+Bbias_w1 = np.hstack((Bbias_w1, w1w2_p, w1w2_o))
+del w1w2_p, w1w2_o
+
+w1w3_p = poz['w1_ex_w3'].flatten()
+w1w3_o = oz['w1_ex_w3'].flatten()
+Bbias_w1 = np.hstack((Bbias_w1, w1w3_p, w1w3_o))
+del w1w3_p, w1w3_o
+
+w2w2_p = poz['w2_ex_w2'].flatten()
+w2w2_o = oz['w2_ex_w2'].flatten()
+Bbias_w2 = np.hstack((w2w2_p, w2w2_o))
+del w2w2_p, w2w2_o
+
+w2w3_p = poz['w2_ex_w3'].flatten()
+w2w3_o = oz['w2_ex_w3'].flatten()
+Bbias_w2 = np.hstack((Bbias_w2, w2w3_p, w2w3_o))
+del w2w3_p, w2w3_o
+
+w3w3_p = poz['w3_ex_w3'].flatten()
+w3w3_o = oz['w3_ex_w3'].flatten()
+Bbias_w3 = np.hstack((w3w3_p, w3w3_o))
+del w3w3_p, w3w3_o
+del poz, oz
+
+bias_w1_B = pd.DataFrame({'bias':Bbias_w1, 'type':type_w1, 'channel':channel_w1})
+del Bbias_w1
+bias_w2_B = pd.DataFrame({'bias':Bbias_w2, 'type':type_w2, 'channel':channel_w2})
+del Bbias_w2
+bias_w3_B = pd.DataFrame({'bias':Bbias_w3, 'type':type_w3, 'channel':channel_w3})
+del Bbias_w3
+
+# Group C
+poz = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__POZ\MLR_model.mat')
+oz = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__OZ\MLR_model.mat')
+
+w1w1_p = poz['w1_ex_w1'].flatten()
+w1w1_o = oz['w1_ex_w1'].flatten()
+Cbias_w1 = np.hstack((w1w1_p, w1w1_o))
+del w1w1_p, w1w1_o
+
+w1w2_p = poz['w1_ex_w2'].flatten()
+w1w2_o = oz['w1_ex_w2'].flatten()
+Cbias_w1 = np.hstack((Cbias_w1, w1w2_p, w1w2_o))
+del w1w2_p, w1w2_o
+
+w1w3_p = poz['w1_ex_w3'].flatten()
+w1w3_o = oz['w1_ex_w3'].flatten()
+Cbias_w1 = np.hstack((Cbias_w1, w1w3_p, w1w3_o))
+del w1w3_p, w1w3_o
+
+w2w2_p = poz['w2_ex_w2'].flatten()
+w2w2_o = oz['w2_ex_w2'].flatten()
+Cbias_w2 = np.hstack((w2w2_p, w2w2_o))
+del w2w2_p, w2w2_o
+
+w2w3_p = poz['w2_ex_w3'].flatten()
+w2w3_o = oz['w2_ex_w3'].flatten()
+Cbias_w2 = np.hstack((Cbias_w2, w2w3_p, w2w3_o))
+del w2w3_p, w2w3_o
+
+w3w3_p = poz['w3_ex_w3'].flatten()
+w3w3_o = oz['w3_ex_w3'].flatten()
+Cbias_w3 = np.hstack((w3w3_p, w3w3_o))
+del w3w3_p, w3w3_o
+del poz, oz
+
+bias_w1_C = pd.DataFrame({'bias':Cbias_w1, 'type':type_w1, 'channel':channel_w1})
+del Cbias_w1
+bias_w2_C = pd.DataFrame({'bias':Cbias_w2, 'type':type_w2, 'channel':channel_w2})
+del Cbias_w2
+bias_w3_C = pd.DataFrame({'bias':Cbias_w3, 'type':type_w3, 'channel':channel_w3})
+del Cbias_w3
+
+# Group D
+poz = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POZ\MLR_model.mat')
+oz = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__OZ\MLR_model.mat')
+
+w1w1_p = poz['w1_ex_w1'].flatten()
+w1w1_o = oz['w1_ex_w1'].flatten()
+Dbias_w1 = np.hstack((w1w1_p, w1w1_o))
+del w1w1_p, w1w1_o
+
+w1w2_p = poz['w1_ex_w2'].flatten()
+w1w2_o = oz['w1_ex_w2'].flatten()
+Dbias_w1 = np.hstack((Dbias_w1, w1w2_p, w1w2_o))
+del w1w2_p, w1w2_o
+
+w1w3_p = poz['w1_ex_w3'].flatten()
+w1w3_o = oz['w1_ex_w3'].flatten()
+Dbias_w1 = np.hstack((Dbias_w1, w1w3_p, w1w3_o))
+del w1w3_p, w1w3_o
+
+w2w2_p = poz['w2_ex_w2'].flatten()
+w2w2_o = oz['w2_ex_w2'].flatten()
+Dbias_w2 = np.hstack((w2w2_p, w2w2_o))
+del w2w2_p, w2w2_o
+
+w2w3_p = poz['w2_ex_w3'].flatten()
+w2w3_o = oz['w2_ex_w3'].flatten()
+Dbias_w2 = np.hstack((Dbias_w2, w2w3_p, w2w3_o))
+del w2w3_p, w2w3_o
+
+w3w3_p = poz['w3_ex_w3'].flatten()
+w3w3_o = oz['w3_ex_w3'].flatten()
+Dbias_w3 = np.hstack((w3w3_p, w3w3_o))
+del w3w3_p, w3w3_o
+del poz, oz
+
+bias_w1_D = pd.DataFrame({'bias':Dbias_w1, 'type':type_w1, 'channel':channel_w1})
+del Dbias_w1, type_w1, channel_w1
+bias_w2_D = pd.DataFrame({'bias':Dbias_w2, 'type':type_w2, 'channel':channel_w2})
+del Dbias_w2, type_w2, channel_w2
+bias_w3_D = pd.DataFrame({'bias':Dbias_w3, 'type':type_w3, 'channel':channel_w3})
+del Dbias_w3, type_w3, channel_w3
 
 # plot
-
-# save figure
-fig.subplots_adjust()
-plt.savefig(r'F:\SSVEP\figures\weisiwen\bias.png', dpi=600)
-
-# release RAM
-del data
-
+fig = plt.figure(figsize=())
 #%% Fig 4: Barplot (Cosine similarity (Normal & Tanimoto))
 # load data
 data = io.loadmat()
