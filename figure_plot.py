@@ -615,130 +615,130 @@ bias_w3_D = pd.DataFrame({'bias':Dbias_w3, 'type':type_w3, 'channel':channel_w3}
 del Dbias_w3, type_w3, channel_w3
 
 # plot
-fig = plt.figure(figsize=(12,16))
+fig = plt.figure(figsize=(16,14))
 
-gs = GridSpec(8,7, figure=fig)
+gs = GridSpec(8,9, figure=fig)
 
 sns.set(style='whitegrid')
 
 ax1 = fig.add_subplot(gs[0:2, 0:3])
 ax1.tick_params(axis='both', labelsize=18)
 ax1 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_A, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax1.set_xlabel('')
-ax1.set_ylabel('A')
-ax1.legend(loc='best', fontsize=18)
+ax1.set_ylabel('A', fontsize=18)
+ax1.legend(loc='upper left', fontsize=16)
 del bias_w1_A
 
-ax2 = fig.add_subplot(gs[0:2, 3:5])
+ax2 = fig.add_subplot(gs[0:2, 3:6])
 ax2.tick_params(axis='both', labelsize=18)
 ax2 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_A, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax2.set_xlabel('')
 ax2.set_ylabel('')
-ax2.legend(loc='best', fontsize=18)
+ax2.legend(loc='upper left', fontsize=16)
 del bias_w2_A
 
-ax3 = fig.add_subplot(gs[0:2, 5:])
+ax3 = fig.add_subplot(gs[0:2, 6:])
 ax3.tick_params(axis='both', labelsize=18)
 ax3 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_A, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax3.set_xlabel('')
 ax3.set_ylabel('')
-ax3.legend(loc='best', fontsize=18)
+ax3.legend(loc='upper left', fontsize=16)
 del bias_w3_A
 
 ax4 = fig.add_subplot(gs[2:4, 0:3])
 ax4.tick_params(axis='both', labelsize=18)
 ax4 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_B, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax4.set_xlabel('')
-ax4.set_ylabel('B')
-ax4.legend(loc='best', fontsize=18)
+ax4.set_ylabel('B', fontsize=18)
+ax4.legend(loc='upper left', fontsize=16)
 del bias_w1_B
 
-ax5 = fig.add_subplot(gs[2:4, 3:5])
+ax5 = fig.add_subplot(gs[2:4, 3:6])
 ax5.tick_params(axis='both', labelsize=18)
 ax5 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_B, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax5.set_xlabel('')
 ax5.set_ylabel('')
-ax5.legend(loc='best', fontsize=18)
+ax5.legend(loc='upper left', fontsize=16)
 del bias_w2_B
 
-ax6 = fig.add_subplot(gs[2:4, 5:])
+ax6 = fig.add_subplot(gs[2:4, 6:])
 ax6.tick_params(axis='both', labelsize=18)
 ax6 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_B, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax6.set_xlabel('')
 ax6.set_ylabel('')
-ax6.legend(loc='best', fontsize=18)
+ax6.legend(loc='upper left', fontsize=16)
 del bias_w3_B
 
 ax7 = fig.add_subplot(gs[4:6, 0:3])
 ax7.tick_params(axis='both', labelsize=18)
 ax7 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_C, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax7.set_xlabel('')
-ax7.set_ylabel('C')
-ax7.legend(loc='best', fontsize=18)
+ax7.set_ylabel('C', fontsize=18)
+ax7.legend(loc='upper left', fontsize=16)
 del bias_w1_C
 
-ax8 = fig.add_subplot(gs[4:6, 3:5])
+ax8 = fig.add_subplot(gs[4:6, 3:6])
 ax8.tick_params(axis='both', labelsize=18)
 ax8 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_C, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax8.set_xlabel('')
 ax8.set_ylabel('')
-ax8.legend(loc='best', fontsize=18)
+ax8.legend(loc='upper left', fontsize=16)
 del bias_w2_C
 
-ax9 = fig.add_subplot(gs[4:6, 5:])
+ax9 = fig.add_subplot(gs[4:6, 6:])
 ax9.tick_params(axis='both', labelsize=18)
 ax9 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_C, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax9.set_xlabel('')
 ax9.set_ylabel('')
-ax9.legend(loc='best', fontsize=18)
+ax9.legend(loc='upper left', fontsize=16)
 del bias_w3_C
 
 ax10 = fig.add_subplot(gs[6:, 0:3])
 ax10.tick_params(axis='both', labelsize=18)
 ax10 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_D, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax10.set_xlabel('')
-ax10.set_ylabel('D')
-ax10.legend(loc='best', fontsize=18)
+ax10.set_ylabel('D', fontsize=18)
+ax10.legend(loc='upper left', fontsize=16)
 del bias_w1_D
 
-ax11 = fig.add_subplot(gs[6:, 3:5])
+ax11 = fig.add_subplot(gs[6:, 3:6])
 ax11.tick_params(axis='both', labelsize=18)
 ax11 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_D, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax11.set_xlabel('')
 ax11.set_ylabel('')
-ax11.legend(loc='best', fontsize=18)
+ax11.legend(loc='upper left', fontsize=16)
 del bias_w2_D
 
-ax12 = fig.add_subplot(gs[6:, 5:])
+ax12 = fig.add_subplot(gs[6:, 6:])
 ax12.tick_params(axis='both', labelsize=18)
 ax12 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_D, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
                     ci=95, capsize=.2)
 ax12.set_xlabel('')
 ax12.set_ylabel('')
-ax12.legend(loc='best', fontsize=18)
+ax12.legend(loc='upper left', fontsize=16)
 del bias_w3_D
 
 fig.tight_layout()
@@ -940,130 +940,130 @@ bias_w3_D = pd.DataFrame({'bias':Dbias_w3, 'type':type_w3, 'channel':channel_w3}
 del Dbias_w3, type_w3, channel_w3
 
 # plot
-fig = plt.figure(figsize=(12,16))
+fig = plt.figure(figsize=(16,14))
 
-gs = GridSpec(8,7, figure=fig)
+gs = GridSpec(8,9, figure=fig)
 
 sns.set(style='whitegrid')
 
 ax1 = fig.add_subplot(gs[0:2, 0:3])
 ax1.tick_params(axis='both', labelsize=18)
 ax1 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_A, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax1.set_xlabel('')
-ax1.set_ylabel('A')
-ax1.legend(loc='best', fontsize=18)
+ax1.set_ylabel('A', fontsize=18)
+ax1.legend(loc='upper left', fontsize=16)
 del bias_w1_A
 
-ax2 = fig.add_subplot(gs[0:2, 3:5])
+ax2 = fig.add_subplot(gs[0:2, 3:6])
 ax2.tick_params(axis='both', labelsize=18)
 ax2 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_A, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax2.set_xlabel('')
 ax2.set_ylabel('')
-ax2.legend(loc='best', fontsize=18)
+ax2.legend(loc='upper left', fontsize=16)
 del bias_w2_A
 
-ax3 = fig.add_subplot(gs[0:2, 5:])
+ax3 = fig.add_subplot(gs[0:2, 6:])
 ax3.tick_params(axis='both', labelsize=18)
 ax3 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_A, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax3.set_xlabel('')
 ax3.set_ylabel('')
-ax3.legend(loc='best', fontsize=18)
+ax3.legend(loc='upper left', fontsize=16)
 del bias_w3_A
 
 ax4 = fig.add_subplot(gs[2:4, 0:3])
 ax4.tick_params(axis='both', labelsize=18)
 ax4 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_B, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax4.set_xlabel('')
-ax4.set_ylabel('B')
-ax4.legend(loc='best', fontsize=18)
+ax4.set_ylabel('B', fontsize=18)
+ax4.legend(loc='upper left', fontsize=16)
 del bias_w1_B
 
-ax5 = fig.add_subplot(gs[2:4, 3:5])
+ax5 = fig.add_subplot(gs[2:4, 3:6])
 ax5.tick_params(axis='both', labelsize=18)
 ax5 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_B, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax5.set_xlabel('')
 ax5.set_ylabel('')
-ax5.legend(loc='best', fontsize=18)
+ax5.legend(loc='upper left', fontsize=16)
 del bias_w2_B
 
-ax6 = fig.add_subplot(gs[2:4, 5:])
+ax6 = fig.add_subplot(gs[2:4, 6:])
 ax6.tick_params(axis='both', labelsize=18)
 ax6 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_B, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax6.set_xlabel('')
 ax6.set_ylabel('')
-ax6.legend(loc='best', fontsize=18)
+ax6.legend(loc='upper left', fontsize=16)
 del bias_w3_B
 
 ax7 = fig.add_subplot(gs[4:6, 0:3])
 ax7.tick_params(axis='both', labelsize=18)
 ax7 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_C, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax7.set_xlabel('')
-ax7.set_ylabel('C')
-ax7.legend(loc='best', fontsize=18)
+ax7.set_ylabel('C', fontsize=18)
+ax7.legend(loc='upper left', fontsize=16)
 del bias_w1_C
 
-ax8 = fig.add_subplot(gs[4:6, 3:5])
+ax8 = fig.add_subplot(gs[4:6, 3:6])
 ax8.tick_params(axis='both', labelsize=18)
 ax8 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_C, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax8.set_xlabel('')
 ax8.set_ylabel('')
-ax8.legend(loc='best', fontsize=18)
+ax8.legend(loc='upper left', fontsize=16)
 del bias_w2_C
 
-ax9 = fig.add_subplot(gs[4:6, 5:])
+ax9 = fig.add_subplot(gs[4:6, 6:])
 ax9.tick_params(axis='both', labelsize=18)
 ax9 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_C, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax9.set_xlabel('')
 ax9.set_ylabel('')
-ax9.legend(loc='best', fontsize=18)
+ax9.legend(loc='upper left', fontsize=16)
 del bias_w3_C
 
 ax10 = fig.add_subplot(gs[6:, 0:3])
 ax10.tick_params(axis='both', labelsize=18)
 ax10 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w1_D, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax10.set_xlabel('')
-ax10.set_ylabel('D')
-ax10.legend(loc='best', fontsize=18)
+ax10.set_ylabel('D', fontsize=18)
+ax10.legend(loc='upper left', fontsize=16)
 del bias_w1_D
 
-ax11 = fig.add_subplot(gs[6:, 3:5])
+ax11 = fig.add_subplot(gs[6:, 3:6])
 ax11.tick_params(axis='both', labelsize=18)
 ax11 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w2_D, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax11.set_xlabel('')
 ax11.set_ylabel('')
-ax11.legend(loc='best', fontsize=18)
+ax11.legend(loc='upper left', fontsize=16)
 del bias_w2_D
 
-ax12 = fig.add_subplot(gs[6:, 5:])
+ax12 = fig.add_subplot(gs[6:, 6:])
 ax12.tick_params(axis='both', labelsize=18)
 ax12 = sns.pointplot(x='type', y='bias', hue='channel', data=bias_w3_D, dodge=True,
-                    markers=['o', 'x'], linestyles=['-', '--'], palette='tab10',
+                    markers=['o', 'x'], linestyles=['-', '--'], palette='Accent',
                     ci=95, capsize=.2)
 ax12.set_xlabel('')
 ax12.set_ylabel('')
-ax12.legend(loc='best', fontsize=18)
+ax12.legend(loc='upper left', fontsize=16)
 del bias_w3_D
 
 fig.tight_layout()
@@ -1072,10 +1072,31 @@ plt.show()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\bias_IA.png', dpi=600)
 
 
-#%% Fig 4: Barplot (Cosine similarity (Normal & Tanimoto))
+#%% Fig 4-1: Barplot (Cosine similarity (Normal & Tanimoto)) (POZ)
 # load data
-data = io.loadmat()
+groupa = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__POZ\cos_sim_ia.mat')
+w1w1n = groupa['w1_w1_nsim']
+w1w1t = groupa['w1_w1_tsim']
 
+w1w2n = groupa['w1_w2_nsim']
+w1w2t = groupa['w1_w2_tsim']
+
+w1w3n = groupa['w1_w3_nsim']
+w1w3t = groupa['w1_w3_tsim']
+
+w2w2n = groupa['w2_w2_nsim']
+w2w2t = groupa['w2_w2_tsim']
+
+w2w3n = groupa['w2_w3_nsim']
+w2w3t = groupa['w2_w3_tsim']
+
+w3w3n = groupa['w3_w3_nsim']
+w3w3t = groupa['w3_w3_tsim']
+
+
+
+
+#%%
 # plot
 
 # save figure
