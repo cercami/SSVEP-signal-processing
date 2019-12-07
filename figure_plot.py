@@ -1072,39 +1072,147 @@ plt.show()
 plt.savefig(r'F:\SSVEP\figures\weisiwen\bias_IA.png', dpi=600)
 
 
-#%% Fig 4-1: Barplot (Cosine similarity (Normal & Tanimoto)) (POZ)
-# load data
-groupa = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__POZ\cos_sim_ia.mat')
-w1w1n = groupa['w1_w1_nsim']
-w1w1t = groupa['w1_w1_tsim']
+#%% Fig 5: Barplot (Cosine similarity (Normal & Tanimoto))
+# load data & reform
+A = ['A' for i in range(1800)]
+B = ['B' for i in range(1800)]
+C = ['C' for i in range(1800)]
+D = ['D' for i in range(1800)]
+group = A + B + C + D
+del A, B, C, D
 
-w1w2n = groupa['w1_w2_nsim']
-w1w2t = groupa['w1_w2_tsim']
+w1w1 = ['w1-w1' for i in range(300)]
+w1w2 = ['w1-w2' for i in range(300)]
+w1w3 = ['w1-w3' for i in range(300)]
+w2w2 = ['w2-w2' for i in range(300)]
+w2w3 = ['w2-w3' for i in range(300)]
+w3w3 = ['w3-w3' for i in range(300)]
+temp = w1w1 + w1w2 + w1w3 + w2w2 + w2w3 + w3w3
+del w1w1, w1w2, w1w3, w2w2, w2w3, w3w3
+ttype = temp + temp + temp + temp
+del temp
 
-w1w3n = groupa['w1_w3_nsim']
-w1w3t = groupa['w1_w3_tsim']
+# Group A
+cossim = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__OZ\cos_sim_ia.mat')
+w1w1n = cossim['w1_w1_nsim'].flatten()
+w1w2n = cossim['w1_w2_nsim'].flatten()
+w1w3n = cossim['w1_w3_nsim'].flatten()
+w2w2n = cossim['w2_w2_nsim'].flatten()
+w2w3n = cossim['w2_w3_nsim'].flatten()
+w3w3n = cossim['w3_w3_nsim'].flatten()
+sim = np.hstack((w1w1n, w1w2n, w1w3n, w2w2n, w2w3n, w3w3n))
+del w1w1n, w1w2n, w1w3n, w2w2n, w2w3n, w3w3n
 
-w2w2n = groupa['w2_w2_nsim']
-w2w2t = groupa['w2_w2_tsim']
+w1w1t = cossim['w1_w1_tsim'].flatten()
+w1w2t = cossim['w1_w2_tsim'].flatten()
+w1w3t = cossim['w1_w3_tsim'].flatten()
+w2w2t = cossim['w2_w2_tsim'].flatten()
+w2w3t = cossim['w2_w3_tsim'].flatten()
+w3w3t = cossim['w3_w3_tsim'].flatten()
+tanimoto = np.hstack((w1w1t, w1w2t, w1w3t, w2w2t, w2w3t, w3w3t))
+del w1w1t, w1w2t, w1w3t, w2w2t, w2w3t, w3w3t
+del cossim
 
-w2w3n = groupa['w2_w3_nsim']
-w2w3t = groupa['w2_w3_tsim']
+# Group B
+cossim = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\19_23__OZ\cos_sim_ia.mat')
+w1w1n = cossim['w1_w1_nsim'].flatten()
+w1w2n = cossim['w1_w2_nsim'].flatten()
+w1w3n = cossim['w1_w3_nsim'].flatten()
+w2w2n = cossim['w2_w2_nsim'].flatten()
+w2w3n = cossim['w2_w3_nsim'].flatten()
+w3w3n = cossim['w3_w3_nsim'].flatten()
+sim = np.hstack((sim, w1w1n, w1w2n, w1w3n, w2w2n, w2w3n, w3w3n))
+del w1w1n, w1w2n, w1w3n, w2w2n, w2w3n, w3w3n
 
-w3w3n = groupa['w3_w3_nsim']
-w3w3t = groupa['w3_w3_tsim']
+w1w1t = cossim['w1_w1_tsim'].flatten()
+w1w2t = cossim['w1_w2_tsim'].flatten()
+w1w3t = cossim['w1_w3_tsim'].flatten()
+w2w2t = cossim['w2_w2_tsim'].flatten()
+w2w3t = cossim['w2_w3_tsim'].flatten()
+w3w3t = cossim['w3_w3_tsim'].flatten()
+tanimoto = np.hstack((tanimoto, w1w1t, w1w2t, w1w3t, w2w2t, w2w3t, w3w3t))
+del w1w1t, w1w2t, w1w3t, w2w2t, w2w3t, w3w3t
+del cossim
 
+# Group C
+cossim = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\24_28__OZ\cos_sim_ia.mat')
+w1w1n = cossim['w1_w1_nsim'].flatten()
+w1w2n = cossim['w1_w2_nsim'].flatten()
+w1w3n = cossim['w1_w3_nsim'].flatten()
+w2w2n = cossim['w2_w2_nsim'].flatten()
+w2w3n = cossim['w2_w3_nsim'].flatten()
+w3w3n = cossim['w3_w3_nsim'].flatten()
+sim = np.hstack((sim, w1w1n, w1w2n, w1w3n, w2w2n, w2w3n, w3w3n))
+del w1w1n, w1w2n, w1w3n, w2w2n, w2w3n, w3w3n
 
+w1w1t = cossim['w1_w1_tsim'].flatten()
+w1w2t = cossim['w1_w2_tsim'].flatten()
+w1w3t = cossim['w1_w3_tsim'].flatten()
+w2w2t = cossim['w2_w2_tsim'].flatten()
+w2w3t = cossim['w2_w3_tsim'].flatten()
+w3w3t = cossim['w3_w3_tsim'].flatten()
+tanimoto = np.hstack((tanimoto, w1w1t, w1w2t, w1w3t, w2w2t, w2w3t, w3w3t))
+del w1w1t, w1w2t, w1w3t, w2w2t, w2w3t, w3w3t
+del cossim
 
+# Group D
+cossim = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__OZ\cos_sim_ia.mat')
+w1w1n = cossim['w1_w1_nsim'].flatten()
+w1w2n = cossim['w1_w2_nsim'].flatten()
+w1w3n = cossim['w1_w3_nsim'].flatten()
+w2w2n = cossim['w2_w2_nsim'].flatten()
+w2w3n = cossim['w2_w3_nsim'].flatten()
+w3w3n = cossim['w3_w3_nsim'].flatten()
+sim = np.hstack((sim, w1w1n, w1w2n, w1w3n, w2w2n, w2w3n, w3w3n))
+del w1w1n, w1w2n, w1w3n, w2w2n, w2w3n, w3w3n
 
-#%%
+w1w1t = cossim['w1_w1_tsim'].flatten()
+w1w2t = cossim['w1_w2_tsim'].flatten()
+w1w3t = cossim['w1_w3_tsim'].flatten()
+w2w2t = cossim['w2_w2_tsim'].flatten()
+w2w3t = cossim['w2_w3_tsim'].flatten()
+w3w3t = cossim['w3_w3_tsim'].flatten()
+tanimoto = np.hstack((tanimoto, w1w1t, w1w2t, w1w3t, w2w2t, w2w3t, w3w3t))
+del w1w1t, w1w2t, w1w3t, w2w2t, w2w3t, w3w3t
+del cossim
+
+cossim_n = pd.DataFrame({'sim':sim, 'type':ttype, 'group':group})
+del sim
+cossim_t = pd.DataFrame({'tanimoto':tanimoto, 'type':ttype, 'group':group})
+del tanimoto
+
 # plot
+fig = plt.figure(figsize=(18,12))
 
-# save figure
-fig.subplots_adjust()
-plt.savefig(r'F:\SSVEP\figures\weisiwen\cos_sim.png', dpi=600)
+gs = GridSpec(6,9, figure=fig)
 
-# release RAM
-del data
+color = ['#FB8072', '#80B1D3', '#FDB642', '#B3DE69']
+brynhildr = sns.color_palette(color)
+sns.set(style='whitegrid')
+
+ax1 = fig.add_subplot(gs[0:3, :])
+ax1.tick_params(axis='both', labelsize=18)
+ax1 = sns.barplot(x='type', y='sim', hue='group', data=cossim_n, ci='sd',
+                  palette=brynhildr, saturation=.75)
+ax1.set_xlabel('')
+ax1.set_ylabel('Normal cosine similarity', fontsize=18)
+ax1.legend(loc='best', fontsize=16)
+del cossim_n
+
+ax2 = fig.add_subplot(gs[3:, :])
+ax2.tick_params(axis='both', labelsize=18)
+ax2 = sns.barplot(x='type', y='tanimoto', hue='group', data=cossim_t, ci='sd',
+                  palette=brynhildr, saturation=.75)
+ax2.set_xlabel('')
+ax2.set_ylabel('Tanimoto coefficient', fontsize=18)
+ax2.legend(loc='best', fontsize=16)
+del cossim_t
+del brynhildr, color, group, ttype
+
+fig.tight_layout()
+plt.show()
+
+plt.savefig(r'F:\SSVEP\figures\weisiwen\cossim_oz_ia.png', dpi=600)
 
 
 #%% Fig 6: Waveform of signal (Origin & estimate) (With zoom-in effect)
