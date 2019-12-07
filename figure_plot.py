@@ -1217,33 +1217,81 @@ plt.savefig(r'F:\SSVEP\figures\weisiwen\cossim_oz_ia.png', dpi=600)
 
 #%% Fig 6: Waveform of signal (Origin & estimate) (With zoom-in effect)
 # load data
-data = io.loadmat()
-
-# plot
-
-# save figure
-fig.subplots_adjust()
-plt.savefig(r'F:\SSVEP\figures\weisiwen\waveform_o&es.png', dpi=600)
-
-# release RAM
+data = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POZ\model_data.mat')
+sig = data['sig_o']
 del data
 
+data = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POZ\MLR_model.mat')
+w1s = data['w1_es_s']
+w1x = data['w1_ex_s']
 
-#%% Fig 7: Waveform of signal (Origin & extract) (With zoom-in effect)
-# load data
-data = io.loadmat()
+w2s = data['w2_es_s']
+w2x = data['w2_ex_s']
 
-# plot
-
-# save figure
-fig.subplots_adjust()
-plt.savefig(r'F:\SSVEP\figures\weisiwen\waveform_o&ex.png', dpi=600)
-
-# release RAM
+w3s = data['w3_es_s']
+w3x = data['w3_ex_s']
 del data
 
+# plot
+fig = plt.figure(figsize=(16,9))
 
-#%% Fig 8: Power of spectrum density (Origin & extract)
+gs = GridSpec(3,4, figure=fig)
+
+ax1 = fig.add_subplot(gs[0:1, :])
+ax1.tick_params(axis='both', labelsize=14)
+ax1.set_title('8Hz SSVEP comparison (origin & estimation): POZ', fontsize=20)
+ax1.set_xlim([-100,3600])
+ax1.set_xlabel('Time/ms', fontsize=16)
+ax1.set_ylabel('Amplitude/μV', fontsize=16)
+ax1.plot(np.mean(sig[0,:,:], axis=0), label='Origin', color='tab:blue', linewidth=1.5)
+ax1.plot(np.mean(w1s[0,:,:], axis=0), label='w1', color='tab:orange', linewidth=1)
+ax1.plot(np.mean(w2s[0,:,:], axis=0), label='w2', color='tab:green', linewidth=1)
+ax1.plot(np.mean(w3s[0,:,:], axis=0), label='w3', color='tab:red', linewidth=1)
+ax1.legend(loc='lower right', fontsize=14)
+
+ax2 = fig.add_subplot(gs[1:2, 0:2])
+ax2.tick_params(axis='both', labelsize=14)
+ax2.set_xlim(100,1300)
+SPF.zoom_effect01(ax2,ax1,200,1200)
+ax2.set_xlabel('Time/ms', fontsize=16)
+ax2.set_ylabel('Amplitude/μV', fontsize=16)
+ax2.plot(np.mean(sig[0,:,0:1300], axis=0), label='Origin', color='tab:blue', linewidth=1.5)
+ax2.plot(np.mean(w1s[0,:,0:1300], axis=0), label='w1', color='tab:orange', linewidth=1)
+ax2.plot(np.mean(w2s[0,:,0:1300], axis=0), label='w2', color='tab:green', linewidth=1)
+ax2.plot(np.mean(w3s[0,:,0:1300], axis=0), label='w3', color='tab:red', linewidth=1)
+#ax2.legend(loc='lower right', fontsize=14)
+del w1s, w2s, w3s
+
+ax3 = fig.add_subplot(gs[2:, :])
+ax3.tick_params(axis='both', labelsize=14)
+ax3.set_title('8Hz SSVEP comparison (origin & extraction): POZ', fontsize=20)
+ax3.set_xlim([-100,3900])
+ax3.set_xlabel('Time/ms', fontsize=16)
+ax3.set_ylabel('Amplitude/μV', fontsize=16)
+ax3.plot(np.mean(sig[0,:,:], axis=0), label='Origin', color='tab:blue', linewidth=1.5)
+ax3.plot(np.mean(w1x[0,:,:], axis=0), label='w1', color='tab:orange', linewidth=1)
+ax3.plot(np.mean(w2x[0,:,:], axis=0), label='w2', color='tab:green', linewidth=1)
+ax3.plot(np.mean(w3x[0,:,:], axis=0), label='w3', color='tab:red', linewidth=1)
+ax3.legend(loc='lower right', fontsize=14)
+
+ax4 = fig.add_subplot(gs[1:2, 2:])
+ax4.tick_params(axis='both', labelsize=14)
+ax4.set_xlim(100,1300)
+SPF.zoom_effect01(ax4,ax3,200,1200)
+ax4.set_xlabel('Time/ms', fontsize=16)
+ax4.set_ylabel('Amplitude/μV', fontsize=16)
+ax4.plot(np.mean(sig[0,:,0:1300], axis=0), label='Origin', color='tab:blue', linewidth=1.5)
+ax4.plot(np.mean(w1x[0,:,0:1300], axis=0), label='w1', color='tab:orange', linewidth=1)
+ax4.plot(np.mean(w2x[0,:,0:1300], axis=0), label='w2', color='tab:green', linewidth=1)
+ax4.plot(np.mean(w3x[0,:,0:1300], axis=0), label='w3', color='tab:red', linewidth=1)
+del w1x, w2x, w3x, sig
+
+fig.subplots_adjust(top=0.950, bottom=0.070, left=0.055, right=0.990,
+                    hspace=0.400, wspace=0.500)
+plt.savefig(r'F:\SSVEP\figures\weisiwen\34-35-36-43-44__POZ_mlr_8hz.png', dpi=600)
+
+
+#%% Fig 7: Power of spectrum density (Origin & extract)
 # load data
 data = io.loadmat()
 
@@ -1284,58 +1332,6 @@ plt.savefig(r'F:\SSVEP\figures\weisiwen\snr_f.png', dpi=600)
 # release RAM
 del data
 
-
-#%% use sns module to plot heatmap
-#fig, ax = plt.subplots()                    
-#ax = sns.heatmap(Z, annot=True, fmt='.2g', linewidths=0.5, cmap='Reds', cbar=False,
-                 #xticklabels=pick_chans, yticklabels=pick_chans, vmin=np.min(Z),
-                 #vmax=np.max(Z))
-#cbar = ax.figure.colorbar(ax.collections[0])
-#cbar.ax.tick_params(labelsize=18)
-#plt.xticks(fontsize=16)
-#plt.yticks(fontsize=16)
-
-
-#%% Signal waveform & Time SNR (with zoom-in effect: 0-500ms/0-125points)
-# 1. signal waveform:
-    # (1) original
-    # (2) w1 model extract
-    # (3) w2 model extract
-    # (4) w3 model extract
-fig = plt.figure(figsize=(16,16))
-gs = GridSpec(6, 7, figure=fig)
-
-ax1 = fig.add_subplot(gs[,])
-ax1.set_title('signal', fontsize=20)
-ax1.set_xlabel('time/ms', fontsize=20)
-ax1.set_ylabel('SNR', fontsize=20)
-ax1.plot(np.mean(sig_o[7,:,:], axis=0), label='origin:3-6s')
-ax1.plot(np.mean(s_iex_w1[7,:,:], axis=0), label='w1:0-1s')
-ax1.plot(np.mean(s_iex_w2[7,:,:], axis=0), label='w2:1-2s')
-ax1.plot(np.mean(s_iex_w3[7,:,:], axis=0), label='w3:2-3s')
-ax1.tick_params(axis='both', labelsize=20)
-ax1.legend(loc='upper right', fontsize=20)
-
-ax2 = fig.add_subplot(gs[,])
-ax2.set_title('time snr', fontsize=20)
-ax2.set_xlabel('time/ms', fontsize=20)
-ax2.set_ylabel('SNR', fontsize=20)
-ax2.plot(snr_o_t[7,:], label='origin:3-6s')
-ax2.plot(snr_w1_i_t[7,:], label='w1:0-1s')
-ax2.plot(snr_w2_i_t[7,:], label='w2:1-2s')
-ax2.plot(snr_w3_i_t[7,:], label='w3:2-3s')
-ax2.tick_params(axis='both', labelsize=20)
-ax2.legend(loc='best', fontsize=20)
-
-
-#%% plot PSD
-plt.title('signal psd', fontsize=20)
-plt.xlabel('frequency/Hz', fontsize=20)
-plt.plot(fs[1,1,:], np.mean(sig_p[2,:,:], axis=0), label='origin:3-6s', color='red')
-plt.plot(fs[1,1,:], np.mean(w1_p[2,:,:], axis=0), label='w1:0-1s', color='blue')
-plt.plot(fs[1,1,:], np.mean(w2_p[2,:,:], axis=0), label='w2:1-2s', color='yellow')
-plt.plot(fs[1,1,:], np.mean(w3_p[2,:,:], axis=0), label='w3:2-3s', color='green')
-plt.legend(loc='best', fontsize=20)
 
 #%%
 def strain(X):
