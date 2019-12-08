@@ -371,18 +371,36 @@ del w1_es_w1, w1_es_w2, w1_es_w3, w2_es_w2, w2_es_w3, w3_es_w3
 
 
 #%% Power spectrum density
+# load data
+data = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POZ\MLR_model.mat')
+w1_ex_s = data['w1_ex_s']
+w2_ex_s = data['w2_ex_s']
+w3_ex_s = data['w3_ex_s']
+del data
+
+data = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\34-35-36-43-44__POZ\model_data.mat')
+sig_o = data['sig_o']
+del data
+
+sfreq = 1000
+
 w1_p, fs = SPF.welch_p(w1_ex_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
-                      n_overlap=250, n_per_seg=500)
+                      n_overlap=1000, n_per_seg=2000)
 w2_p, fs = SPF.welch_p(w2_ex_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
-                      n_overlap=250, n_per_seg=500)
+                      n_overlap=1000, n_per_seg=2000)
 w3_p, fs = SPF.welch_p(w3_ex_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
-                      n_overlap=250, n_per_seg=500)
+                      n_overlap=1000, n_per_seg=2000)
 sig_p, fs = SPF.welch_p(sig_o, sfreq=sfreq, fmin=0, fmax=50, n_fft=3000,
-                       n_overlap=250, n_per_seg=500)
+                       n_overlap=1000, n_per_seg=2000)
+#plt.plot(fs[1,1,:], np.mean(sig_p[0,:,:], axis=0), label='origin')
+#plt.plot(fs[1,1,:], np.mean(w1_p[0,:,:], axis=0), label='w1')
+#plt.plot(fs[1,1,:], np.mean(w2_p[0,:,:], axis=0), label='w2')
+#plt.plot(fs[1,1,:], np.mean(w3_p[0,:,:], axis=0), label='w3')
+#plt.legend(loc='best')
 
 # save data
-#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\psd_mlr.mat'
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\psd_ia.mat'
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\psd_mlr.mat'
+#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\psd_ia.mat'
 io.savemat(data_path, {'w1':w1_p, 'w2':w2_p, 'w3':w3_p, 'sig':sig_p, 'fs':fs})
 
 
@@ -390,24 +408,54 @@ io.savemat(data_path, {'w1':w1_p, 'w2':w2_p, 'w3':w3_p, 'sig':sig_p, 'fs':fs})
 
 
 #%% SNR in time domain
+def snr(X):
+    '''
+    Two method for SNR computation
+        (1) Compute SNR and return time sequency
+        (2) Use superimposed average method:
+    :param X: input data (one-channel) (n_events, n_epochs, n_times) 
+    :param mode: choose method
+    '''
+    snr = np.zeros((X.shape[0], X.shape[2]))    # (n_events, n_times)
+    # basic object's size: (n_epochs, n_times)
+    for i in range(X.shape[0]):                 # i for n_events
+        ex = np.mat(np.mean(X[i,:,:], axis=0))  # (1, n_times)
+        temp = np.mat(np.ones((1, X.shape[1]))) # (1, n_epochs)
+        minus = (temp.T * ex).A                 # (n_epochs, n_times)
+        ex = (ex.A) ** 2
+        var = np.mean((X[i,:,:] - minus)**2, axis=0)
+        snr[i,:] = ex/var
+    return snr
+                
+# load data
+data = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__POZ\model_data.mat')
+sig_o = data['sig_o']
+del data
+
+data = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\14_18__POZ\MLR_model.mat')
+w1 = data['w1_ex_s']
+w2 = data['w2_ex_s']
+w3 = data['w3_ex_s']
+del data
+
 # original signal snr
-snr_o = SPF.snr_time(sig_o, mode='time')
+snr_o = snr(sig_o)
 # w1-s
-snr_w1 = SPF.snr_time(w1_ex_s, mode='time')
+snr_w1 = snr(w1)
 # w2-s
-snr_w2 = SPF.snr_time(w2_ex_s, mode='time')
+snr_w2 = snr(w2)
 # w3-s
-snr_w3 = SPF.snr_time(w3_ex_s, mode='time')
+snr_w3 = snr(w3)
 
 # save data
 #data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_mlr.mat'
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_ia.mat'
-io.savemat(data_path, {'origin':snr_o, 'w1':snr_w1, 'w2':snr_w2, 'w3':snr_w3})
+#data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\snr_t_ia.mat'
+#io.savemat(data_path, {'origin':snr_o, 'w1':snr_w1, 'w2':snr_w2, 'w3':snr_w3})
 
 # release RAM
-del snr_o, snr_w1, snr_w2, snr_w3
+#del snr_o, snr_w1, snr_w2, snr_w3
 #del sig_o
-del w1_es_s, w2_es_s, w3_es_s, w1_ex_s, w2_ex_s, w3_ex_s 
+#del w1_es_s, w2_es_s, w3_es_s, w1_ex_s, w2_ex_s, w3_ex_s 
 
 
 #%% SNR in frequency domain
