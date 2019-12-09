@@ -45,14 +45,14 @@ chan = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
 pick_chans = chan['chan_info'].tolist()
 
 del chan
-
+#%%
 # plot
 fig, ax = plt.subplots(figsize=(24,24))
 
-im = ax.imshow(compare, cmap='Blues')
+im = ax.imshow(compare[2,:,:], cmap='Blues')
 
-ax.set_xticks(np.arange(compare.shape[1]))
-ax.set_yticks(np.arange(compare.shape[0]))
+ax.set_xticks(np.arange(compare.shape[2]))
+ax.set_yticks(np.arange(compare.shape[1]))
     
 ax.set_xticklabels(pick_chans, fontsize=24)
 ax.set_yticklabels(pick_chans, fontsize=24)
@@ -64,8 +64,8 @@ plt.setp(ax.get_xticklabels(), rotation=-60, ha='right', rotation_mode='anchor')
 for edge, spine in ax.spines.items():
     spine.set_visible(False)
         
-ax.set_xticks(np.arange(compare.shape[1]+1)-.5, minor=True)
-ax.set_yticks(np.arange(compare.shape[0]+1)-.5, minor=True)
+ax.set_xticks(np.arange(compare.shape[2]+1)-.5, minor=True)
+ax.set_yticks(np.arange(compare.shape[1]+1)-.5, minor=True)
 ax.grid(which='minor', color='w', linestyle='-', linewidth=3)
 ax.tick_params(which='minor', bottom=False, left=False)
 
@@ -73,10 +73,10 @@ plt.show()
 
 # save figure
 fig.tight_layout()
-plt.savefig(r'F:\SSVEP\figures\weisiwen\full_chan_corr.png', dpi=600)
+plt.savefig(r'F:\3.png')
 
 # release RAM
-del pick_chans, compare, vmin, vmax, edge
+#del pick_chans, compare, vmin, vmax, edge
 
 
 #%% Fig 2-1: Boxplot (MLR)

@@ -100,6 +100,7 @@ del eeg
 chans = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
 chans = chans['chan_info'].tolist()
 
+
 # basic info
 sfreq = 1000
 
@@ -183,7 +184,7 @@ del data
 # choose output channels: Oz
 
 # w1 model data: 0-1000ms
-w1_i = w1[:,:,[34,35,36,43,44],:]
+w1_i = w1[:,:,[45,54],:]
 w1_o = w1[:,:,47,:]
 w1_total = w1[:,:,[34,35,36,43,44,47],:]
 w_total = w[:,:,[34,35,36,43,44,47],:]

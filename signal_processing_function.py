@@ -450,7 +450,7 @@ def corr_coef(X, mode):
             for j in range(X.shape[1]):
                 corr[i,j,:,:] = np.corrcoef(X[i,j,:,:])
                 
-        corr = np.mean(np.mean(corr, axis=0), axis=0)
+        corr = np.mean(corr, axis=1)
 
     if mode == 'spearman':
         for i in range(X.shape[0]):
@@ -458,7 +458,7 @@ def corr_coef(X, mode):
                 temp = pd.DataFrame(X[i,j,:,:].T)
                 corr[i,j,:,:] = temp.corr('spearman')
                 
-        corr = np.mean(np.mean(corr, axis=0), axis=0)
+        corr = np.mean(corr, axis=1)
     
     return corr
 
