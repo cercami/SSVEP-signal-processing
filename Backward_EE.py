@@ -27,11 +27,10 @@ import matplotlib.pyplot as plt
 #%% timing
 start = time.clock()
 
-
 #%% load data
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
 
-data = eeg['raw_data'][2,:,:,:]
+data = eeg['raw_data'][0,:,:,:]
 #[0,:,:,:]
 data *= 1e6  # reset unit
 
@@ -43,7 +42,6 @@ chans = chans['chan_info'].tolist()
 
 # basic info
 sfreq = 1000
-
 
 #%% Data preprocessing
 # filtering
@@ -61,9 +59,6 @@ w = f_data[:,:,2000:3000]
 signal_data = f_data[:,:,3200:]   # 500ms after 200ms duration
 
 del f_data, data
-
-end_pre = time.clock()
-
 
 #%% define function
 # multi-linear regression
@@ -108,13 +103,13 @@ def snr_time(data):
     return snr
 
 #%% Backward Estimate Extraction
-target = signal_data[:, chans.index('POZ'), :]
-signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
+target = signal_data[:, chans.index('OZ '), :]
+signal_data = np.delete(signal_data, chans.index('OZ '), axis=1)
 
-w_target = w[:,chans.index('POZ'),:]
-w = np.delete(w, chans.index('POZ'), axis=1)
+w_target = w[:,chans.index('OZ '),:]
+w = np.delete(w, chans.index('OZ '), axis=1)
 
-del chans[chans.index('POZ')]
+del chans[chans.index('OZ ')]
 
 # initialization
 snr = snr_time(target)
@@ -130,7 +125,7 @@ j = 0
 # begin loop
 active = True
 while active:
-    if len(chans) > 0:
+    if len(chans) > 1:
         compare_snr = np.zeros((len(chans)))
         wTEMP_SNR = np.zeros((len(chans)))
         # delete 1 channel respectively and compare the snr with original one
@@ -160,7 +155,7 @@ while active:
         w = np.delete(w, chan_index, axis=1)
         
         j += 1 
-        print('Complete ' + str(j) + 'times loop')
+        print('Complete ' + str(j) + 'th loop')
 
         fig1, ax1 = plt.subplots(figsize=(16,9))
         ax1.plot(np.mean(target, axis=0), label='origin')
@@ -184,3 +179,9 @@ while active:
         print('Backward EE complete!')
         print('Total running time: ' + str(end-start) + 's')
         active = False
+        
+#%% basic information
+model_chans = chans + delete_chans[-2:]
+del signal_data, snr, start, target, temp_chans, temp_data, temp_estimate
+del temp_extract, temp_snr, temp_w, w, wSNR, wTEMP_SNR, w_target
+del active, chan_index, compare_snr, end, i, j
