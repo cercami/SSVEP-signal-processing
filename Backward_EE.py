@@ -61,7 +61,6 @@ signal_data = f_data[:,:,3200:]   # 500ms after 200ms duration
 del f_data, data
 
 #%% define function
-# multi-linear regression
 def mlr(model_input, model_target, data_input, data_target):
     '''
     model_input: (n_trials, n_chans, n_times)
@@ -69,19 +68,27 @@ def mlr(model_input, model_target, data_input, data_target):
     data_input: (n_trials, n_chans, n_times)
     data_target: (n_trials, n_times)
     '''
-    # (n_trials, n_chans)
-    RC = np.zeros((model_input.shape[0], model_input.shape[1]))
     # (n_trials)
     RI = np.zeros((model_input.shape[0]))
-    # (n_trials, n_times)
-    estimate = np.zeros((model_input.shape[0], data_input.shape[2]))    
+    # (n_trials, n_times)  
+    if model_input.ndim == 3:
+        estimate = np.zeros((model_input.shape[0], data_input.shape[2]))
+        # (n_trials, n_chans)
+        RC = np.zeros((model_input.shape[0], model_input.shape[1]))
+        for i in range(model_input.shape[0]):    # i for trials
+            L = LinearRegression().fit(model_input[i,:,:].T, model_target[i,:].T)
+            RI = L.intercept_
+            RC = L.coef_
+            estimate[i,:] = (np.mat(RC) * np.mat(data_input[i,:,:])).A + RI
     
-    for i in range(model_input.shape[0]):    # i for trials
-        L = LinearRegression().fit(model_input[i,:,:].T, model_target[i,:].T)
-        RI = L.intercept_
-        RC = L.coef_
-        
-        estimate[i,:] = (np.mat(RC) * np.mat(data_input[i,:,:])).A + RI
+    elif model_input.ndim == 2:
+        estimate = np.zeros((model_input.shape[0], data_input.shape[1]))
+        RC = np.zeros((model_input.shape[0]))
+        for i in range(model_input.shape[0]):    # i for trials
+            L = LinearRegression().fit(np.mat(model_input[i,:]).T, model_target[i,:].T)
+            RI = L.intercept_
+            RC = L.coef_
+            estimate[i,:] = RC * data_input[i,:] + RI
     
     extract = data_target - estimate
     
@@ -103,17 +110,17 @@ def snr_time(data):
     return snr
 
 #%% Backward Estimate Extraction
-target = signal_data[:, chans.index('OZ '), :]
-signal_data = np.delete(signal_data, chans.index('OZ '), axis=1)
+target = signal_data[:, chans.index('POZ'), :]
+signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
 
-w_target = w[:,chans.index('OZ '),:]
-w = np.delete(w, chans.index('OZ '), axis=1)
+w_target = w[:,chans.index('POZ'),:]
+w = np.delete(w, chans.index('POZ'), axis=1)
 
-del chans[chans.index('OZ ')]
+del chans[chans.index('POZ')]
 
 # initialization
 snr = snr_time(target)
-wSNR = np.mean(snr)
+msnr = np.mean(snr)
 compare_snr = np.zeros((len(chans)))
 
 delete_chans = []
@@ -127,7 +134,7 @@ active = True
 while active:
     if len(chans) > 1:
         compare_snr = np.zeros((len(chans)))
-        wTEMP_SNR = np.zeros((len(chans)))
+        mtemp_snr = np.zeros((len(chans)))
         # delete 1 channel respectively and compare the snr with original one
         for i in range(len(chans)):
             # initialization
@@ -143,8 +150,8 @@ while active:
             # compute snr
             temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, target)
             temp_snr = snr_time(temp_extract)
-            wTEMP_SNR[i] = np.mean(temp_snr)
-            compare_snr[i] = wTEMP_SNR[i] - wSNR
+            mtemp_snr[i] = np.mean(temp_snr)
+            compare_snr[i] = mtemp_snr[i] - msnr
     
         # keep the channels which can improve snr forever
         chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
@@ -163,7 +170,7 @@ while active:
         ax1.plot(np.mean(temp_extract, axis=0), label='extract')
         ax1.legend(loc='best')
         fig1.tight_layout()
-        plt.savefig(r'C:\Users\lenovo\Desktop\waveform\%d.png'%(j))
+        #plt.savefig(r'C:\Users\lenovo\Desktop\waveform\%d.png'%(j))
         plt.close()
 
         fig2, ax2 = plt.subplots(figsize=(16,9))
@@ -171,7 +178,7 @@ while active:
         ax2.plot(temp_snr.T, label='extract')
         ax2.legend(loc='best')
         fig2.tight_layout()
-        plt.savefig(r'C:\Users\lenovo\Desktop\snr\%d.png'%(j))
+        #plt.savefig(r'C:\Users\lenovo\Desktop\snr\%d.png'%(j))
         plt.close()
     
     else:
@@ -183,5 +190,6 @@ while active:
 #%% basic information
 model_chans = chans + delete_chans[-2:]
 del signal_data, snr, start, target, temp_chans, temp_data, temp_estimate
-del temp_extract, temp_snr, temp_w, w, wSNR, wTEMP_SNR, w_target
+del temp_extract, temp_snr, temp_w, w, msnr, mtemp_snr, w_target
 del active, chan_index, compare_snr, end, i, j
+
