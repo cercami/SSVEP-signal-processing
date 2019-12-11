@@ -31,7 +31,7 @@ start = time.clock()
 #%% load data
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
 
-data = eeg['raw_data'][1,:,:,:]
+data = eeg['raw_data'][2,:,:,:]
 
 data *= 1e6  # reset unit
 
@@ -116,13 +116,13 @@ def snr_time(data):
     return snr
 
 #%% Forward Estimate Extraction
-data_target = signal_data[:, chans.index('POZ'), :]
-signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
+data_target = signal_data[:, chans.index('OZ '), :]
+signal_data = np.delete(signal_data, chans.index('OZ '), axis=1)
 
-w_target = w[:,chans.index('POZ'),:]
-w = np.delete(w, chans.index('POZ'), axis=1)
+w_target = w[:,chans.index('OZ '),:]
+w = np.delete(w, chans.index('OZ '), axis=1)
 
-del chans[chans.index('POZ')]
+del chans[chans.index('OZ ')]
 
 # initialization
 snr = snr_time(data_target)
