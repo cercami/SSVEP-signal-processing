@@ -31,7 +31,7 @@ start = time.clock()
 #%% load data
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
 
-data = eeg['raw_data'][2,:,:,:]
+data = eeg['raw_data'][1,:,:,:]
 
 data *= 1e6  # reset unit
 
@@ -141,69 +141,67 @@ j = 1
 
 # begin loop
 active = True
-while active:
-    if len(chans) <= max_loop:
-        # add judge condition to stop EE program
-        if j > 2:
-            if compare_snr[j-2] < compare_snr[j-3]:
-                end = time.clock()
-                print('Forward EE complete!')
-                print('Total running time: ' + str(end - start) + 's')
-                active = False
-            else:
-                continue
-        else:
-            continue
-        # initialization
-        compare_snr = np.zeros((len(chans)))
-        mtemp_snr = np.zeros((len(chans)))
-        # add 1 channel respectively and compare the snr with original one
-        for i in range(len(chans)):
-            # avoid reshape error in multi-dimension array
-            if j == 1:
-                temp_w = w[:,i,:]
-                temp_data = signal_data[:,i,:]
-            else:
-                temp_w = np.zeros((j, w.shape[0], w.shape[2]))
-                temp_w[:j-1, :, :] = core_w
-                temp_w[j-1, :, :] = w[:,i,:]
-        
-                temp_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-                temp_data[:j-1, :, :] = core_data
-                temp_data[j-1, :, :] = signal_data[:,i,:]
-            # multi-linear regression & snr computation
-            temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
-            temp_snr = snr_time(temp_extract)
-            mtemp_snr[i] = np.mean(temp_snr)
-            compare_snr[i] = mtemp_snr[i] - msnr
-        # keep the channels which can improve snr
-        chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
-        remain_chans.append(chans.pop(chan_index))
-        snr_change.append(np.max(compare_snr))
-        # refresh data & avoid reshape error in multi-dimension array
+while active and len(chans) <= max_loop:
+    # initialization
+    compare_snr = np.zeros((len(chans)))
+    mtemp_snr = np.zeros((len(chans)))
+    # add 1 channel respectively and compare the snr with original one
+    for i in range(len(chans)):
+        # avoid reshape error in multi-dimension array
         if j == 1:
-            core_w = w[:, chan_index, :]
-            core_data = signal_data[:, chan_index, :]
+            temp_w = w[:,i,:]
+            temp_data = signal_data[:,i,:]
         else:
-            temp_core_w = np.zeros((j, w.shape[0], w.shape[2]))
-            temp_core_w[:j-1, :, :] = core_w
-            temp_core_w[j-1, :, :] = w[:, chan_index, :]
-            core_w = temp_core_w.copy()
-            
-            temp_core_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-            temp_core_data[:j-1, :, :] = core_data
-            temp_core_data[j-1, :, :] = signal_data[:, chan_index, :]
-            core_data = temp_core_data.copy()
+            temp_w = np.zeros((j, w.shape[0], w.shape[2]))
+            temp_w[:j-1, :, :] = core_w
+            temp_w[j-1, :, :] = w[:,i,:]
+        
+            temp_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
+            temp_data[:j-1, :, :] = core_data
+            temp_data[j-1, :, :] = signal_data[:,i,:]
+        # multi-linear regression & snr computation
+        temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
+        temp_snr = snr_time(temp_extract)
+        mtemp_snr[i] = np.mean(temp_snr)
+        compare_snr[i] = mtemp_snr[i] - msnr
+    # keep the channels which can improve snr
+    chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
+    remain_chans.append(chans.pop(chan_index))
+    snr_change.append(np.max(compare_snr))
+    # refresh data & avoid reshape error in multi-dimension array
+    if j == 1:
+        core_w = w[:, chan_index, :]
+        core_data = signal_data[:, chan_index, :]
+        
         # refresh data
         signal_data = np.delete(signal_data, chan_index, axis=1)
         w = np.delete(w ,chan_index, axis=1)
         # significant loop mark
         print('Complete ' + str(j) + 'th loop')
         j += 1
-    # Forward EE reaches its end
     else:
-        end = time.clock()
-        print('Forward EE complete!')
-        print('Total running time: ' + str(end - start) + 's')
-        active = False
+        temp_core_w = np.zeros((j, w.shape[0], w.shape[2]))
+        temp_core_w[:j-1, :, :] = core_w
+        temp_core_w[j-1, :, :] = w[:, chan_index, :]
+        core_w = temp_core_w.copy()
+            
+        temp_core_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
+        temp_core_data[:j-1, :, :] = core_data
+        temp_core_data[j-1, :, :] = signal_data[:, chan_index, :]
+        core_data = temp_core_data.copy()
+        if snr_change[j-1] < np.max(snr_change):
+            end = time.clock()
+            print('Forward EE complete!')
+            print('Total running time: ' + str(end - start) + 's')
+            active = False
+        else:
+            # refresh data
+            signal_data = np.delete(signal_data, chan_index, axis=1)
+            w = np.delete(w ,chan_index, axis=1)
+            # significant loop mark
+            print('Complete ' + str(j) + 'th loop')
+            j += 1
+
+# Algorithm operating results
+remain_chans = remain_chans[:len(remain_chans)-1]
         

@@ -59,10 +59,10 @@ signal_data = f_data[:,:,:,3000:]
 del f_data, data, n_chans, n_events, n_times, n_trials
 
 #%% pick channels
-w_i = w[:,:,[chans.index('PO6'), chans.index('PO5')], :]
+w_i = w[:,:,[chans.index('P5 '), chans.index('P8 '), chans.index('P3 '), chans.index('CB2')], :]
 w_o = w[:,:,chans.index('POZ'), :]
 
-sig_i = signal_data[:,:,[chans.index('PO6'), chans.index('PO5')], 200:700]
+sig_i = signal_data[:,:,[chans.index('P5 '), chans.index('P8 '), chans.index('P3 '), chans.index('CB2')], 200:700]
 sig_o = signal_data[:,:,chans.index('POZ'), 200:700]
 
 #del w, signal_data
@@ -80,13 +80,13 @@ sig_p, fs = SPF.welch_p(sig_o, sfreq=sfreq, fmin=0, fmax=50, n_fft=1024,
                         n_overlap=0, n_per_seg=1024)
 
 #%% check waveform
-plt.plot(np.mean(sig_o[0,:,:], axis=0), label='origin', color='tab:blue', linewidth=1.5)
-plt.plot(np.mean(w_es_s[0,:,:], axis=0), label='estimation', color='tab:green', linewidth=1)
-plt.plot(np.mean(w_ex_s[0,:,:], axis=0), label='extraction', color='tab:orange', linewidth=1)
+plt.plot(np.mean(sig_o[2,:,:], axis=0), label='origin', color='tab:blue', linewidth=1.5)
+plt.plot(np.mean(w_es_s[2,:,:], axis=0), label='estimation', color='tab:green', linewidth=1)
+plt.plot(np.mean(w_ex_s[2,:,:], axis=0), label='extraction', color='tab:orange', linewidth=1)
 plt.legend(loc='best')
 
 #%% check time-domain snr
-k=0
+k=2
 sig_snr_t = SPF.snr_time(sig_o, mode='time')
 w_snr_t = SPF.snr_time(w_ex_s, mode='time')
 #ws_snr_t = SPF.snr_time(w_es_s, mode='time')
@@ -100,7 +100,7 @@ percent_t = snr_t_raise/np.mean(sig_snr_t[k,:])*100
 #snr_t_raise_s = np.mean(ws_snr_t[2,:] - sig_snr_t[2,:])
 
 #%% check frequecy-domain snr
-P=0
+P=2
 from math import log
 def snr_freq(X, k):
     '''
@@ -129,8 +129,8 @@ snr_f_raise = np.mean(w_snr_f - sig_snr_f)
 percent_f = snr_f_raise/np.mean(sig_snr_f)*100
 
 #%% check psd
-plt.plot(fs[1,1,:], np.mean(sig_p[0,:,:], axis=0), label='origin', color='tab:blue', linewidth=1.5)
-plt.plot(fs[1,1,:], np.mean(w_p[0,:,:], axis=0), label='extraction', color='tab:orange', linewidth=1)
+plt.plot(fs[1,1,:], np.mean(sig_p[2,:,:], axis=0), label='origin', color='tab:blue', linewidth=1.5)
+plt.plot(fs[1,1,:], np.mean(w_p[2,:,:], axis=0), label='extraction', color='tab:orange', linewidth=1)
 plt.legend(loc='best')
 
 
