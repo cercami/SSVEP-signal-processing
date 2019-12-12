@@ -24,13 +24,15 @@ import signal_processing_function as SPF
 
 import matplotlib.pyplot as plt
 
+import copy
+
 #%% timing
 start = time.clock()
 
 #%% load data
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
 
-data = eeg['raw_data'][0,:,:,:]
+data = eeg['raw_data'][2,:,:,:]
 #[0,:,:,:]
 data *= 1e6  # reset unit
 
@@ -110,13 +112,13 @@ def snr_time(data):
     return snr
 
 #%% Backward Estimate Extraction
-target = signal_data[:, chans.index('POZ'), :]
-signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
+target = signal_data[:, chans.index('OZ '), :]
+signal_data = np.delete(signal_data, chans.index('OZ '), axis=1)
 
-w_target = w[:,chans.index('POZ'),:]
-w = np.delete(w, chans.index('POZ'), axis=1)
+w_target = w[:,chans.index('OZ '),:]
+w = np.delete(w, chans.index('OZ '), axis=1)
 
-del chans[chans.index('POZ')]
+del chans[chans.index('OZ ')]
 
 # initialization
 snr = snr_time(target)
@@ -128,8 +130,7 @@ snr_change = []
 
 j = 0
 
-#%%
-# begin loop
+#%% Begin Backward EE loop
 active = True
 while active:
     if len(chans) > 1:
@@ -138,9 +139,9 @@ while active:
         # delete 1 channel respectively and compare the snr with original one
         for i in range(len(chans)):
             # initialization
-            temp_chans = chans.copy()
-            temp_data = signal_data.copy()
-            temp_w = w.copy()
+            temp_chans = copy.deepcopy(chans)
+            temp_data = copy.deepcopy(signal_data)
+            temp_w = copy.deepcopy(w)
                 
             # delete one channel
             del temp_chans[i]
@@ -163,23 +164,24 @@ while active:
         
         j += 1 
         print('Complete ' + str(j) + 'th loop')
-
-        fig1, ax1 = plt.subplots(figsize=(16,9))
-        ax1.plot(np.mean(target, axis=0), label='origin')
-        ax1.plot(np.mean(temp_estimate, axis=0), label='estimate')
-        ax1.plot(np.mean(temp_extract, axis=0), label='extract')
-        ax1.legend(loc='best')
-        fig1.tight_layout()
+        
+        # save figures
+        #fig1, ax1 = plt.subplots(figsize=(16,9))
+        #ax1.plot(np.mean(target, axis=0), label='origin')
+        #ax1.plot(np.mean(temp_estimate, axis=0), label='estimate')
+        #ax1.plot(np.mean(temp_extract, axis=0), label='extract')
+        #ax1.legend(loc='best')
+        #fig1.tight_layout()
         #plt.savefig(r'C:\Users\lenovo\Desktop\waveform\%d.png'%(j))
-        plt.close()
+        #plt.close()
 
-        fig2, ax2 = plt.subplots(figsize=(16,9))
-        ax2.plot(snr.T, label='origin')
-        ax2.plot(temp_snr.T, label='extract')
-        ax2.legend(loc='best')
-        fig2.tight_layout()
+        #fig2, ax2 = plt.subplots(figsize=(16,9))
+        #ax2.plot(snr.T, label='origin')
+        #ax2.plot(temp_snr.T, label='extract')
+        #ax2.legend(loc='best')
+        #fig2.tight_layout()
         #plt.savefig(r'C:\Users\lenovo\Desktop\snr\%d.png'%(j))
-        plt.close()
+        #plt.close()
     
     else:
         end = time.clock()
@@ -187,9 +189,9 @@ while active:
         print('Total running time: ' + str(end-start) + 's')
         active = False
         
-#%% basic information
-model_chans = chans + delete_chans[-2:]
+#%% Algorithm operating result
 del signal_data, snr, start, target, temp_chans, temp_data, temp_estimate
 del temp_extract, temp_snr, temp_w, w, msnr, mtemp_snr, w_target
 del active, chan_index, compare_snr, end, i, j
 
+model_chans = chans + delete_chans[-2:]

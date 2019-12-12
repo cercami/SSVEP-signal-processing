@@ -10,20 +10,16 @@ Forward Estimate Extraction algorithm to improve short-time SSVEP's SNR
 #%% import 3rd-part module
 import numpy as np
 import scipy.io as io
-import pandas as pd
 
-import os
 import time
 
-import mne
 from mne.filter import filter_data
 
 from sklearn.linear_model import LinearRegression
 
-import signal_processing_function as SPF 
-
 import matplotlib.pyplot as plt
 
+import copy
 
 #%% timing
 start = time.clock()
@@ -31,7 +27,7 @@ start = time.clock()
 #%% load data
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
 
-data = eeg['raw_data'][2,:,:,:]
+data = eeg['raw_data'][1,:,:,:]
 
 data *= 1e6  # reset unit
 
@@ -57,74 +53,77 @@ del i, sfreq
 w = f_data[:,:,2000:3000]          
 
 # get data for comparision
-signal_data = f_data[:,:,3200:]   # 500ms after 200ms duration
+signal_data = f_data[:,:,3200:]   # 500ms after 200ms's duration
 
 del f_data, data
 
-#%% define function
+#%% Basic function definition
 # multi-linear regression
 def mlr(model_input, model_target, data_input, data_target):
     '''
-    model_input: (n_trials, n_chans, n_times) (n_chans, n_trials, n_times)
+    model_input: (n_chans, n_trials, n_times)
     model_target: (n_trials, n_times)
-    data_input: (n_trials, n_chans, n_times) (n_chans, n_trials, n_times)
+    data_input: (n_chans, n_trials, n_times)
     data_target: (n_trials, n_times)
     '''
     if model_input.ndim == 3:
-        # (n_trials)
+        # regression intercept: (n_trials)
         RI = np.zeros((model_input.shape[1]))
-        # (n_trials, n_times)
+        # estimate signal: (n_trials, n_times)
         estimate = np.zeros((model_input.shape[1], data_input.shape[2]))
-        # (n_trials, n_chans)
+        # regression coefficient: (n_trials, n_chans)
         RC = np.zeros((model_input.shape[1], model_input.shape[0]))
+        
         for i in range(model_input.shape[1]):    # i for trials
+            # basic operating unit: (n_chans, n_times).T, (1, n_times).T
             L = LinearRegression().fit(model_input[:,i,:].T, model_target[i,:].T)
             RI = L.intercept_
             RC = L.coef_
-            estimate[i,:] = (np.mat(RC) * np.mat(data_input[:,i,:])).A + RI
-    
-    elif model_input.ndim == 2:
-        # (n_trials)
+            estimate[i,:] = (np.mat(RC) * np.mat(data_input[:,i,:])).A + RI           
+    elif model_input.ndim == 2:      # avoid reshape error
         RI = np.zeros((model_input.shape[0]))
-        # (n_trials, n_times)
         estimate = np.zeros((model_input.shape[0], data_input.shape[1]))
-        # (n_trials)
         RC = np.zeros((model_input.shape[0]))
-        for i in range(model_input.shape[0]):    # i for trials
+        
+        for i in range(model_input.shape[0]):    
             L = LinearRegression().fit(np.mat(model_input[i,:]).T, model_target[i,:].T)
             RI = L.intercept_
             RC = L.coef_
             estimate[i,:] = RC * data_input[i,:] + RI
-    
+    # extract SSVEP from raw data
     extract = data_target - estimate
     
     return extract, estimate
 
-# time-domain snr
+# compute time-domain snr
 def snr_time(data):
     '''
     data:(n_trials, n_times)
     '''
     snr = np.zeros((data.shape[1]))             # (n_times)
-    ex = np.mat(np.mean(data, axis=0))          # one-channel data (1, n_times)
-    temp = np.mat(np.ones((1, data.shape[0])))     # (1, n_trials)
+    ex = np.mat(np.mean(data, axis=0))          # one-channel data: (1, n_times)
+    
+    temp = np.mat(np.ones((1, data.shape[0])))  # (1, n_trials)
     minus = (temp.T * ex).A                     # (n_trials, n_times)
-    ex = (ex.A) ** 2
-    var = np.mean((data - minus)**2, axis=0)
+    
+    ex = (ex.A) ** 2                            # signal's power
+    var = np.mean((data - minus)**2, axis=0)    # noise's power (avg)
+    
     snr = ex/var
     
     return snr
 
-#%% Forward Estimate Extraction
-data_target = signal_data[:, chans.index('OZ '), :]
-signal_data = np.delete(signal_data, chans.index('OZ '), axis=1)
+#%% Initialization
+# pick target signal channel
+data_target = signal_data[:, chans.index('POZ'), :]
+signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
 
-w_target = w[:,chans.index('OZ '),:]
-w = np.delete(w, chans.index('OZ '), axis=1)
+w_target = w[:,chans.index('POZ'),:]
+w = np.delete(w, chans.index('POZ'), axis=1)
 
-del chans[chans.index('OZ ')]
+del chans[chans.index('POZ')]
 
-# initialization
+# config the variables
 snr = snr_time(data_target)
 msnr = np.mean(snr)
 compare_snr = np.zeros((len(chans)))
@@ -137,9 +136,10 @@ temp_snr = []
 core_data = []
 core_w = []
 
+# significant loop mark
 j = 1
 
-# begin loop
+#%% Begin Forward EE loop
 active = True
 while active and len(chans) <= max_loop:
     # initialization
@@ -162,17 +162,18 @@ while active and len(chans) <= max_loop:
         # multi-linear regression & snr computation
         temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
         temp_snr = snr_time(temp_extract)
+        # find the best choice in this turn
         mtemp_snr[i] = np.mean(temp_snr)
         compare_snr[i] = mtemp_snr[i] - msnr
-    # keep the channels which can improve snr
+    # keep the channels which can improve snr most
     chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
     remain_chans.append(chans.pop(chan_index))
     snr_change.append(np.max(compare_snr))
-    # refresh data & avoid reshape error in multi-dimension array
+    
+    # avoid reshape error at the beginning of Forward EE
     if j == 1:
         core_w = w[:, chan_index, :]
         core_data = signal_data[:, chan_index, :]
-        
         # refresh data
         signal_data = np.delete(signal_data, chan_index, axis=1)
         w = np.delete(w ,chan_index, axis=1)
@@ -183,12 +184,16 @@ while active and len(chans) <= max_loop:
         temp_core_w = np.zeros((j, w.shape[0], w.shape[2]))
         temp_core_w[:j-1, :, :] = core_w
         temp_core_w[j-1, :, :] = w[:, chan_index, :]
-        core_w = temp_core_w.copy()
+        core_w = copy.deepcopy(temp_core_w)
+        del temp_core_w
             
         temp_core_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
         temp_core_data[:j-1, :, :] = core_data
         temp_core_data[j-1, :, :] = signal_data[:, chan_index, :]
-        core_data = temp_core_data.copy()
+        core_data = copy.deepcopy(temp_core_data)
+        del temp_core_data
+        
+        # add judge condition to stop program while achieving the target
         if snr_change[j-1] < np.max(snr_change):
             end = time.clock()
             print('Forward EE complete!')
@@ -202,6 +207,10 @@ while active and len(chans) <= max_loop:
             print('Complete ' + str(j) + 'th loop')
             j += 1
 
-# Algorithm operating results
+#%% Algorithm operating results
 remain_chans = remain_chans[:len(remain_chans)-1]
+
+del active, chan_index, compare_snr, core_data, core_w, snr, start
+del data_target, end, i, j, max_loop, msnr, mtemp_snr, signal_data
+del temp_data, temp_estimate, temp_extract, temp_snr, temp_w, w, w_target
         
