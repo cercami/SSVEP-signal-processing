@@ -27,7 +27,7 @@ start = time.clock()
 #%% load data
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
 
-data = eeg['raw_data'][1,:,:,:]
+data = eeg['raw_data'][2,:,:,:]
 
 data *= 1e6  # reset unit
 
@@ -203,6 +203,8 @@ while active and len(chans) <= max_loop:
         # add judge condition to stop program while achieving the target
         if snr_change[-1] < np.max(snr_change):
             print('Stepwise EE complete!')
+            end = time.clock()
+            print('Total running time: ' + str(end - start) + 's')
             # if this judge is not passed, then there's no need to continue
             active = False
     
@@ -273,11 +275,14 @@ while active and len(chans) <= max_loop:
                 del remain_chans[0]
                 del temp_2_chan_index, temp_2_extract, temp_2_estimate, temp_2_snr
                 del mtemp_2_snr, temp_2_compare_snr, temp_2_w, temp_2_data
+                del temp_1_chans, temp_1_data, temp_1_w
                 
                 # significant loop mark
                 print('Complete ' + str(j) + 'th loop')
                 
             else:  # no improvement
+                # release RAM
+                del temp_1_chans, temp_1_data, temp_1_w
                 # reset
                 print("Already best in 2 channels' contidion!")
 
@@ -299,6 +304,8 @@ while active and len(chans) <= max_loop:
         # add judge condition to stop program while achieving the target
         if snr_change[-1] < np.max(snr_change):
             print('Stepwise EE complete!')
+            end = time.clock()
+            print('Total running time: ' + str(end - start) + 's')
             # if this judge is not passed, then there's no need to continue
             active = False
         
@@ -386,16 +393,22 @@ while active and len(chans) <= max_loop:
                 # release RAM
                 del temp_3_chans, temp_3_data, temp_3_w, temp_3_compare_snr, temp_3_chan_index
                 del temp_4_chans, temp_4_data, temp_4_w, temp_4_compare_snr, temp_4_chan_index
-                del temp_5_data, temp_5_w, temp_5_extract, temp_5_estimate, mtemp_5_snr
+                del temp_5_data, temp_5_w, temp_5_extract, temp_5_estimate, mtemp_5_snr, temp_5_snr
                 
                 # significant loop mark
                 print('Complete ' + str(j) + 'th loop')
                 
             else:  # no improvement
+                # release RAM
+                del temp_3_chans, temp_3_data, temp_3_w, temp_3_compare_snr, temp_3_chan_index
+                del temp_4_chans, temp_4_data, temp_4_w, temp_4_compare_snr, temp_4_chan_index
+                del temp_5_data, temp_5_w, temp_5_extract, temp_5_estimate, mtemp_5_snr, temp_5_snr
+                
                 # reset
+                print('Complete ' + str(j) + 'th loop')
                 print("Already best in " + str(j) + " channels' condition!")
     
-j += 1
+    j += 1
     
 #%% Algorithm operating results
 remain_chans = remain_chans[:len(remain_chans)-1]

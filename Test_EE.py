@@ -59,13 +59,13 @@ signal_data = f_data[:,:,:,3000:]
 del f_data, data, n_chans, n_events, n_times, n_trials
 
 #%% pick channels
-w_i = w[:,:,[chans.index('POZ'), chans.index('P1 ')], :]
-w_o = w[:,:,chans.index('OZ '), :]
+w_i = w[:,:,[chans.index('P8 '), chans.index('CB2'), chans.index('PO3'), chans.index('CP1')], :]
+w_o = w[:,:,chans.index('POZ'), :]
 
-sig_i = signal_data[:,:,[chans.index('POZ'), chans.index('P1 ')], 200:700]
-sig_o = signal_data[:,:,chans.index('OZ '), 200:700]
+sig_i = signal_data[:,:,[chans.index('P8 '), chans.index('CB2'), chans.index('PO3'), chans.index('CP1')], 200:700]
+sig_o = signal_data[:,:,chans.index('POZ'), 200:700]
 
-#del w, signal_data
+del w, signal_data
 
 #%% multi-linear regression
 rc, ri, r2 = SPF.mlr_analysis(w_i, w_o)
@@ -74,10 +74,10 @@ del ri, rc, r2
 del w_o, w_i, sig_i
 
 #%% psd
-w_p, fs = SPF.welch_p(w_ex_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=1024,
-                      n_overlap=0, n_per_seg=1024)
-sig_p, fs = SPF.welch_p(sig_o, sfreq=sfreq, fmin=0, fmax=50, n_fft=1024,
-                        n_overlap=0, n_per_seg=1024)
+w_p, fs = SPF.welch_p(w_ex_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=512,
+                      n_overlap=0, n_per_seg=512)
+sig_p, fs = SPF.welch_p(sig_o, sfreq=sfreq, fmin=0, fmax=50, n_fft=512,
+                        n_overlap=0, n_per_seg=512)
 
 #%% check waveform
 w = 2
@@ -90,15 +90,13 @@ plt.legend(loc='best')
 k = 2
 sig_snr_t = SPF.snr_time(sig_o, mode='time')
 w_snr_t = SPF.snr_time(w_ex_s, mode='time')
-#ws_snr_t = SPF.snr_time(w_es_s, mode='time')
 
-#plt.plot(sig_snr_t[k,:], label='origin', color='tab:blue', linewidth=1.5)
-#plt.plot(w_snr_t[k,:], label='extraction', color='tab:orange', linewidth=1)
-#plt.legend(loc='best')
+plt.plot(sig_snr_t[k,:], label='origin', color='tab:blue', linewidth=1.5)
+plt.plot(w_snr_t[k,:], label='extraction', color='tab:orange', linewidth=1)
+plt.legend(loc='best')
 
 snr_t_raise = np.mean(w_snr_t[k,:] - sig_snr_t[k,:])
 percent_t = snr_t_raise/np.mean(sig_snr_t[k,:])*100
-#snr_t_raise_s = np.mean(ws_snr_t[2,:] - sig_snr_t[2,:])
 
 #%% check frequecy-domain snr
 f = 2
@@ -110,15 +108,15 @@ def snr_freq(X, k):
     snr = np.zeros((X.shape[1]))
     if k == 0:
         for i in range(X.shape[1]):
-            snr[i] = np.sum(X[k,i,8:10]) / (np.sum(X[k,i,6:8]) + np.sum(X[k,i,10:12]))
+            snr[i] = X[k,i,4] / (X[k,i,3] + X[k,i,5])
             snr[i] = 10 * log(snr[i], 10)
     if k == 1:
         for i in range(X.shape[1]):
-            snr[i] = np.sum(X[k,i,10:12]) / (np.sum(X[k,i,8:10]) + np.sum(X[k,i,12:14]))
+            snr[i] = X[k,i,5] / (X[k,i,4] + X[k,i,6])
             snr[i] = 10 * log(snr[i], 10)
     if k == 2:
         for i in range(X.shape[1]):
-            snr[i] = np.sum(X[k,i,15:17]) / (np.sum(X[k,i,13:15]) + np.sum(X[k,i,17:19]))
+            snr[i] = X[k,i,8] / (X[k,i,7] + X[k,i,9])
             snr[i] = 10 * log(snr[i], 10)
 
     return snr
@@ -126,13 +124,13 @@ def snr_freq(X, k):
 sig_snr_f = snr_freq(sig_p, k=f)
 w_snr_f = snr_freq(w_p, k=f)
 snr_f_raise = np.mean(w_snr_f - sig_snr_f)
-#snr_f_raise_std = np.std(w_snr_f - sig_snr_f)
 percent_f = snr_f_raise/np.mean(sig_snr_f)*100
 
 #%% check psd
 p = 2
 plt.plot(fs[1,1,:], np.mean(sig_p[p,:,:], axis=0), label='origin', color='tab:blue', linewidth=1.5)
 plt.plot(fs[1,1,:], np.mean(w_p[p,:,:], axis=0), label='extraction', color='tab:orange', linewidth=1)
+plt.title('Stepwise')
 plt.legend(loc='best')
 
 
