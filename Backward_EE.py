@@ -112,13 +112,13 @@ def snr_time(data):
     return snr
 
 #%% Backward Estimate Extraction
-target = signal_data[:, chans.index('OZ '), :]
-signal_data = np.delete(signal_data, chans.index('OZ '), axis=1)
+target = signal_data[:, chans.index('POZ'), :]
+signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
 
-w_target = w[:,chans.index('OZ '),:]
-w = np.delete(w, chans.index('OZ '), axis=1)
+w_target = w[:,chans.index('POZ'),:]
+w = np.delete(w, chans.index('POZ'), axis=1)
 
-del chans[chans.index('OZ ')]
+del chans[chans.index('POZ')]
 
 # initialization
 snr = snr_time(target)
