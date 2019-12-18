@@ -126,91 +126,93 @@ del chans[chans.index('OZ ')]
 # config the variables
 snr = snr_time(data_target)
 msnr = np.mean(snr)
-compare_snr = np.zeros((len(chans)))
-max_loop = len(chans)
-
-remain_chans = []
-snr_change = []
-
-temp_snr = []
-core_data = []
-core_w = []
-
-# significant loop mark
-j = 1
 
 #%% Begin Forward EE loop
-active = True
-while active and len(chans) <= max_loop:
-    # initialization
+def forward_EE(chans, msnr, w, w_target, signal_data, data_target):
+    '''
+    '''
+    # initialize variables
+    print('Running Forward EE...')
+    start = time.clock()
+    j = 1
     compare_snr = np.zeros((len(chans)))
-    mtemp_snr = np.zeros((len(chans)))
-    # add 1 channel respectively and compare the snr with original one
-    for i in range(len(chans)):
-        # avoid reshape error in multi-dimension array
-        if j == 1:
-            temp_w = w[:,i,:]
-            temp_data = signal_data[:,i,:]
-        else:
-            temp_w = np.zeros((j, w.shape[0], w.shape[2]))
-            temp_w[:j-1, :, :] = core_w
-            temp_w[j-1, :, :] = w[:,i,:]
-        
-            temp_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-            temp_data[:j-1, :, :] = core_data
-            temp_data[j-1, :, :] = signal_data[:,i,:]
-        # multi-linear regression & snr computation
-        temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
-        temp_snr = snr_time(temp_extract)
-        # find the best choice in this turn
-        mtemp_snr[i] = np.mean(temp_snr)
-        compare_snr[i] = mtemp_snr[i] - msnr
-    # keep the channels which can improve snr most
-    chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
-    remain_chans.append(chans.pop(chan_index))
-    snr_change.append(np.max(compare_snr))
+    max_loop = len(chans)
     
-    # avoid reshape error at the beginning of Forward EE
-    if j == 1:
-        core_w = w[:, chan_index, :]
-        core_data = signal_data[:, chan_index, :]
-        # refresh data
-        signal_data = np.delete(signal_data, chan_index, axis=1)
-        w = np.delete(w ,chan_index, axis=1)
-        # significant loop mark
-        print('Complete ' + str(j) + 'th loop')
-        j += 1
-    else:
-        temp_core_w = np.zeros((j, w.shape[0], w.shape[2]))
-        temp_core_w[:j-1, :, :] = core_w
-        temp_core_w[j-1, :, :] = w[:, chan_index, :]
-        core_w = copy.deepcopy(temp_core_w)
-        del temp_core_w
-            
-        temp_core_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-        temp_core_data[:j-1, :, :] = core_data
-        temp_core_data[j-1, :, :] = signal_data[:, chan_index, :]
-        core_data = copy.deepcopy(temp_core_data)
-        del temp_core_data
+    remain_chans = []
+    snr_change = []
+    temp_snr = []
+    core_data = []
+    core_w = []
+    # begin loop
+    active = True
+    while active and len(chans) <= max_loop:
+        # initialization
+        compare_snr = np.zeros((len(chans)))
+        mtemp_snr = np.zeros((len(chans)))
+        # add 1 channel respectively and compare the snr with original one
+        for i in range(len(chans)):
+            # avoid reshape error in multi-dimension array
+            if j == 1:
+                temp_w = w[:,i,:]
+                temp_data = signal_data[:,i,:]
+            else:
+                temp_w = np.zeros((j, w.shape[0], w.shape[2]))
+                temp_w[:j-1, :, :] = core_w
+                temp_w[j-1, :, :] = w[:,i,:]
         
-        # add judge condition to stop program while achieving the target
-        if snr_change[j-1] < np.max(snr_change):
-            end = time.clock()
-            print('Forward EE complete!')
-            print('Total running time: ' + str(end - start) + 's')
-            active = False
-        else:
+                temp_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
+                temp_data[:j-1, :, :] = core_data
+                temp_data[j-1, :, :] = signal_data[:,i,:]
+            # multi-linear regression & snr computation
+            temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
+            temp_snr = snr_time(temp_extract)
+            # find the best choice in this turn
+            mtemp_snr[i] = np.mean(temp_snr)
+            compare_snr[i] = mtemp_snr[i] - msnr
+        # keep the channels which can improve snr most
+        chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
+        remain_chans.append(chans.pop(chan_index))
+        snr_change.append(np.max(compare_snr))
+        # avoid reshape error at the beginning of Forward EE
+        if j == 1:
+            core_w = w[:, chan_index, :]
+            core_data = signal_data[:, chan_index, :]
             # refresh data
             signal_data = np.delete(signal_data, chan_index, axis=1)
             w = np.delete(w ,chan_index, axis=1)
             # significant loop mark
             print('Complete ' + str(j) + 'th loop')
             j += 1
+        else:
+            temp_core_w = np.zeros((j, w.shape[0], w.shape[2]))
+            temp_core_w[:j-1, :, :] = core_w
+            temp_core_w[j-1, :, :] = w[:, chan_index, :]
+            core_w = copy.deepcopy(temp_core_w)
+            del temp_core_w
+            
+            temp_core_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
+            temp_core_data[:j-1, :, :] = core_data
+            temp_core_data[j-1, :, :] = signal_data[:, chan_index, :]
+            core_data = copy.deepcopy(temp_core_data)
+            del temp_core_data
+            # add judge condition to stop program while achieving the target
+            if snr_change[j-1] < np.max(snr_change):
+                end = time.clock()
+                print('Forward EE complete!')
+                print('Recursive running time: ' + str(end - start) + 's')
+                active = False
+            else:
+                # refresh data
+                signal_data = np.delete(signal_data, chan_index, axis=1)
+                w = np.delete(w ,chan_index, axis=1)
+                # significant loop mark
+                print('Complete ' + str(j) + 'th loop')
+                j += 1
+        
+    remain_chans = remain_chans[:len(remain_chans)-1]
+    return remain_chans, snr_change
 
 #%% Algorithm operating results
-remain_chans = remain_chans[:len(remain_chans)-1]
-
-del active, chan_index, compare_snr, core_data, core_w, snr, start
-del data_target, end, i, j, max_loop, msnr, mtemp_snr, signal_data
-del temp_data, temp_estimate, temp_extract, temp_snr, temp_w, w, w_target
-        
+model_chans, snr_change = forward_EE(chans=chans, msnr=msnr, w=w, w_target=w_target,
+                                     signal_data=signal_data, data_target=data_target)
+del chans

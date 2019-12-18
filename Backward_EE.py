@@ -112,7 +112,7 @@ def snr_time(data):
     return snr
 
 #%% Backward Estimate Extraction
-target = signal_data[:, chans.index('POZ'), :]
+data_target = signal_data[:, chans.index('POZ'), :]
 signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
 
 w_target = w[:,chans.index('POZ'),:]
@@ -121,77 +121,64 @@ w = np.delete(w, chans.index('POZ'), axis=1)
 del chans[chans.index('POZ')]
 
 # initialization
-snr = snr_time(target)
+snr = snr_time(data_target)
 msnr = np.mean(snr)
-compare_snr = np.zeros((len(chans)))
 
-delete_chans = []
-snr_change = []
 
-j = 0
+#%% Backward EE
+def backward_EE(chans, msnr, w, w_target, signal_data, data_target):
+    '''
+    '''
+    # initialize variables
+    print('Running Backward EE...')
+    start = time.clock()
+    compare_snr = np.zeros((len(chans)))
+    j = 0
 
-#%% Begin Backward EE loop
-active = True
-while active:
-    if len(chans) > 1:
-        compare_snr = np.zeros((len(chans)))
-        mtemp_snr = np.zeros((len(chans)))
-        # delete 1 channel respectively and compare the snr with original one
-        for i in range(len(chans)):
-            # initialization
-            temp_chans = copy.deepcopy(chans)
-            temp_data = copy.deepcopy(signal_data)
-            temp_w = copy.deepcopy(w)
-                
-            # delete one channel
-            del temp_chans[i]
-            temp_data = np.delete(temp_data, i, axis=1)
-            temp_w = np.delete(temp_w, i, axis=1)
-            
-            # compute snr
-            temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, target)
-            temp_snr = snr_time(temp_extract)
-            mtemp_snr[i] = np.mean(temp_snr)
-            compare_snr[i] = mtemp_snr[i] - msnr
+    delete_chans = []
+    snr_change = []
+    # begin loop
+    active = True
+    while active:
+        if len(chans) > 1:
+            compare_snr = np.zeros((len(chans)))
+            mtemp_snr = np.zeros((len(chans)))
+            # delete 1 channel respectively and compare the snr with original one
+            for i in range(len(chans)):
+                # initialization
+                temp_chans = copy.deepcopy(chans)
+                temp_data = copy.deepcopy(signal_data)
+                temp_w = copy.deepcopy(w)
+                # delete one channel
+                del temp_chans[i]
+                temp_data = np.delete(temp_data, i, axis=1)
+                temp_w = np.delete(temp_w, i, axis=1)
+                # compute snr
+                temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
+                temp_snr = snr_time(temp_extract)
+                mtemp_snr[i] = np.mean(temp_snr)
+                compare_snr[i] = mtemp_snr[i] - msnr
+            # keep the channels which can improve snr forever
+            chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
+            delete_chans.append(chans.pop(chan_index))
+            snr_change.append(np.max(compare_snr))
+            # refresh data
+            signal_data = np.delete(signal_data, chan_index, axis=1)
+            w = np.delete(w, chan_index, axis=1)
+            # significant loop mark
+            j += 1 
+            print('Complete ' + str(j) + 'th loop')
+        # Backward EE complete
+        else:
+            end = time.clock()
+            print('Backward EE complete!')
+            print('Recursive running time: ' + str(end - start) + 's')
+            active = False
+        
+    model_chans = chans + delete_chans[-2:]
+    return model_chans, snr_change
     
-        # keep the channels which can improve snr forever
-        chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
-        delete_chans.append(chans.pop(chan_index))
-        snr_change.append(np.max(compare_snr))
-        
-        signal_data = np.delete(signal_data, chan_index, axis=1)
-        w = np.delete(w, chan_index, axis=1)
-        
-        j += 1 
-        print('Complete ' + str(j) + 'th loop')
-        
-        # save figures
-        #fig1, ax1 = plt.subplots(figsize=(16,9))
-        #ax1.plot(np.mean(target, axis=0), label='origin')
-        #ax1.plot(np.mean(temp_estimate, axis=0), label='estimate')
-        #ax1.plot(np.mean(temp_extract, axis=0), label='extract')
-        #ax1.legend(loc='best')
-        #fig1.tight_layout()
-        #plt.savefig(r'C:\Users\lenovo\Desktop\waveform\%d.png'%(j))
-        #plt.close()
-
-        #fig2, ax2 = plt.subplots(figsize=(16,9))
-        #ax2.plot(snr.T, label='origin')
-        #ax2.plot(temp_snr.T, label='extract')
-        #ax2.legend(loc='best')
-        #fig2.tight_layout()
-        #plt.savefig(r'C:\Users\lenovo\Desktop\snr\%d.png'%(j))
-        #plt.close()
-    
-    else:
-        end = time.clock()
-        print('Backward EE complete!')
-        print('Total running time: ' + str(end-start) + 's')
-        active = False
-        
 #%% Algorithm operating result
-del signal_data, snr, start, target, temp_chans, temp_data, temp_estimate
-del temp_extract, temp_snr, temp_w, w, msnr, mtemp_snr, w_target
-del active, chan_index, compare_snr, end, i, j
+model_chans, snr_change = backward_EE(chans=chans, msnr=msnr, w=w, w_target=w_target,
+                          signal_data=signal_data, data_target=data_target)
 
-model_chans = chans + delete_chans[-2:]

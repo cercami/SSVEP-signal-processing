@@ -26,45 +26,51 @@ from mne.filter import filter_data
 from sklearn.linear_model import LinearRegression
 
 import signal_processing_function as SPF 
+import mcee
 
 #%% load local data (extract from .cnt file)
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
-
-data = eeg['raw_data']
-data *= 1e6  
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
+f_data = eeg['f_data']
+chans = eeg['chan_info'].tolist()
+f_data *= 1e6  
 
 del eeg
 
-chans = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
-chans = chans['chan_info'].tolist()
-
 sfreq = 1000
 
-n_events = data.shape[0]
-n_trials = data.shape[1]
-n_chans = data.shape[2]
-n_times = data.shape[3]
+n_events = f_data.shape[0]
+n_trials = f_data.shape[1]
+n_chans = f_data.shape[2]
+n_times = f_data.shape[3]
 
-freq = 0  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
+w = f_data[:, :, :, 2000:3000]
+signal_data = f_data[:, :, :, 3000:]   
 
-#%% Data preprocessing
-f_data = np.zeros((n_events, n_trials, n_chans, n_times))
-for i in range(n_events):
-    f_data[i,:,:,:] = filter_data(data[i,:,:,:], sfreq=sfreq, l_freq=5,
-                      h_freq=40, n_jobs=6)
+del n_chans, n_times, n_trials, n_events
 
-del i
+#%% MCEE
+# initialization
+freq = 2  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
 
-w = f_data[:,:,:,2000:3000]
-signal_data = f_data[:,:,:,3000:]   
+data_target = signal_data[freq, :, chans.index('POZ'), :]
+signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
 
-del f_data, data, n_chans, n_events, n_times, n_trials
+w_target = w[freq, :, chans.index('POZ'), :]
+w = np.delete(w, chans.index('POZ'), axis=1)
 
+del chans[chans.index('POZ')]
+
+snr = mcee.snr_time(data_target)
+msnr = np.mean(snr)
+
+# MCEE optimization
+model_chans, snr_change = mcee.stepwise_MCEE(chans=chans, msnr=msnr, w=w, w_target=w_target,
+                                             signal_data=signal_data, data_target=data_target)
 #%% pick channels
-w_i = w[:,:,[chans.index('P8 '), chans.index('CB1'), chans.index('P5 ')], :]
+w_i = w[:,:,[chans.index('P8 '), chans.index('P5 '), chans.index('CB1')], :]
 w_o = w[:,:,chans.index('POZ'), :]
 
-sig_i = signal_data[:,:,[chans.index('P8 '), chans.index('CB1'), chans.index('P5 ')], 200:700]
+sig_i = signal_data[:,:,[chans.index('P8 '), chans.index('P5 '), chans.index('CB1')], 200:700]
 sig_o = signal_data[:,:,chans.index('POZ'), 200:700]
 
 del w, signal_data
@@ -80,6 +86,8 @@ w_p, fs = SPF.welch_p(w_ex_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=1024,
                       n_overlap=0, n_per_seg=1024)
 sig_p, fs = SPF.welch_p(sig_o, sfreq=sfreq, fmin=0, fmax=50, n_fft=1024,
                         n_overlap=0, n_per_seg=1024)
+ws_p, fs = SPF.welch_p(w_es_s, sfreq=sfreq, fmin=0, fmax=50, n_fft=1024,
+                        n_overlap=0, n_per_seg=1024)
 
 #%% check waveform
 w = freq
@@ -92,13 +100,17 @@ plt.legend(loc='best')
 k = freq
 sig_snr_t = SPF.snr_time(sig_o, mode='time')
 w_snr_t = SPF.snr_time(w_ex_s, mode='time')
+ws_snr_t = SPF.snr_time(w_es_s, mode='time')
 
 plt.plot(sig_snr_t[k,:], label='origin', color='tab:blue', linewidth=1.5)
 plt.plot(w_snr_t[k,:], label='extraction', color='tab:orange', linewidth=1)
 plt.legend(loc='best')
 
 snr_t_raise = np.mean(w_snr_t[k,:] - sig_snr_t[k,:])
+snr_ts_raise = np.mean(ws_snr_t[k,:] - sig_snr_t[k,:])
+
 percent_t = snr_t_raise/np.mean(sig_snr_t[k,:])*100
+percent_ts = snr_ts_raise/np.mean(sig_snr_t[k,:])*100
 
 #%% check frequecy-domain snr
 f = freq
@@ -125,13 +137,19 @@ def snr_freq(X, k):
 
 sig_snr_f = snr_freq(sig_p, k=f)
 w_snr_f = snr_freq(w_p, k=f)
+ws_snr_f = snr_freq(ws_p, k=f)
+
 snr_f_raise = np.mean(w_snr_f - sig_snr_f)
+snr_fs_raise = np.mean(ws_snr_f - sig_snr_f)
+
 percent_f = snr_f_raise/np.mean(sig_snr_f)*100
+percent_fs = snr_fs_raise/np.mean(sig_snr_f)*100
 
 #%% check psd
 p = freq
 plt.plot(fs[1,1,:], np.mean(sig_p[p,:,:], axis=0), label='origin', color='tab:blue', linewidth=1.5)
 plt.plot(fs[1,1,:], np.mean(w_p[p,:,:], axis=0), label='extraction', color='tab:orange', linewidth=1)
+plt.plot(fs[1,1,:], np.mean(ws_p[p,:,:], axis=0), label='estimation', color='tab:green', linewidth=1)
 plt.title('Stepwise')
 plt.legend(loc='best')
 

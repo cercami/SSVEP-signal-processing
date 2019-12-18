@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Dec  9 09:57:52 2019
+Created on Wed Dec 18 12:07:56 2019
 
-2019-12-9:
-Stepwise Estimate Extraction algorithm to improve short-time SSVEP's SNR
+1. Three kinds of recursive algorithm to complete MCEE(Multi-channel Estimation Extraction)
+    (1)Backward
+    (2)Forward
+    (3)Stepwise
 
-2019-13-17:
-Add cross-validation part
+2. Cross validation
 
-@author: Brynhildr Wu
+@author: Brynhildr
 """
 
 #%% Import third part module
@@ -17,62 +18,12 @@ from numpy import transpose
 import scipy.io as io
 import pandas as pd
 
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from matplotlib import cm
-from matplotlib.colors import ListedColormap, LinearSegmentedColormap
-import seaborn as sns
-
-import os
-
-import mne
-from mne.filter import filter_data
 from sklearn.linear_model import LinearRegression
-import signal_processing_function as SPF
 
-import time
 import copy
+import time
 
-#%% load data
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
-
-data = eeg['raw_data'][2,:,:,:]
-
-data *= 1e6  # reset unit
-
-del eeg
-
-# in future versions, chan_info will be combined into raw_data.mat
-chans = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
-chans = chans['chan_info'].tolist()
-
-# basic info
-sfreq = 1000
-
-#%% Data preprocessing
-# filtering
-f_data = np.zeros((data.shape[0], data.shape[1], 3700))
-for i in range(data.shape[0]):
-    f_data[i,:,:] = filter_data(data[i,:,:3700], sfreq=sfreq, l_freq=5,
-                      h_freq=40, n_jobs=6)
-
-del i, sfreq
-
-# get data for linear regression
-w = f_data[:,:,2000:3000]          
-
-# get data for comparision
-signal_data = f_data[:,:,3200:]   # 500ms after 200ms's duration
-
-del f_data, data
-
-# save data then reload to save time
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\15Hz_filtered_data.mat'
-io.savemat(data_path, {'signal':signal_data, 'w':w})
-del data_path
-
-#%% Basic function definition
+#%% Basic operating function
 # multi-linear regression
 def mlr(model_input, model_target, data_input, data_target):
     '''
@@ -128,31 +79,209 @@ def snr_time(data):
     
     return snr
 
-#%% Initialization
-# pick target signal channel
-data_target = signal_data[:, chans.index('OZ '), :]
-signal_data = np.delete(signal_data, chans.index('OZ '), axis=1)
 
-w_target = w[:,chans.index('OZ '),:]
-w = np.delete(w, chans.index('OZ '), axis=1)
-
-del chans[chans.index('OZ ')]
-
-# config the variables
-snr = snr_time(data_target)
-msnr = np.mean(snr)
-
-# choose target frequency
-freq = 2
-
-#%% Begin loop of Stepwise EE
-def stepwise_EE(chans, msnr, w, w_target, signal_data, data_target):
+#%% Backward MCEE
+def backward_MCEE(chans, msnr, w, w_target, signal_data, data_target):
     '''
+    Backward recursive algorithm to achieve MCEE
+        (1)take all possible channels to form a model
+        (2)delete one element each time respectively and keep the best choice
+        (3)repeat the lase process until there will be no better choice
+            i.e. the convergence point of the recursive algorithm
+    Parameters:
+        chans: list of channels; the list order corresponds to the data array's
+        msnr: float; the mean of original signal's SNR in time domain(0-500ms)
+        w: background part input data array (n_trials, n_chans, n_times)
+        w_target: background part target data array (n_trials, n_times)
+        signal_data: signal part input data array (n_trials, n_chans, n_times)
+        data_target: signal part target data array (n_trials, n_times)
+    Returns:
+        model_chans: list of channels which should be used in MCEE
+        snr_change: list of SNR's alteration
+    '''
+    # initialize variables
+    print('Running Backward EE...')
+    start = time.clock()
+    
+    j = 0
+    
+    compare_snr = np.zeros((len(chans)))
+    delete_chans = []
+    snr_change = []
+    # begin loop
+    active = True
+    while active:
+        if len(chans) > 1:
+            compare_snr = np.zeros((len(chans)))
+            mtemp_snr = np.zeros((len(chans)))
+            # delete 1 channel respectively and compare the snr with original one
+            for i in range(len(chans)):
+                # initialization
+                temp_chans = copy.deepcopy(chans)
+                temp_data = copy.deepcopy(signal_data)
+                temp_w = copy.deepcopy(w)
+                # delete one channel
+                del temp_chans[i]
+                temp_data = np.delete(temp_data, i, axis=1)
+                temp_w = np.delete(temp_w, i, axis=1)
+                # compute snr
+                temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
+                temp_snr = snr_time(temp_extract)
+                mtemp_snr[i] = np.mean(temp_snr)
+                compare_snr[i] = mtemp_snr[i] - msnr
+            # keep the channels which can improve snr forever
+            chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
+            delete_chans.append(chans.pop(chan_index))
+            snr_change.append(np.max(compare_snr))
+            # refresh data
+            signal_data = np.delete(signal_data, chan_index, axis=1)
+            w = np.delete(w, chan_index, axis=1)
+            # significant loop mark
+            j += 1 
+            print('Complete ' + str(j) + 'th loop')
+        # Backward EE complete
+        else:
+            end = time.clock()
+            print('Backward EE complete!')
+            print('Recursive running time: ' + str(end - start) + 's')
+            active = False
+        
+    model_chans = chans + delete_chans[-2:]
+    return model_chans, snr_change
+
+
+#%% Forward MCEE
+def forward_MCEE(chans, msnr, w, w_target, signal_data, data_target):
+    '''
+    Forward recursive algorithm to achieve MCEE
+    Contrary to Backward process:
+        (1)this time form an empty set
+        (2)add one channel each time respectively and keep the best choice
+        (3)repeat the last process until there will be no better choice
+            i.e. the convergence point of the recursive algorithm
+    Parameters:
+        chans: list of channels; the list order corresponds to the data array's
+        msnr: float; the mean of original signal's SNR in time domain(0-500ms)
+        w: background part input data array (n_trials, n_chans, n_times)
+        w_target: background part target data array (n_trials, n_times)
+        signal_data: signal part input data array (n_trials, n_chans, n_times)
+        data_target: signal part target data array (n_trials, n_times)
+    Returns:
+        model_chans: list of channels which should be used in MCEE
+        snr_change: list of SNR's alteration
+    '''
+    # initialize variables
+    print('Running Forward EE...')
+    start = time.clock()
+    
+    j = 1
+    
+    compare_snr = np.zeros((len(chans)))
+    max_loop = len(chans)
+    
+    remain_chans = []
+    snr_change = []
+    temp_snr = []
+    core_data = []
+    core_w = []
+    # begin loop
+    active = True
+    while active and len(chans) <= max_loop:
+        # initialization
+        compare_snr = np.zeros((len(chans)))
+        mtemp_snr = np.zeros((len(chans)))
+        # add 1 channel respectively and compare the snr with original one
+        for i in range(len(chans)):
+            # avoid reshape error in multi-dimension array
+            if j == 1:
+                temp_w = w[:,i,:]
+                temp_data = signal_data[:,i,:]
+            else:
+                temp_w = np.zeros((j, w.shape[0], w.shape[2]))
+                temp_w[:j-1, :, :] = core_w
+                temp_w[j-1, :, :] = w[:,i,:]
+        
+                temp_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
+                temp_data[:j-1, :, :] = core_data
+                temp_data[j-1, :, :] = signal_data[:,i,:]
+            # multi-linear regression & snr computation
+            temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
+            temp_snr = snr_time(temp_extract)
+            # find the best choice in this turn
+            mtemp_snr[i] = np.mean(temp_snr)
+            compare_snr[i] = mtemp_snr[i] - msnr
+        # keep the channels which can improve snr most
+        chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
+        remain_chans.append(chans.pop(chan_index))
+        snr_change.append(np.max(compare_snr))
+        # avoid reshape error at the beginning of Forward EE
+        if j == 1:
+            core_w = w[:, chan_index, :]
+            core_data = signal_data[:, chan_index, :]
+            # refresh data
+            signal_data = np.delete(signal_data, chan_index, axis=1)
+            w = np.delete(w ,chan_index, axis=1)
+            # significant loop mark
+            print('Complete ' + str(j) + 'th loop')
+            j += 1
+        else:
+            temp_core_w = np.zeros((j, w.shape[0], w.shape[2]))
+            temp_core_w[:j-1, :, :] = core_w
+            temp_core_w[j-1, :, :] = w[:, chan_index, :]
+            core_w = copy.deepcopy(temp_core_w)
+            del temp_core_w
+            
+            temp_core_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
+            temp_core_data[:j-1, :, :] = core_data
+            temp_core_data[j-1, :, :] = signal_data[:, chan_index, :]
+            core_data = copy.deepcopy(temp_core_data)
+            del temp_core_data
+            # add judge condition to stop program while achieving the target
+            if snr_change[j-1] < np.max(snr_change):
+                end = time.clock()
+                print('Forward EE complete!')
+                print('Recursive running time: ' + str(end - start) + 's')
+                active = False
+            else:
+                # refresh data
+                signal_data = np.delete(signal_data, chan_index, axis=1)
+                w = np.delete(w ,chan_index, axis=1)
+                # significant loop mark
+                print('Complete ' + str(j) + 'th loop')
+                j += 1
+        
+    remain_chans = remain_chans[:len(remain_chans)-1]
+    return remain_chans, snr_change
+
+
+#%% Stepwise MCEE
+def stepwise_MCEE(chans, msnr, w, w_target, signal_data, data_target):
+    '''
+    Stepward recursive algorithm to achieve MCEE
+    The combination of Forward and Backward process:
+        (1)this time form an empty set; 
+        (2)add one channel respectively and pick the best one; 
+        (3)add one channel respectively and delete one respectively (except the just-added one)
+            keep the best choice;
+        (4)repeat those process until there will be no better choice
+            i.e. the convergence point of the recursive algorithm
+    Parameters:
+        chans: list of channels; the list order corresponds to the data array's
+        msnr: float; the mean of original signal's SNR in time domain(0-500ms)
+        w: background part input data array (n_trials, n_chans, n_times)
+        w_target: background part target data array (n_trials, n_times)
+        signal_data: signal part input data array (n_trials, n_chans, n_times)
+        data_target: signal part target data array (n_trials, n_times)
+    Returns:
+        model_chans: list of channels which should be used in MCEE
+        snr_change: list of SNR's alteration
     '''
     # initialize variables
     print('Running Stepwise MCEE...')
     start = time.clock()
+    
     j = 1
+    
     compare_snr = np.zeros((len(chans)))
     max_loop = len(chans)
     
@@ -405,55 +534,4 @@ def stepwise_EE(chans, msnr, w, w_target, signal_data, data_target):
     return remain_chans
 
 
-#%% Algorithm operating results
-remain_chans = stepwise_EE(chans=chans, msnr=msnr, w=w, w_target=w_target,
-                           signal_data=signal_data, data_target=data_target)
-
-# release RAM
-del chans, msnr, signal_data, snr, w, w_target, data_target
-
-#%% Cross-validation
-# reload data
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\15Hz_filtered_data.mat')
-signal = eeg['signal']
-w = eeg['w']
-del eeg
-
-chans = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
-chans = chans['chan_info'].tolist()
-
-# pick channels
-w_i = np.zeros((w.shape[0], len(remain_chans), w.shape[2]))
-w_o = w[:, chans.index('OZ '), :]
-
-sig_i = np.zeros((signal.shape[0], len(remain_chans), signal.shape[2]))
-sig_o = signal[:, chans.index('OZ '), :]
-
-for i in range(len(remain_chans)):
-    w_i[:, i, :] = w[:, chans.index(remain_chans[i]), :]
-    sig_i[:, i, :] = signal[:, chans.index(remain_chans[i]), :]
-
-del i
-#del w, signal
-
-# 10-cross validation data prepare
-snr_t_raise = np.zeros(())
-percent_t = np.zeros(())
-
-snr_f_raise = np.zeros(())
-percent_f = np.zeros(())
-
-for i in range(10):
-    # test dataset
-    a = i*10
-    w_i_test = w_i[a:a+10, :, :]
-    w_o_test = w_o[a:a+10, :]
-    # training dataset
-    w_i_train = copy.deepcopy(w_i)
-    w_i_train = np.delete(w_i_train, [a,a+1,a+2,a+3,a+4,a+5,a+6,a+7,a+8,a+9], axis=0)
-    
-    w_o_train = copy.deepcopy(w_o)
-    w_o_train = np.delete(w_o_train, [a,a+1,a+2,a+3,a+4,a+5,a+6,a+7,a+8,a+9], axis=0)
-    
-    
-    
+#%% Cross validation

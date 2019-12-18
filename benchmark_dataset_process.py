@@ -128,7 +128,8 @@ w = f_data[:,:,:,0:3000]
 # get data for comparision
 signal_data = f_data[:,:,:,3000:]   # 3-6s
 
-del f_data, data
+data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat'
+io.savemat(data_path, {'f_data':f_data})
 
 #%% Correlation binarization
 def binarization(X):
