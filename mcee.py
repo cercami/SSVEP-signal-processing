@@ -513,7 +513,7 @@ def stepwise_MCEE(chans, msnr, w, w_target, signal_data, data_target):
                     w = np.delete(w, add_chan_index, axis=1)
                     del chans[add_chan_index]
                     # release RAM
-                    del temp_3_chans, temp_3_data, temp_3_w, temp_3_compare_snr, temp_3_chan_index
+                    del temp_3_chans, temp_3_compare_snr, temp_3_chan_index
                     del temp_4_chans, temp_4_data, temp_4_w, temp_4_compare_snr, temp_4_chan_index
                     del temp_5_data, temp_5_w, temp_5_extract, temp_5_estimate, mtemp_5_snr, temp_5_snr
                     # significant loop mark
@@ -521,7 +521,7 @@ def stepwise_MCEE(chans, msnr, w, w_target, signal_data, data_target):
                 # no improvement
                 else:
                     # release RAM
-                    del temp_3_chans, temp_3_data, temp_3_w, temp_3_compare_snr, temp_3_chan_index
+                    del temp_3_chans, temp_3_compare_snr, temp_3_chan_index
                     del temp_4_chans, temp_4_data, temp_4_w, temp_4_compare_snr, temp_4_chan_index
                     del temp_5_data, temp_5_w, temp_5_extract, temp_5_estimate, mtemp_5_snr, temp_5_snr
                     # reset
@@ -531,7 +531,7 @@ def stepwise_MCEE(chans, msnr, w, w_target, signal_data, data_target):
         j += 1
     
     remain_chans = remain_chans[:len(remain_chans)-1]
-    return remain_chans
+    return remain_chans, snr_change
 
 
 #%% Cross validation

@@ -38,23 +38,20 @@ import copy
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
 
 data = eeg['raw_data'][2,:,:,:]
+chans = eeg['chan_info'].tolist()
 
 data *= 1e6  # reset unit
 
 del eeg
-
-# in future versions, chan_info will be combined into raw_data.mat
-chans = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
-chans = chans['chan_info'].tolist()
 
 # basic info
 sfreq = 1000
 
 #%% Data preprocessing
 # filtering
-f_data = np.zeros((data.shape[0], data.shape[1], 3700))
+f_data = np.zeros((data.shape[0], data.shape[1], data.shape[2]))
 for i in range(data.shape[0]):
-    f_data[i,:,:] = filter_data(data[i,:,:3700], sfreq=sfreq, l_freq=5,
+    f_data[i,:,:] = filter_data(data[i,:,:], sfreq=sfreq, l_freq=5,
                       h_freq=40, n_jobs=6)
 
 del i, sfreq
@@ -63,14 +60,9 @@ del i, sfreq
 w = f_data[:,:,2000:3000]          
 
 # get data for comparision
-signal_data = f_data[:,:,3200:]   # 500ms after 200ms's duration
+signal_data = f_data[:,:,3200:3700]   # 500ms after 200ms's duration
 
 del f_data, data
-
-# save data then reload to save time
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\15Hz_filtered_data.mat'
-io.savemat(data_path, {'signal':signal_data, 'w':w})
-del data_path
 
 #%% Basic function definition
 # multi-linear regression
@@ -130,13 +122,13 @@ def snr_time(data):
 
 #%% Initialization
 # pick target signal channel
-data_target = signal_data[:, chans.index('OZ '), :]
-signal_data = np.delete(signal_data, chans.index('OZ '), axis=1)
+data_target = signal_data[:, chans.index('POZ'), :]
+signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
 
-w_target = w[:,chans.index('OZ '),:]
-w = np.delete(w, chans.index('OZ '), axis=1)
+w_target = w[:,chans.index('POZ'),:]
+w = np.delete(w, chans.index('POZ'), axis=1)
 
-del chans[chans.index('OZ ')]
+del chans[chans.index('POZ')]
 
 # config the variables
 snr = snr_time(data_target)
@@ -384,7 +376,7 @@ def stepwise_EE(chans, msnr, w, w_target, signal_data, data_target):
                     w = np.delete(w, add_chan_index, axis=1)
                     del chans[add_chan_index]
                     # release RAM
-                    del temp_3_chans, temp_3_data, temp_3_w, temp_3_compare_snr, temp_3_chan_index
+                    del temp_3_chans, temp_3_compare_snr, temp_3_chan_index
                     del temp_4_chans, temp_4_data, temp_4_w, temp_4_compare_snr, temp_4_chan_index
                     del temp_5_data, temp_5_w, temp_5_extract, temp_5_estimate, mtemp_5_snr, temp_5_snr
                     # significant loop mark
@@ -392,7 +384,7 @@ def stepwise_EE(chans, msnr, w, w_target, signal_data, data_target):
                 # no improvement
                 else:
                     # release RAM
-                    del temp_3_chans, temp_3_data, temp_3_w, temp_3_compare_snr, temp_3_chan_index
+                    del temp_3_chans, temp_3_compare_snr, temp_3_chan_index
                     del temp_4_chans, temp_4_data, temp_4_w, temp_4_compare_snr, temp_4_chan_index
                     del temp_5_data, temp_5_w, temp_5_extract, temp_5_estimate, mtemp_5_snr, temp_5_snr
                     # reset
@@ -402,58 +394,12 @@ def stepwise_EE(chans, msnr, w, w_target, signal_data, data_target):
         j += 1
     
     remain_chans = remain_chans[:len(remain_chans)-1]
-    return remain_chans
+    return remain_chans, snr_change
 
 
 #%% Algorithm operating results
-remain_chans = stepwise_EE(chans=chans, msnr=msnr, w=w, w_target=w_target,
+remain_chans, snr_change = stepwise_EE(chans=chans, msnr=msnr, w=w, w_target=w_target,
                            signal_data=signal_data, data_target=data_target)
 
 # release RAM
 del chans, msnr, signal_data, snr, w, w_target, data_target
-
-#%% Cross-validation
-# reload data
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\15Hz_filtered_data.mat')
-signal = eeg['signal']
-w = eeg['w']
-del eeg
-
-chans = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
-chans = chans['chan_info'].tolist()
-
-# pick channels
-w_i = np.zeros((w.shape[0], len(remain_chans), w.shape[2]))
-w_o = w[:, chans.index('OZ '), :]
-
-sig_i = np.zeros((signal.shape[0], len(remain_chans), signal.shape[2]))
-sig_o = signal[:, chans.index('OZ '), :]
-
-for i in range(len(remain_chans)):
-    w_i[:, i, :] = w[:, chans.index(remain_chans[i]), :]
-    sig_i[:, i, :] = signal[:, chans.index(remain_chans[i]), :]
-
-del i
-#del w, signal
-
-# 10-cross validation data prepare
-snr_t_raise = np.zeros(())
-percent_t = np.zeros(())
-
-snr_f_raise = np.zeros(())
-percent_f = np.zeros(())
-
-for i in range(10):
-    # test dataset
-    a = i*10
-    w_i_test = w_i[a:a+10, :, :]
-    w_o_test = w_o[a:a+10, :]
-    # training dataset
-    w_i_train = copy.deepcopy(w_i)
-    w_i_train = np.delete(w_i_train, [a,a+1,a+2,a+3,a+4,a+5,a+6,a+7,a+8,a+9], axis=0)
-    
-    w_o_train = copy.deepcopy(w_o)
-    w_o_train = np.delete(w_o_train, [a,a+1,a+2,a+3,a+4,a+5,a+6,a+7,a+8,a+9], axis=0)
-    
-    
-    

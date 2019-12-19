@@ -44,28 +44,35 @@ n_chans = f_data.shape[2]
 n_times = f_data.shape[3]
 
 w = f_data[:, :, :, 2000:3000]
-signal_data = f_data[:, :, :, 3000:]   
+signal_data = f_data[:, :, :, 3200:3700]   
 
 del n_chans, n_times, n_trials, n_events
+del f_data
 
 #%% MCEE
 # initialization
 freq = 2  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
 
-data_target = signal_data[freq, :, chans.index('POZ'), :]
-signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
+mcee_data_target = signal_data[freq, :, chans.index('POZ'), :]
+mcee_sig_data = signal_data[freq, :, :, :]
+mcee_sig_data = np.delete(mcee_sig_data, chans.index('POZ'), axis=1) 
 
-w_target = w[freq, :, chans.index('POZ'), :]
-w = np.delete(w, chans.index('POZ'), axis=1)
+mcee_w_target = w[freq, :, chans.index('POZ'), :]
+mcee_w = w[freq, :, :, :]
+mcee_w = np.delete(mcee_w, chans.index('POZ'), axis=1)
 
 del chans[chans.index('POZ')]
 
-snr = mcee.snr_time(data_target)
+snr = mcee.snr_time(mcee_data_target)
 msnr = np.mean(snr)
 
 # MCEE optimization
-model_chans, snr_change = mcee.stepwise_MCEE(chans=chans, msnr=msnr, w=w, w_target=w_target,
-                                             signal_data=signal_data, data_target=data_target)
+model_chans, snr_change = mcee.stepwise_MCEE(chans=chans, msnr=msnr, w=mcee_w,
+                        w_target=mcee_w_target, signal_data=mcee_sig_data,
+                        data_target=mcee_data_target)
+
+del mcee_data_target, mcee_sig_data, mcee_w_target, mcee_w
+
 #%% pick channels
 w_i = w[:,:,[chans.index('P8 '), chans.index('P5 '), chans.index('CB1')], :]
 w_o = w[:,:,chans.index('POZ'), :]

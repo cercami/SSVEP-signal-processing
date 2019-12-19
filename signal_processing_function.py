@@ -68,22 +68,32 @@ def inv_spa(data, target):
     Y=AX, Y (X.T) ((XX.T)^(-1))= A
     Use mat() to transform array to matrix to apply linear computation
     Use .A to transform matrix to array to apply normal functions
-    :param data: input model (n_events, n_epochs, n_chans, n_times)
-    :param target: output model (n_events, n_epochs, n_times)
+    :param data: input model (..., n_epochs, n_chans, n_times)
+    :param target: output model (..., n_epochs, n_times)
     '''
-    # spatial filter coefficients (n_events, n_epochs, n_chans)
-    A = np.zeros((data.shape[0], data.shape[1], data.shape[2]))
-
-    for i in range(data.shape[0]):
-        for j in range(data.shape[1]):
-            # transform array to matrix
-            y = np.mat(target[i,j,:])     # (1,T)
-            x = np.mat(data[i,j,:,:])     # (N,T)
-            xt = np.mat(data[i,j,:,:].T)  # (T,N)
-
-            xxt = x * xt                  # matrix multiplication (N,N)
-            ixxt = xxt.I                  # inverse matrix (N,N)
-            A[i,j,:] = y * xt * ixxt      # A =Y*(X.T)*((XX.T)^(-1)): (1,N)
+    if data.ndim == 4:  # (n_events, n_epochs, n_chans, n_times)
+        # spatial filter coefficients (n_events, n_epochs, n_chans)
+        A = np.zeros((data.shape[0], data.shape[1], data.shape[2]))
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                # transform array to matrix
+                y = np.mat(target[i,j,:])     # (1,T)
+                x = np.mat(data[i,j,:,:])     # (N,T)
+                xt = np.mat(data[i,j,:,:].T)  # (T,N)
+                xxt = x * xt                  # matrix multiplication (N,N)
+                ixxt = xxt.I                  # inverse matrix (N,N)
+                A[i,j,:] = y * xt * ixxt      # A =Y*(X.T)*((XX.T)^(-1)): (1,N)
+    
+    elif data.ndim == 3:  # (n_epochs, n_chans, n_times)
+        # spatial filter coefficients (n_epochs, n_chans)
+        A = np.zeros((data.shape[0], data.shape[1]))
+        for k in range(data.shape[0]):  # target (n_epochs, n_times)
+            y = np.mat(target[k,:])     # (1,T)
+            x = np.mat(data[k,:,:])     # (N,T)
+            xt = np.mat(data[k,:,:].T)  # (T,N)
+            xxt = x * xt                # (N,N)
+            ixxt = xxt.I                # (N,N)
+            A[k,:] = y * xt * ixxt      # A = Y*(X.T)*((XX.T)^(-1)): (1,N)
             
     return A
 
@@ -91,20 +101,27 @@ def inv_spa(data, target):
 def fit_goodness(X, Y, chans):
     '''
     Compute goodness of fit in non-linear-regression occasion
-    :param X: original signal (n_events, n_epochs, n_times)
-    :param Y: estimate signal (n_events, n_epochs, n_times)
+    :param X: original signal (..., n_epochs, n_times)
+    :param Y: estimate signal (..., n_epochs, n_times)
     :param chans: number of regression data' channels
     '''
-    # R^2: R2 (n_events, n_epochs)
-    R2 = np.zeros((X.shape[0], X.shape[1]))
-    correc_co = (X.shape[2] - 1) / (X.shape[2] - chans -1)
-    
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            RSS = np.sum((X[i,j,:] - Y[i,j,:])**2)
-            TSS = np.sum((X[i,j,:] - np.mean(X[i,j,:]))**2)
-            R2[i,j] = 1 - (RSS/TSS) * correc_co
-    
+    if X.ndim == 3:  # (n_events, n_epochs, n_times)
+        R2 = np.zeros((X.shape[0], X.shape[1]))  # R^2: R2 (n_events, n_epochs)
+        correc_co = (X.shape[2] - 1) / (X.shape[2] - chans -1)
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                RSS = np.sum((X[i,j,:] - Y[i,j,:])**2)
+                TSS = np.sum((X[i,j,:] - np.mean(X[i,j,:]))**2)
+                R2[i,j] = 1 - (RSS/TSS) * correc_co
+                
+    elif X.ndim == 2:  # (n_epochs, n_times)
+        R2 = np.zeros((X.shape[0]))  # R^2: R2 (n_epochs)
+        correc_co = (X.shape[1] - 1) / (X.shape[1] - chans -1)
+        for k in range(X.shape[0]):
+            RSS = np.sum((X[k,:] - Y[k,:])**2)
+            TSS = np.sum((X[k,:] - np.mean(X[k,:]))**2)
+            R2[k] = 1 - (RSS/TSS) * correc_co
+            
     return R2
     
     
@@ -112,8 +129,8 @@ def mlr_analysis(data, target):
     '''
     Do multi-linear regression repeatedly
     Model = LinearRegression().fit(X,Y): X(n_chans, n_times) & Y(n_chans, n_times)
-    :param data: input model: 4D array (n_events, n_epochs, n_chans, n_times)
-    :param target: output model: output model: 3D array (n_events, n_epochs, n_times)
+    :param data: input model (..., n_times)
+    :param target: output model: output model (..., n_times)
     Return R^2(after correction), coefficient, intercept
     R^2 here is a corrected version: 
         new R^2 = 1-(RSS/TSS)*((n-1)/(n-k-1)) = 1-(1-R^2)*((n-1)/(n-k-1))
@@ -122,28 +139,36 @@ def mlr_analysis(data, target):
     Expected to add in future: F-score, T-score, collinear diagnosis, ANOVA,
         correlation, coefficient correlation, RSS analysis, 95% confidence interval
     '''
-    # R^2: R2 (n_events, n_epochs)
-    R2 = np.zeros((data.shape[0], data.shape[1]))
-
-    # R^2 adjustment coefficient
-    correc_co = (data.shape[3]-1) / (data.shape[3]-data.shape[2]-1)
-    
-    # regression coefficient: RC (n_events, n_epochs, n_chans)
-    RC = np.zeros((data.shape[0], data.shape[1], data.shape[2]))
-    
-    # regression intercept: RI (n_events, n_epochs): 
-    RI = np.zeros((data.shape[0], data.shape[1]))
-
-    for i in range(data.shape[0]):
-        for j in range(data.shape[1]):  # i for events, j for epochs
-            # linear regression, remember to transform the array
-            L = LinearRegression().fit(data[i,j,:,:].T, target[i,j,:].T)
-            # the coefficient of derterminated R^2 of the prediction
-            R2[i,j] = 1 - (1 - L.score(data[i,j,:,:].T, target[i,j,:])) * correc_co
-            # the intercept of the model
-            RI[i,j] = L.intercept_
-            # the regression coefficient of the model
-            RC[i,j,:] = L.coef_
+    if data.ndim == 4:  # (n_events, n_epochs, n_chans, n_times)
+        # R^2: R2 (n_events, n_epochs)
+        R2 = np.zeros((data.shape[0], data.shape[1]))
+        # R^2 adjustment coefficient
+        correc_co = (data.shape[3]-1) / (data.shape[3]-data.shape[2]-1)  
+        # regression coefficient: RC (n_events, n_epochs, n_chans)
+        RC = np.zeros((data.shape[0], data.shape[1], data.shape[2]))
+        # regression intercept: RI (n_events, n_epochs): 
+        RI = np.zeros((data.shape[0], data.shape[1]))
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):  # i for events, j for epochs
+                # linear regression, remember to transform the array
+                L = LinearRegression().fit(data[i,j,:,:].T, target[i,j,:].T)
+                # the coefficient of derterminated R^2 of the prediction
+                R2[i,j] = 1 - (1 - L.score(data[i,j,:,:].T, target[i,j,:])) * correc_co
+                # the intercept of the model
+                RI[i,j] = L.intercept_
+                # the regression coefficient of the model
+                RC[i,j,:] = L.coef_
+                
+    elif data.ndim == 3:  # (n_epochs, n_chans, n_times)
+        R2 = np.zeros((data.shape[0]))                 # (n_epochs)
+        correc_co = (data.shape[2]-1) / (data.shape[2]-data.shape[1]-1)  
+        RC = np.zeros((data.shape[0], data.shape[1]))  # (n_epochs, n_chans)
+        RI = np.zeros((data.shape[0]))                 # (n_epochs)
+        for k in range(data.shape[0]):                 # k for epochs
+            L = LinearRegression().fit(data[k,:,:].T, target[k,:].T)
+            R2[k] = 1 - (1 - L.score(data[k,:,:].T, target[k,:])) * correc_co
+            RI[k] = L.intercept_
+            RC[k,:] = L.coef_
 
     return RC, RI, R2
 
@@ -151,29 +176,52 @@ def mlr_analysis(data, target):
 #%% signal extraction
 def sig_extract_mlr(coef, data, target, intercept):
     '''
-    :param coef: from spatial filter or regression (n_events, n_epochs, n_chans)
-    :param data: input data (n_events, n_epochs, n_chans, n_times)
+    :param coef: from regression (..., n_epochs, n_chans)
+    :param data: input data (..., n_epochs, n_chans, n_times)
     :param target: original data (one-channel)
-    :param intercept: regression intercept (n_events, n_epochs)
+    :param intercept: regression intercept (..., n_epochs)
     estimate & extract: one-channel data
     '''
-    estimate = np.zeros((data.shape[0], data.shape[1], data.shape[3]))
-
-    for i in range(data.shape[0]):
-        for j in range(data.shape[1]):
-            estimate[i,j,:] = (np.mat(coef[i,j,:]) * np.mat(data[i,j,:,:])).A
-            estimate[i,j,:] += intercept[i,j]
-    
+    if data.ndim == 4:  # (n_events, n_epochs, n_chans, n_times)
+        # one channel data: (n_events, n_epochs, n_times)
+        estimate = np.zeros((data.shape[0], data.shape[1], data.shape[3]))
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):  # i for events, j for epochs
+                estimate[i,j,:] = (np.mat(coef[i,j,:]) * np.mat(data[i,j,:,:])).A
+                estimate[i,j,:] += intercept[i,j]
+                
+    elif data.ndim == 3:  # (n_epochs, n_chans, n_times)
+        # one channel data: (n_epochs, n_times)
+        estimate = np.zeros((data.shape[0], data.shape[2]))
+        for k in range(data.shape[0]):  # k for epochs
+            estimate[k,:] = (np.mat(coef[k,:]) * np.mat(data[k,:,:])).A
+            estimate[k,:] += intercept[k]
+            
     extract =  target - estimate
 
     return estimate, extract
 
-def sig_extract_ia(coef, data, target):
-    estimate = np.zeros((data.shape[0], data.shape[1], data.shape[3]))
 
-    for i in range(data.shape[0]):
-        for j in range(data.shape[1]):
-            estimate[i,j,:] = (np.mat(coef[i,j,:]) * np.mat(data[i,j,:,:])).A
+def sig_extract_ia(coef, data, target):
+    '''
+    :param coef: from spatial filter (..., n_epochs, n_chans)
+    :param data: input data (..., n_epochs, n_chans, n_times)
+    :param target: original data (one-channel)
+    :param intercept: regression intercept (..., n_epochs)
+    estimate & extract: one-channel data
+    '''
+    if data.ndim == 4:  # (n_events, n_epochs, n_chans, n_times)
+        # one channel data: (n_events, n_epochs, n_times)
+        estimate = np.zeros((data.shape[0], data.shape[1], data.shape[3]))
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):  # i for events, j for epochs
+                estimate[i,j,:] = (np.mat(coef[i,j,:]) * np.mat(data[i,j,:,:])).A
+    
+    elif data.ndim == 3:  # (n_epochs, n_chans, n_times)
+        # one channel data: (n_epochs, n_times)
+        estimate = np.zeros((data.shape[0], data.shape[2]))
+        for k in range(data.shape[0]):  # k for epochs
+            estimate[k,:] = (np.mat(coef[k,:]) * np.mat(data[k,:,:])).A
 
     extract =  target - estimate
 
@@ -184,16 +232,24 @@ def sig_extract_ia(coef, data, target):
 def var_estimation(X):
     '''
     Use superimposed method to compute multi-dimension data's variance
-    :param X: input data (n_events, n_epochs, n_times)
+    :param X: input data array
     '''
-    var = np.zeors((X.shape[0], X.shape[2]))
-    for i in range(X.shape[0]):                 # i for n_events
-        ex = np.mat(np.mean(X[i,:,:], axis=0))  # (1, n_times)
-        temp = np.mat(np.ones((1, X.shape[1]))) # (1, n_epochs)
+    if X.ndim == 3:  # (n_events, n_epochs, n_times)
+        var = np.zeors((X.shape[0], X.shape[2]))    # (n_events, n_times)
+        for i in range(X.shape[0]):                 # i for n_events
+            ex = np.mat(np.mean(X[i,:,:], axis=0))  # (1, n_times)
+            temp = np.mat(np.ones((1, X.shape[1]))) # (1, n_epochs)
+            minus = (temp.T * ex).A                 # (n_epochs, n_times)
+            var[i,:] = np.mean((X[i,:,:] - minus)**2, axis=0)
+    
+    elif X.ndim == 2:  # (n_epochs, n_times)
+        var = np.zeors((X.shape[1]))            # (n_times)
+        ex = np.mat(np.mean(X, axis=0))         # (1, n_times)
+        temp = np.mat(np.ones(1, X.shape[0]))   # (1, n_epochs)
         minus = (temp.T * ex).A                 # (n_epochs, n_times)
-        var[i,:] = np.mean((X[i,:,:] - minus)**2, axis=0)
-
-    return var # (n_events, n_times)
+        var = np.mean((X - minus)**2, axis=0)
+        
+    return var
 
 
 #%% SNR computation
@@ -226,15 +282,12 @@ def snr_freq(X):
     return snr
 
 
-def snr_time(X, mode):
+def snr_time(X):
     '''
-    Two method for SNR computation
-        (1) Compute SNR and return time sequency
-        (2) Use superimposed average method:
-    :param X: input data (one-channel) (n_events, n_epochs, n_times) 
-    :param mode: choose method
+    Use superimposed average method to compute SNR and return time sequency
+    :param X: input data (one-channel)
     '''
-    if mode == 'time':
+    if X.ndim == 3:  #  (n_events, n_epochs, n_times) 
         snr = np.zeros((X.shape[0], X.shape[2]))    # (n_events, n_times)
         # basic object's size: (n_epochs, n_times)
         for i in range(X.shape[0]):                 # i for n_events
@@ -245,34 +298,32 @@ def snr_time(X, mode):
             var = np.mean((X[i,:,:] - minus)**2, axis=0)
             snr[i,:] = ex/var
     
-    if mode == 'average':
-        snr = np.zeros((X.shape[0]))
-
-        for i in range(X.shape[0]):
-            ex = np.mat(np.mean(X[i,:,:], axis=0))
-            temp = np.mat(np.ones((1, X.shape[1])))
-            minus = (temp.T * ex).A
-            var = np.mean((X[i,:,:] - minus)**2, axis=0)
-            snr[i] = 20 * np.log10(np.sum(ex)/np.sum(var))
-
+    elif X.ndim == 2:  # (n_epochs, n_times) 
+        snr = np.zeros((X.shape[1]))             # (n_times)
+        ex = np.mat(np.mean(X, axis=0))          # one-channel data: (1, n_times)
+        temp = np.mat(np.ones((1, X.shape[0])))  # (1, n_trials)
+        minus = (temp.T * ex).A                  # (n_trials, n_times)
+        ex = (ex.A) ** 2                         # signal's power
+        var = np.mean((X - minus)**2, axis=0)    # noise's power (avg)
+        snr = ex/var
+    
     return snr
 
 
 #%% baseline correction
 def zero_mean(X):
     '''
-    :param X: input signal array, 4D (n_events, n_epochs, n_chans, n_times)
-        or 3D(n_events, n_epochs, n_times)
+    :param X: input signal array
     Zero mean a signal sequence
     '''
-    if X.ndim == 4:
+    if X.ndim == 4:  # (n_events, n_epochs, n_chans, n_times)
         Y = np.zeros((X.shape[0],X.shape[1],X.shape[2],X.shape[3]))
         for i in range(X.shape[0]):
             for j in range(X.shape[1]):
                 for k in range(X.shape[2]):
                     Y[i,j,k,:]=X[i,j,k,:]-np.mean(X[i,j,k,:])
                 
-    if X.ndim == 3:
+    if X.ndim == 3:  # (n_epochs, n_chans, n_times)
         Y = np.zeros((X.shape[0],X.shape[1],X.shape[2]))
         for i in range(X.shape[0]):
             for j in range(X.shape[1]):
