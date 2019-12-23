@@ -43,6 +43,7 @@ Continuously updating...
 #%% import modules
 import numpy as np
 import math
+from math import log
 
 import mne
 from mne.time_frequency import tfr_array_morlet, psd_array_welch, stft
@@ -253,32 +254,28 @@ def var_estimation(X):
 
 
 #%% SNR computation
-def snr_freq(X):
+def snr_freq(X, k):
     '''
-    Compute SNR of SSVEP in frequency domain
+    Compute SNR of SSVEP in frequency domain, n_fft=1024
     Define SNR of each frequency point as the sum of power of its
         surrounding points in 1Hz's range, which is :
             SNR(freq) = Power(freq)/sum(Power((freq-1):(freq+1)))
-    For 1st, 2nd, last and penultimate point, make estimations according to
-        edge rules, which consider not-included points are equal to the edge values
-    :param X: input spectrum data array (n_events, n_epochs, n_times)
+    :param X: input spectrum data array (n_epochs, freqs)
     '''
-    snr = np.zeros((X.shape[0], X.shape[1], X.shape[2]))
+    snr = np.zeros((X.shape[0]))
+    if k == 0:
+        for i in range(X.shape[0]):
+            snr[i] = np.sum(X[i,8:10]) / (np.sum(X[i,6:8]) + np.sum(X[i,10:12]))
+            snr[i] = 10 * log(snr[i], 10)
+    if k == 1:
+        for i in range(X.shape[0]):
+            snr[i] = np.sum(X[i,10:12]) / (np.sum(X[i,8:10]) + np.sum(X[i,12:14]))
+            snr[i] = 10 * log(snr[i], 10)
+    if k == 2:
+        for i in range(X.shape[0]):
+            snr[i] = np.sum(X[i,15:17]) / (np.sum(X[i,13:15]) + np.sum(X[i,17:19]))
+            snr[i] = 10 * log(snr[i], 10)
 
-    for i in range(X.shape[0]):         # i for events
-        for j in range(X.shape[1]):     # j for epochs
-            for k in range(X.shape[2]):
-                if k==0:
-                    snr[i,j,k] = 20 * math.log10(X[i,j,k]/(np.sum(X[i,j,k:k+3])+2*X[i,j,k]))
-                if k==1:
-                    snr[i,j,k] = 20 * math.log10(X[i,j,k]/(np.sum(X[i,j,k-1:k+3])+X[i,j,k-1]))
-                if k==(X.shape[2]-1):
-                    snr[i,j,k] = 20 * math.log10(X[i,j,k]/(np.sum(X[i,j,k-2:])+2*X[i,j,k]))
-                if k==(X.shape[2]-2):
-                    snr[i,j,k] = 20 * math.log10(X[i,j,k]/(np.sum(X[i,j,k-2:])+X[i,j,k+1]))
-                else:
-                    snr[i,j,k] = 20 * math.log10(X[i,j,k]/np.sum(X[i,j,k-2:k+3]))
-    
     return snr
 
 
@@ -414,7 +411,7 @@ def welch_p(X, sfreq, fmin, fmax, n_fft, n_overlap, n_per_seg):
     '''
     Use welch method to estimate signal power spectral density
     Basic function is mne.psd_array_welch
-    :param X: input data array (n_events, n_epochs, n_times)
+    :param X: input data array (..., n_epochs, n_times)
     :param sfreq: the sampling frequency
     :param fmin, fmax: the lower(upper) frequency of interest
     :param n_fft: the length of FFT used, must be >= n_per_seg
@@ -424,14 +421,21 @@ def welch_p(X, sfreq, fmin, fmax, n_fft, n_overlap, n_per_seg):
     :param freqs: frequencies used in psd analysis
     '''
     num_freqs = int(math.floor((fmax - fmin) / (sfreq / n_fft)) + 1)
-    psds = np.zeros((X.shape[0], X.shape[1], num_freqs))
-    freqs = np.zeros((X.shape[0], X.shape[1], num_freqs))
     
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            psds[i,j,:], freqs[i,j,:] = psd_array_welch(X[i,j,:], sfreq=sfreq,
-                                        fmin=fmin, fmax=fmax, n_fft=n_fft,
-                                        n_overlap=n_overlap, n_per_seg=n_per_seg)
+    if X.ndim == 3:  # (n_events, n_epochs, n_times)
+        psds = np.zeros((X.shape[0], X.shape[1], num_freqs))
+        freqs = np.zeros((X.shape[0], X.shape[1], num_freqs))
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):  # i for n_events, j for n_epochs
+                psds[i,j,:], freqs[i,j,:] = psd_array_welch(X[i,j,:], sfreq=sfreq,
+                    fmin=fmin, fmax=fmax, n_fft=n_fft, n_overlap=n_overlap, n_per_seg=n_per_seg)
+    
+    elif X.ndim == 2:  # (n_epochs, n_times)
+        psds = np.zeros((X.shape[0], num_freqs))
+        freqs = np.zeros((X.shape[0], num_freqs))
+        for k in range(X.shape[0]):  # k for n_epochs
+            psds[k,:], freqs[k,:] = psd_array_welch(X[k,:], sfreq=sfreq, fmin=fmin,
+                fmax=fmax, n_fft=n_fft, n_overlap=n_overlap, n_per_seg=n_per_seg)
 
     return psds, freqs
 
