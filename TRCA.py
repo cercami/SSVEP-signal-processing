@@ -46,8 +46,9 @@ signal_data = f_data[:, :, :, 3000:3500]
 
 del f_data
 
+#%% Filter bank
 
-#%% Matrix Q
+#%% Matrix Q Q=Cov(x1, x2)
 
 #%% Matrix S
 
