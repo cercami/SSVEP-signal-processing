@@ -54,7 +54,8 @@ del n_chans, n_times, n_trials, n_events
 #%% MCEE
 # initialization
 freq = 0  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
-channel_target = 'OZ '
+channel_target = 'POZ'
+mcee_chans = copy.deepcopy(chans)
 
 mcee_data_target = signal_data[freq, :, chans.index(channel_target), :]
 mcee_sig_data = signal_data[freq, :, :, :]
@@ -64,9 +65,8 @@ mcee_w_target = w[freq, :, chans.index(channel_target), :]
 mcee_w = w[freq, :, :, :]
 mcee_w = np.delete(mcee_w, chans.index(channel_target), axis=1)
 
-mcee_chans = copy.deepcopy(chans)
-
 del mcee_chans[mcee_chans.index(channel_target)]
+
 
 snr = mcee.snr_time(mcee_data_target)
 msnr = np.mean(snr)
@@ -76,14 +76,14 @@ model_chans, snr_change = mcee.stepwise_MCEE(chans=mcee_chans, msnr=msnr, w=mcee
                         w_target=mcee_w_target, signal_data=mcee_sig_data,
                         data_target=mcee_data_target)
 
-del mcee_data_target, mcee_sig_data, mcee_w_target, mcee_w
+del mcee_data_target, mcee_sig_data, mcee_w_target, mcee_w, mcee_chans
 
 #%% pick channels
 w_i = w[:,:,[chans.index('POZ'), chans.index('CP1')], :]
 w_o = w[:,:,chans.index('OZ '), :]
 
-sig_i = f_data[:,:,[chans.index('POZ'), chans.index('CP1')], 2800:3700]
-sig_o = f_data[:,:,chans.index('OZ '), 2800:3700]
+sig_i = signal_data[:,:,[chans.index('P8 '), chans.index('P5 '), chans.index('CB1')], :]
+sig_o = signal_data[:,:,chans.index('POZ'), :]
 
 del w, signal_data
 
@@ -110,9 +110,9 @@ plt.legend(loc='best')
 
 #%% check time-domain snr
 k = freq
-sig_snr_t = SPF.snr_time(sig_o, mode='time')
-w_snr_t = SPF.snr_time(w_ex_s, mode='time')
-ws_snr_t = SPF.snr_time(w_es_s, mode='time')
+sig_snr_t = SPF.snr_time(sig_o)
+w_snr_t = SPF.snr_time(w_ex_s)
+ws_snr_t = SPF.snr_time(w_es_s)
 
 plt.plot(sig_snr_t[k,:], label='origin', color='tab:blue', linewidth=1.5)
 plt.plot(w_snr_t[k,:], label='extraction', color='tab:orange', linewidth=1)
@@ -172,22 +172,20 @@ fig, ax = plt.subplots(2, 1, figsize=(12, 12))
 
 ax[0].plot(sig_o[freq, :, :].T, linewidth=1)
 ax[0].plot(np.mean(sig_o[freq, :, :], axis=0), linewidth=4, color='black', label='mean')
-ax[0].set_title('8Hz & OZ origin', fontsize=18)
+ax[0].set_title('8Hz & POZ origin', fontsize=18)
 ax[0].set_xlabel('Time/ms', fontsize=16)
 ax[0].set_ylabel('Amplitude/uV', fontsize=16)
-ax[0].vlines(208.3, -20, 30, linestyle='dashed', color='black', label='start')
 ax[0].set_ylim([-20, 20])
 ax[0].legend(loc='best', fontsize=16)
 
 ax[1].plot(w_ex_s[freq, :, :].T, linewidth=1)
 ax[1].plot(np.mean(w_ex_s[freq, :, :], axis=0), linewidth=4, color='black', label='mean')
-ax[1].set_title('8Hz & OZ extraction', fontsize=18)
+ax[1].set_title('8Hz & POZ extraction', fontsize=18)
 ax[1].set_xlabel('Time/ms', fontsize=16)
 ax[1].set_ylabel('Amplitude/uV', fontsize=16)
-ax[1].vlines(208.3, -20, 30, linestyle='dashed', color='black', label='start')
 ax[1].set_ylim([-20, 20])
 ax[1].legend(loc='best', fontsize=16)
 
 fig.tight_layout()
 plt.show()
-plt.savefig(r'E:\8-oz.png', dpi=300)
+plt.savefig(r'F:\8-poz.png', dpi=600)

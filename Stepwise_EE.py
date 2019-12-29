@@ -122,13 +122,14 @@ def snr_time(data):
 
 #%% Initialization
 # pick target signal channel
-data_target = signal_data[:, chans.index('POZ'), :]
-signal_data = np.delete(signal_data, chans.index('POZ'), axis=1)
+channel_target = 'POZ'
+data_target = signal_data[:, chans.index(channel_target), :]
+signal_data = np.delete(signal_data, chans.index(channel_target), axis=1)
 
-w_target = w[:,chans.index('POZ'),:]
-w = np.delete(w, chans.index('POZ'), axis=1)
+w_target = w[:,chans.index(channel_target),:]
+w = np.delete(w, chans.index(channel_target), axis=1)
 
-del chans[chans.index('POZ')]
+del chans[chans.index(channel_target)]
 
 # config the variables
 snr = snr_time(data_target)
