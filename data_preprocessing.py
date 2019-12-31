@@ -21,7 +21,7 @@ from mne.baseline import rescale
 from mne.filter import filter_data
 
 #%% load data
-filepath = r'F:\SSVEP\dataset'
+filepath = r'I:\SSVEP\dataset'
 
 subjectlist = ['weisiwen']
 
@@ -86,7 +86,7 @@ del raw, picks, i, n_stims, n_trials, n_chans, n_times
 del drop_chans, event_id, events, tmax, tmin
 
 # store raw data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat'
+data_path = r'I:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat'
 io.savemat(data_path, {'raw_data':data,
                        'chan_info':picks_ch_names})
 
@@ -105,7 +105,7 @@ for i in range(n_events):
 del i, data
 
 # store fitered data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat'
+data_path = r'I:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat'
 io.savemat(data_path, {'f_data':f_data,
                        'chan_info':picks_ch_names})
 

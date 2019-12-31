@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 #%% Initialization
-fs = 10000           # sample frequency
+fs = 1000            # sample frequency
 f0 = 50.0            # notch frequency
 Q = 10.0             # quality factor
 w0 = f0 / (fs/2)     # normalized frequency
@@ -38,15 +38,15 @@ ax[0].plot(freq, 20*np.log10(abs(h)), color='tab:blue')
 ax[0].set_title('Frequency Response', fontsize=16)
 ax[0].set_ylabel('Amplitude/dB', fontsize=16)
 ax[0].set_xlabel('Frequency/Hz', fontsize=16)
-ax[0].set_xlim([0, 100])
-ax[0].set_ylim([-40, 10])
+#ax[0].set_xlim([0, 40])
+#ax[0].set_ylim([-40, 10])
 
 ax[1].plot(freq, np.unwrap(np.angle(h))*180/np.pi, color='tab:orange')
 ax[1].set_ylabel('Anlge(degrees)', fontsize=16)
 ax[1].set_xlabel('Frequency/Hz', fontsize=16)
-ax[1].set_xlim([0, 100])
+#ax[1].set_xlim([0, 40])
 ax[1].set_yticks([-90, -60, -30, 0, 30, 60, 90])
-ax[1].set_ylim([-90, 90])
+#ax[1].set_ylim([-90, 90])
 
 plt.show()
 
