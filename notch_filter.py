@@ -27,25 +27,25 @@ b, a = signal.iirnotch(w0, Q)
 w, h = signal.freqz(b, a)
 
 # generate frequency axis
-freq = w*fs / (2*np.pi)
-
+freq = w*sfreq / (2*np.pi)
+#%%
 # plot
 sns.set(style='whitegrid')
 
 fig, ax = plt.subplots(2, 1, figsize=(8, 6))
-
+#%%
 ax[0].plot(freq, 20*np.log10(abs(h)), color='tab:blue')
 ax[0].set_title('Frequency Response', fontsize=16)
 ax[0].set_ylabel('Amplitude/dB', fontsize=16)
 ax[0].set_xlabel('Frequency/Hz', fontsize=16)
-#ax[0].set_xlim([0, 40])
-#ax[0].set_ylim([-40, 10])
+ax[0].set_xlim([0, 200])
+ax[0].set_ylim([-60, 5])
 
 ax[1].plot(freq, np.unwrap(np.angle(h))*180/np.pi, color='tab:orange')
 ax[1].set_ylabel('Anlge(degrees)', fontsize=16)
 ax[1].set_xlabel('Frequency/Hz', fontsize=16)
-#ax[1].set_xlim([0, 40])
-ax[1].set_yticks([-90, -60, -30, 0, 30, 60, 90])
+ax[1].set_xlim([0, 200])
+#ax[1].set_yticks([-90, -60, -30, 0, 30, 60, 90])
 #ax[1].set_ylim([-90, 90])
 
 plt.show()

@@ -23,6 +23,8 @@ from sklearn.linear_model import LinearRegression
 import copy
 import time
 
+import signal_processing_function as SPF
+
 #%% Basic operating function
 # multi-linear regression
 def mlr(model_input, model_target, data_input, data_target):
@@ -534,4 +536,6 @@ def stepwise_MCEE(chans, msnr, w, w_target, signal_data, data_target):
     return remain_chans, snr_change
 
 
-#%% Cross validation
+#%% main function
+def mcee(model_chans, ):
+    
