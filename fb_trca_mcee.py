@@ -17,12 +17,16 @@ import copy
 import signal_processing_function as SPF 
 import matplotlib.pyplot as plt
 
-#%% initialization
+# initialization
+# pick channels from parietal and occipital areas
 tar_chans = ['PZ ','POZ','O1 ','OZ ','O2 ']
+#tar_chans = ['POZ', 'O1 ', 'OZ ', 'O2 ']
+#tar_chans = ['O1 ', 'OZ ', 'O2 ']
+#tar_chans = ['POZ', 'OZ ']
 # (n_events, n_trials, n_chans, n_times)
-mcee_sig = np.zeros((3, 100, len(tar_chans), 160))
+mcee_sig = np.zeros((3, 100, len(tar_chans), 1640))
 
-#%% loop condition
+# loop condition
 for ntc in range(len(tar_chans)):
     for nf in range(3):
         freq = nf  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
@@ -32,12 +36,7 @@ for ntc in range(len(tar_chans)):
         eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
         f_data = eeg['f_data'][freq,:,:,2000:3640] * 1e6
         w = f_data[:,:,0:1000]
-        signal_data = f_data[:,:,1140:1300]
-
-        #for nt in range(5):
-            #f_data = eeg['f_data'][freq,:,:,2000:3140+int((nt+1)*100)] * 1e6
-            #w = f_data[:,:,0:1000]
-            #signal_data = f_data[:,:,1140:1140+int((nt+1)*100)]
+        signal_data = f_data[:,:,1140:1200]
         
         chans = eeg['chan_info'].tolist() 
         del eeg
@@ -46,12 +45,13 @@ for ntc in range(len(tar_chans)):
         sfreq = 1000
 
         # variables initialization
-        w_o = w[:, chans.index(target_channel), :]
+        w_o = w[:,chans.index(target_channel),:]
         w_temp = copy.deepcopy(w)
         w_i = np.delete(w_temp, chans.index(target_channel), axis=1)
         del w_temp
 
-        sig_o = signal_data[:, chans.index(target_channel), :]
+        sig_o = signal_data[:,chans.index(target_channel),:]
+        f_sig_o = f_data[:,chans.index(target_channel),:]
         sig_temp = copy.deepcopy(signal_data)
         sig_i = np.delete(sig_temp, chans.index(target_channel), axis=1)
         del sig_temp
@@ -70,34 +70,33 @@ for ntc in range(len(tar_chans)):
 
         # pick channels chosen from stepwise
         w_i = np.zeros((w.shape[0], len(model_chans), w.shape[2]))
-        sig_i = np.zeros((signal_data.shape[0], len(model_chans), signal_data.shape[2]))
+        f_sig_i = np.zeros((f_data.shape[0], len(model_chans), f_data.shape[2]))
 
         for nc in range(len(model_chans)):
             w_i[:,nc,:] = w[:,chans.index(model_chans[nc]),:]
-            sig_i[:,nc,:] = signal_data[:,chans.index(model_chans[nc]),:]
+            f_sig_i[:,nc,:] = f_data[:,chans.index(model_chans[nc]),:]
         del nc
 
         # mcee main process
         rc, ri, r2 = SPF.mlr_analysis(w_i, w_o)
-        w_es_s, w_ex_s = SPF.sig_extract_mlr(rc, sig_i, sig_o, ri)
+        w_es_s, w_ex_s = SPF.sig_extract_mlr(rc, f_sig_i, f_sig_o, ri)
         del rc, ri, r2, w_es_s
 
         # save optimized data
         mcee_sig[nf,:,ntc,:] = w_ex_s
-        del w_ex_s, model_chans, sig_i, sig_o, w_i, w_o, w, signal_data
+        del w_ex_s, model_chans, f_sig_i, sig_o, w_i, w_o, w, signal_data
 
 #%% trca
 N = 10
 n_bands = 3
 acc_cv = np.zeros((n_bands))
 
-pk_sig = mcee_sig
+pk_sig = mcee_sig[:,:,:,1140:1200]
 
 n_events = 3
 n_trials = 100
 n_chans = len(tar_chans)
 
-  
 for nb in range(n_bands):
     # filter bank: 8-88Hz | IIR method, each band has 2Hz's buffer
     # change number of filter banks
