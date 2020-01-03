@@ -31,7 +31,7 @@ import mcee
 import copy
 
 #%% load local data (extract from .cnt file)
-eeg = io.loadmat(r'G:\dataset\preprocessed_data\weisiwen\f_data.mat')
+eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
 f_data = eeg['f_data']
 chans = eeg['chan_info'].tolist()
 f_data *= 1e6  
@@ -46,7 +46,7 @@ n_chans = f_data.shape[2]
 n_times = f_data.shape[3]
 
 w = f_data[:, :, :, 2000:3000]
-signal_data = f_data[:, :, :, 3200:3700]   
+signal_data = f_data[:, :, :, 3140:3240]   
 
 del n_chans, n_times, n_trials, n_events
 #del f_data
@@ -54,7 +54,7 @@ del n_chans, n_times, n_trials, n_events
 #%% MCEE
 # initialization
 freq = 0  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
-channel_target = 'POZ'
+channel_target = 'O2 '
 mcee_chans = copy.deepcopy(chans)
 
 mcee_data_target = signal_data[freq, :, chans.index(channel_target), :]
@@ -79,11 +79,11 @@ model_chans, snr_change = mcee.stepwise_MCEE(chans=mcee_chans, msnr=msnr, w=mcee
 del mcee_data_target, mcee_sig_data, mcee_w_target, mcee_w, mcee_chans
 
 #%% pick channels
-w_i = w[:,:,[chans.index('POZ'), chans.index('CP1')], :]
-w_o = w[:,:,chans.index('OZ '), :]
+w_i = w[:,:,[chans.index('P2 '), chans.index('CP2'), chans.index('C2 ')], :]
+w_o = w[:,:,chans.index('O2 '), :]
 
-sig_i = signal_data[:,:,[chans.index('P8 '), chans.index('P5 '), chans.index('CB1')], :]
-sig_o = signal_data[:,:,chans.index('POZ'), :]
+sig_i = signal_data[:,:,[chans.index('P2 '), chans.index('CP2'), chans.index('C2 ')], :]
+sig_o = signal_data[:,:,chans.index('O2 '), :]
 
 del w, signal_data
 

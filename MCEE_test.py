@@ -21,9 +21,9 @@ import fp_growth as fpg
 
 #%% load local data (extract from .cnt file)
 freq = 0  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
-target_channel = 'POZ'
+target_channel = 'O2 '
 
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
+eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
 f_data = eeg['f_data'][freq, :, :, :]
 chans = eeg['chan_info'].tolist()
 f_data *= 1e6  
@@ -37,7 +37,7 @@ n_chans = f_data.shape[1]
 n_times = f_data.shape[2]
 
 w = f_data[:, :, 2000:3000]
-signal_data = f_data[:, :, 3200:3700]   
+signal_data = f_data[:, :, 3140:3240]   
 
 del n_chans, n_times
 del f_data

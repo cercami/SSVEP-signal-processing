@@ -536,6 +536,189 @@ def stepwise_MCEE(chans, msnr, w, w_target, signal_data, data_target):
     return remain_chans, snr_change
 
 
-#%% main function
-def mcee(model_chans, ):
+#%% Target identification: TRCA method
+def trca(tr_fb_data, te_fb_data):
+    '''
+    TRCA is the method that extracts task-related components efficiently 
+        by maximizing the reproducibility during the task period
+    Parameters:
+        tr_fb_data: (n_events, n_bands, n_trials, n_chans, n_times) |
+            training dataset (after filter bank) 
+        te_fb_data: (n_events, n_bands, n_trials, n_chans, n_times) |
+            test dataset (after filter bank)
+    Returns:
+        accuracy: int | the number of correct identifications
+        
+    '''
+    # template data: (n_events, n_bands, n_chans, n_times)|basic element: (n_chans, n_times)
+    template = np.mean(tr_fb_data, axis=2)
+    
+    # basic parameters
+    n_events = tr_fb_data.shape[0]
+    n_bands = tr_fb_data.shape[1]
+    n_chans = tr_fb_data.shape[3]
+    n_times = tr_fb_data.shape[4]
+    
+    # Matrix Q: inter-channel covariance
+    q = np.zeros((n_events, n_bands, n_chans, n_chans))
+    # all events(n), all bands(m)
+    for x in range(n_events):  # x for events (n)
+        for y in range(n_bands):  # y for bands (m)
+            temp = np.zeros((n_chans, int(tr_fb_data.shape[2]*n_times)))
+            for z in range(n_chans):  # z for channels
+                # concatenated matrix of all trials in training dataset
+                temp[z,:] = tr_fb_data[2,y,:,z,:].flatten()
+            # compute matrix Q | (Toeplitz matrix): (n_chans, n_chans)
+            # for each event & band, there should be a unique Q
+            # so the total quantity of Q is n_bands*n_events (here is 30=x*y)
+            q[x,y,:,:] = np.cov(temp)
+            del temp, z
+        del y
+    del x
+
+    # Matrix S: inter-channels' inter-trial covariance
+    # all events(n), all bands(m), inter-channel(n_chans, n_chans)
+    s = np.zeros((n_events, n_bands, n_chans, n_chans))
+    for u in range(n_events):  # u for events
+        for v in range(n_bands):  # v for bands
+            # at the inter-channels' level, obviouly the square will also be a Toeplitz matrix
+            # i.e. (n_chans, n_chans), here the shape of each matrix should be (9,9)
+            for w in range(n_chans):  # w for channels (j1)
+                for x in range(n_chans):  # x for channels (j2)
+                    cov = []
+                    # for each event & band & channel, there should be (trials^2-trials) values
+                    # here trials = 10, so there should be 90 values in each loop
+                    for y in range(tr_fb_data.shape[2]):  # y for trials (h1)
+                        temp = np.zeros((2, n_times))
+                        temp[0,:] = tr_fb_data[u,v,y,w,:]
+                        for z in range(tr_fb_data.shape[2]):  # z for trials (h2)
+                            if z != y:  # h1 != h2, INTER-trial covariance
+                                temp[1,:] = tr_fb_data[u,v,z,x,:]
+                                cov.append(np.sum(np.tril(np.cov(temp), -1)))
+                            else:
+                                continue
+                        del z, temp
+                    del y
+                    # the basic element S(j1j2) of Matrix S
+                    # is the sum of inter-trial covariance (h1&h2) of 1 events & 1 band in 1 channel
+                    # then form a square (n_chans,n_chans) to describe inter-channels' information
+                    # then form a data cube containing various bands and events' information
+        
+                    # of course the 1st value should be the larger one (computed in 1 channel)
+                    # according to the spatial location of different channels
+                    # there should also be size differences
+                    # (e.g. PZ & POZ's values are significantly larger)
+                    s[u,v,w,x] = np.sum(cov)
+                    del cov
+                del x
+            del w
+        del v
+    del u
+    
+    # Spatial filter W
+    # all events(n), all bands(m)
+    w = np.zeros((n_events, n_bands, n_chans))
+    for y in range(n_events):
+        for z in range(n_bands):
+            # Square Q^-1 * S
+            qs = np.mat(q[y,z,:,:]).I * np.mat(s[y,z,:,:])
+            # Eigenvalues & eigenvectors
+            e_value, e_vector = np.linalg.eig(qs)
+            # choose the eigenvector which refers to the largest eigenvalue
+            w_index = np.max(np.where(e_value == np.max(e_value)))
+            # w will maximum the task-related componont from multi-channel's data
+            w[y,z,:] = e_vector[:,w_index].T
+            del w_index
+        del z
+    del y
+    # from now on, never use w as loop mark for we have variable named w
+
+    # Test dataset operating
+    # basic element of r is (n_bands, n_events)
+    r = np.zeros((n_events, te_fb_data.shape[2], n_bands, n_events))
+    for v in range(n_events): # events in test dataset
+        for x in range(te_fb_data.shape[2]):  # trials in test dataset (of one event)
+            for y in range(n_bands):  # bands are locked
+                # (vth event, zth band, xth trial) test data to (all events(n), zth band(m)) training data
+                for z in range(n_events):
+                    temp_test = np.mat(te_fb_data[v,y,x,:,:]).T * np.mat(w[z,y,:]).T
+                    temp_template = np.mat(template[z,y,:,:]).T * np.mat(w[z,y,:]).T
+                    r[v,x,y,z] = np.sum(np.tril(np.corrcoef(temp_test.T, temp_template.T),-1))
+                del z, temp_test, temp_template
+            del y
+        del x
+    del v
+
+    # Feature for target identification
+    r = r**2
+    # identification function a(m)
+    a = np.matrix([(m+1)**-1.25+0.25 for m in range(n_bands)])
+    rou = np.zeros((n_events, te_fb_data.shape[2], n_events))
+
+    for y in range(n_events):
+        for z in range(te_fb_data.shape[2]):  # trials in test dataset (of one event)
+            # (yth event, zth trial) test data | will have n_events' value, here is 3
+            # the location of the largest value refers to the class of this trial
+            rou[y,z,:] = a * np.mat(r[y,z,:,:])
+    
+    acc = []
+    # compute accuracy
+    for x in range(rou.shape[0]):  # ideal classification
+        for y in range(rou.shape[1]):
+            if np.max(np.where(rou[x,y,:] == np.max(rou[x,y,:]))) == x:  # correct
+                acc.append(1)
+    
+    return acc
+
+#%% Main function: multi-channel estimation extraction
+def MCEE_optimize(chans, target_channel, w, signal_data):
+    '''
+    Use MCEE to optimize original signal
+    Parameters:
+        chans: list of channels | the order of list corresponds to the data array's order
+        target_channel: str | the name of target channel
+        w: (n_trials, n_chans, n_times) | model array
+        signal_data: (n_trials, n_chans, n_times) | signal data array
+    Return:
+        extracted siganl: (n_trials, n_times) | target channel's optimized data
+    '''
+    # initialization
+    w_o = w[:,chans.index(target_channel),:]
+    w_temp = copy.deepcopy(w)
+    w_i = np.delete(w_temp, chans.index(target_channel), axis=1)
+    del w_temp
+    
+    sig_o = signal_data[:,chans.index(target_channel),:]
+    sig_temp = copy.deepcopy(signal_data)
+    sig_i = np.delete(sig_temp, chans.index(target_channel), axis=1)
+    del sig_temp
+    
+    chans_temp = copy.deepcopy(chans)
+    del chans_temp[chans_temp.index(target_channel)]
+    
+    # use stepwise to choose channels
+    mcee_chans = copy.deepcopy(chans_temp)
+    
+    snr = snr_time(sig_o)
+    msnr = np.mean(snr)
+    
+    model_chans, snr_change = stepwise_MCEE(chans=mcee_chans, msnr=msnr, w=w_i,
+                            w_target=w_o, signal_data=sig_i, data_target=sig_o)
+    del snr, msnr, snr_change, w_i, sig_i
+    
+    # pick channels chosen from stepwise MCEE
+    w_i = np.zeros((w.shape[0], len(model_chans), w.shape[2]))
+    sig_i = np.zeros((signal_data.shape[0], len(model_chans), signal_data.shape[2]))
+    
+    for i in range(len(model_chans)):
+        w_i[:,i,:] = w[:,chans_temp.index(model_chans[i]),:]
+        sig_i[:,i,:] = signal_data[:,chans_temp.index(model_chans[i]),:]
+    del i
+    
+    # multi-channel estimation extraction
+    rc, ri, r2 = SPF.mlr_analysis(w_i, w_o)
+    w_es_s, w_ex_s = SPF.sig_extract_mlr(rc, sig_i, sig_o, ri)
+    del rc, ri, r2, w_es_s
+    
+    return w_ex_s
     

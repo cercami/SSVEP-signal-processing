@@ -99,7 +99,7 @@ n_times = data.shape[3]
 f_data = np.zeros((n_events, n_trials, n_chans, n_times))
 for i in range(n_events):
     f_data[i,:,:,:] = filter_data(data[i,:,:,:], sfreq=sfreq, l_freq=5,
-                      h_freq=40, n_jobs=6)
+                      h_freq=90, n_jobs=6)
 
 # release RAM
 del i, data
