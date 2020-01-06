@@ -370,8 +370,8 @@ def stepwise_MCEE(chans, msnr, w, w_target, signal_data, data_target):
                 temp_1_data = np.delete(temp_1_data, 0, axis=0)
                 temp_1_w = np.delete(temp_1_w, 0, axis=0)
                 # add one channel
-                temp_2_compare_snr = np.zeros((temp_1_data.shape[1]))
-                for k in range(w.shape[1]):
+                temp_2_compare_snr = np.zeros((signal_data.shape[1]))
+                for k in range(signal_data.shape[1]):
                     temp_2_w = np.zeros((2, w.shape[0], w.shape[2]))
                     temp_2_w[0, :, :] = temp_1_w
                     temp_2_w[1, :, :] = w[:, k, :]

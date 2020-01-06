@@ -44,7 +44,7 @@ for nt in range(11):
             target_channel = tar_chans[ntc]
 
             # load local data (extract from .cnt file)
-            eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
+            eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
             f_data = eeg['f_data'][freq,:,:,2000:3640] * 1e6
             w = f_data[:,:,0:1000]
             if nt == 0:  # 500ms

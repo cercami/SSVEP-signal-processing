@@ -44,41 +44,41 @@ for nt in range(11):
             freq = nf  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
             target_channel = tar_chans[ntc]
             # load local data (extract from .cnt file)
-            eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
+            eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
             f_data = eeg['f_data'][freq,:,:,2000:3640] * 1e6
             w = f_data[:,:,0:1000]
             if nt == 0:  # 500ms
-                signal_data = f_data[:,:,1140:1640]
+                signal_data = f_data[:,:,1060:1640]
                 ep = 1640
             elif nt == 1:  # 400ms
-                signal_data = f_data[:,:,1140:1540]
+                signal_data = f_data[:,:,1060:1540]
                 ep = 1540
             elif nt == 2:  # 300ms
-                signal_data = f_data[:,:,1140:1440]
+                signal_data = f_data[:,:,1060:1440]
                 ep = 1440
             elif nt == 3:  # 200ms
-                signal_data = f_data[:,:,1140:1340]
+                signal_data = f_data[:,:,1060:1340]
                 ep = 1340
             elif nt == 4:  # 180ms
-                signal_data = f_data[:,:,1140:1320]
+                signal_data = f_data[:,:,1060:1320]
                 ep = 1320
             elif nt == 5:  # 160ms
-                signal_data = f_data[:,:,1140:1300]
+                signal_data = f_data[:,:,1060:1300]
                 ep = 1300
             elif nt == 6:  # 140ms
-                signal_data = f_data[:,:,1140:1280]
+                signal_data = f_data[:,:,1060:1280]
                 ep = 1280
             elif nt == 7:  # 120ms
-                signal_data = f_data[:,:,1140:1260]
+                signal_data = f_data[:,:,1060:1260]
                 ep = 1260
             elif nt == 8:  # 100ms
-                signal_data = f_data[:,:,1140:1240]
+                signal_data = f_data[:,:,1060:1240]
                 ep = 1240
             elif nt == 9:  # 80ms
-                signal_data = f_data[:,:,1140:1220]
+                signal_data = f_data[:,:,1060:1220]
                 ep = 1220
             elif nt == 10:  # 60ms
-                signal_data = f_data[:,:,1140:1200]
+                signal_data = f_data[:,:,1060:1200]
                 ep = 1200
                 
             chans = eeg['chan_info'].tolist() 
@@ -129,5 +129,38 @@ for nt in range(11):
             mcee_sig[nf,:,ntc,:] = w_ex_s
             del w_ex_s, model_chans, f_sig_i, sig_o, w_i, w_o, w, signal_data, f_sig_o
             
-    data_path = r'I:\SSVEP\dataset\preprocessed_data\weisiwen\mcee_5chan_%d.mat'%(nt)
-    io.savemat({'mcee_sig': mcee_sig})
+    data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\b_60ms\mcee_5chan_%d.mat'%(nt)
+    io.savemat(data_path, {'mcee_sig': mcee_sig})
+    
+#%% reload mcee data
+# begin from 140ms, 5 chans, 1140-1640(500ms)
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\b_140ms\mcee_5chan_0.mat')
+mcee_sig = eeg['mcee_sig']
+tar_chans = ['PZ ','POZ','O1 ','OZ ','O2 ']
+del eeg
+
+# (n_events, n_trials, n_times)
+pz = mcee_sig[:,:,0,:]
+poz = mcee_sig[:,:,1,:]
+o1 = mcee_sig[:,:,2,:]
+oz = mcee_sig[:,:,3,:]
+o2 = mcee_sig[:,:,4,:]
+del mcee_sig
+
+#%% correlation detection
+# divide test dataset & training dataset
+i=0
+
+a = i*10
+
+te_d = poz[:,a:a+10,:]
+tr_d = copy.deepcopy(poz)
+tr_d = np.delete(tr_d, [a,a+1,a+2,a+3,a+4,a+5,a+6,a+7,a+8,a+9], axis=1)
+template = np.mean(tr_d, axis=1)
+
+# pick a single trial of test dataset & compute Pearson correlation
+
+
+
+
+
