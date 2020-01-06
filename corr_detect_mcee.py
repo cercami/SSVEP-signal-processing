@@ -19,6 +19,8 @@ import copy
 import signal_processing_function as SPF 
 import matplotlib.pyplot as plt
 
+import seaborn as sns
+
 #%% prepare data
 # pick channels from parietal and occipital areas
 tar_chans = ['PZ ','POZ','O1 ','OZ ','O2 ']
@@ -48,37 +50,37 @@ for nt in range(11):
             f_data = eeg['f_data'][freq,:,:,2000:3640] * 1e6
             w = f_data[:,:,0:1000]
             if nt == 0:  # 500ms
-                signal_data = f_data[:,:,1060:1640]
+                signal_data = f_data[:,:,1140:1640]
                 ep = 1640
             elif nt == 1:  # 400ms
-                signal_data = f_data[:,:,1060:1540]
+                signal_data = f_data[:,:,1140:1540]
                 ep = 1540
             elif nt == 2:  # 300ms
-                signal_data = f_data[:,:,1060:1440]
+                signal_data = f_data[:,:,1140:1440]
                 ep = 1440
             elif nt == 3:  # 200ms
-                signal_data = f_data[:,:,1060:1340]
+                signal_data = f_data[:,:,1140:1340]
                 ep = 1340
             elif nt == 4:  # 180ms
-                signal_data = f_data[:,:,1060:1320]
+                signal_data = f_data[:,:,1140:1320]
                 ep = 1320
             elif nt == 5:  # 160ms
-                signal_data = f_data[:,:,1060:1300]
+                signal_data = f_data[:,:,1140:1300]
                 ep = 1300
             elif nt == 6:  # 140ms
-                signal_data = f_data[:,:,1060:1280]
+                signal_data = f_data[:,:,1140:1280]
                 ep = 1280
             elif nt == 7:  # 120ms
-                signal_data = f_data[:,:,1060:1260]
+                signal_data = f_data[:,:,1140:1260]
                 ep = 1260
             elif nt == 8:  # 100ms
-                signal_data = f_data[:,:,1060:1240]
+                signal_data = f_data[:,:,1140:1240]
                 ep = 1240
             elif nt == 9:  # 80ms
-                signal_data = f_data[:,:,1060:1220]
+                signal_data = f_data[:,:,1140:1220]
                 ep = 1220
             elif nt == 10:  # 60ms
-                signal_data = f_data[:,:,1060:1200]
+                signal_data = f_data[:,:,1140:1200]
                 ep = 1200
                 
             chans = eeg['chan_info'].tolist() 
@@ -133,32 +135,92 @@ for nt in range(11):
     io.savemat(data_path, {'mcee_sig': mcee_sig})
     
 #%% reload mcee data
-# begin from 140ms, 5 chans, 1140-1640(500ms)
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\b_140ms\mcee_5chan_0.mat')
+# begin from 140ms, 5 chans, 1140-1340(200ms)
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\b_140ms\mcee_5chan_2.mat')
 mcee_sig = eeg['mcee_sig']
 tar_chans = ['PZ ','POZ','O1 ','OZ ','O2 ']
 del eeg
 
 # (n_events, n_trials, n_times)
-pz = mcee_sig[:,:,0,:]
-poz = mcee_sig[:,:,1,:]
-o1 = mcee_sig[:,:,2,:]
-oz = mcee_sig[:,:,3,:]
-o2 = mcee_sig[:,:,4,:]
+pz = mcee_sig[:,:,0,1140:1540]   # 39
+poz = mcee_sig[:,:,1,1140:1540]  # 47
+o1 = mcee_sig[:,:,2,1140:1540]   # 52
+oz = mcee_sig[:,:,3,1140:1540]   # 53
+o2 = mcee_sig[:,:,4,1140:1540]   # 54
 del mcee_sig
 
+n_events = pz.shape[0]
+n_trials = pz.shape[1]
+
+
+#%% load origin data
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\f_data.mat')
+ori_sig = eeg['f_data'][:,:,:,3140:6140] * 1e6
+chan_info = eeg['chan_info'].tolist()
+del eeg
+
+# (n_events, n_trials, n_times)
+pz = ori_sig[:,:,39,:]
+poz = ori_sig[:,:,47,:]
+o1 = ori_sig[:,:,52,:]
+oz = ori_sig[:,:,53,:]
+o2 = ori_sig[:,:,54,:]
+del ori_sig
+
+n_events = pz.shape[0]
+n_trials = pz.shape[1]
+del chan_info
+
 #%% correlation detection
-# divide test dataset & training dataset
-i=0
-
-a = i*10
-
-te_d = poz[:,a:a+10,:]
-tr_d = copy.deepcopy(poz)
-tr_d = np.delete(tr_d, [a,a+1,a+2,a+3,a+4,a+5,a+6,a+7,a+8,a+9], axis=1)
-template = np.mean(tr_d, axis=1)
+acc_cv = []
+mr = np.zeros((3,3))
+# divide test dataset & training dataset 
+te_d = copy.deepcopy(poz)
+# target identification template (n_events, n_times)
+template = np.mean(poz, axis=1)  
 
 # pick a single trial of test dataset & compute Pearson correlation
+# target: all events | input: all events, all trials
+rou = np.zeros((n_events,100,n_events))
+for nete in range(n_events):
+    for ntte in range(100):
+        for netr in range(n_events):
+            rou[nete,ntte,netr] = np.sum(np.tril(np.corrcoef(te_d[nete,ntte,:],template[netr,:]),-1))
+        del netr
+        if np.max(np.where([rou[nete,ntte,:] == np.max(rou[nete,ntte,:])])) == nete:  # correct
+            acc_cv.append(1)
+    del ntte
+del nete
+    
+for j in range(3):
+    for k in range(3):
+        mr[j,k] = np.mean(rou[j,:,k])
+
+# reshape result
+acc_cv = np.sum(acc_cv)
+#%%
+acc_cv/=300
+acc_cv*=100
+
+#%%
+sns.set(style='whitegrid')
+fig, ax = plt.subplots(3,1,figsize=(4,12))
+
+ax[0].plot(poz[0,:,:].T, linewidth=0.5)
+ax[0].plot(np.mean(poz[0,:,:], axis=0), linewidth=3, color='black')
+ax[0].set_ylim(-20,20)
+
+ax[1].plot(poz[1,:,:].T, linewidth=0.5)
+ax[1].plot(np.mean(poz[1,:,:], axis=0), linewidth=3, color='black')
+ax[1].set_ylim(-20,20)
+
+ax[2].plot(poz[2,:,:].T, linewidth=0.5)
+ax[2].plot(np.mean(poz[2,:,:], axis=0), linewidth=3, color='black')
+ax[2].set_ylim(-20,20)
+
+#%%
+plt.plot(template[0,:], color='tab:orange')
+plt.plot(poz[0,76,:], color='tab:blue')
 
 
 
