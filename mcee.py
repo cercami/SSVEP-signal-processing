@@ -11,7 +11,13 @@ Created on Wed Dec 18 12:07:56 2019
     (2)Forward: forward_MCEE
     (3)Stepwise: stepwise_MCEE
 
-2. Cross validation
+3. Target identification
+    (1)TRCA
+    (2)Correlation dectection
+    (3)Ensembled-TRCA (future version)
+    (4)FB-CCA (future version)
+    (5)CCA (future version)
+    (6)PS
 
 @author: Brynhildr
 """
@@ -674,58 +680,6 @@ def trca(tr_fb_data, te_fb_data):
     
     return acc
 
-#%% Main function: multi-channel estimation extraction
-def MCEE_optimize(chans, target_channel, w, signal_data):
-    '''
-    Use MCEE to optimize original signal
-    Parameters:
-        chans: list of channels | the order of list corresponds to the data array's order
-        target_channel: str | the name of target channel
-        w: (n_trials, n_chans, n_times) | model array
-        signal_data: (n_trials, n_chans, n_times) | signal data array
-    Return:
-        extracted siganl: (n_trials, n_times) | target channel's optimized data
-    '''
-    # initialization
-    w_o = w[:,chans.index(target_channel),:]
-    w_temp = copy.deepcopy(w)
-    w_i = np.delete(w_temp, chans.index(target_channel), axis=1)
-    del w_temp
-    
-    sig_o = signal_data[:,chans.index(target_channel),:]
-    sig_temp = copy.deepcopy(signal_data)
-    sig_i = np.delete(sig_temp, chans.index(target_channel), axis=1)
-    del sig_temp
-    
-    chans_temp = copy.deepcopy(chans)
-    del chans_temp[chans_temp.index(target_channel)]
-    
-    # use stepwise to choose channels
-    mcee_chans = copy.deepcopy(chans_temp)
-    
-    snr = snr_time(sig_o)
-    msnr = np.mean(snr)
-    
-    model_chans, snr_change = stepwise_MCEE(chans=mcee_chans, msnr=msnr, w=w_i,
-                            w_target=w_o, signal_data=sig_i, data_target=sig_o)
-    del snr, msnr, snr_change, w_i, sig_i
-    
-    # pick channels chosen from stepwise MCEE
-    w_i = np.zeros((w.shape[0], len(model_chans), w.shape[2]))
-    sig_i = np.zeros((signal_data.shape[0], len(model_chans), signal_data.shape[2]))
-    
-    for i in range(len(model_chans)):
-        w_i[:,i,:] = w[:,chans_temp.index(model_chans[i]),:]
-        sig_i[:,i,:] = signal_data[:,chans_temp.index(model_chans[i]),:]
-    del i
-    
-    # multi-channel estimation extraction
-    rc, ri, r2 = SPF.mlr_analysis(w_i, w_o)
-    w_es_s, w_ex_s = SPF.sig_extract_mlr(rc, sig_i, sig_o, ri)
-    del rc, ri, r2, w_es_s
-    
-    return w_ex_s
-    
 
 #%% Correlation detect for single-channel data
 def corr_detect(test_data, template):
