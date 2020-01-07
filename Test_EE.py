@@ -50,33 +50,7 @@ signal_data = f_data[:, :, :, 3140:3240]
 
 del n_chans, n_times, n_trials, n_events
 #del f_data
-
-#%% MCEE
-# initialization
-freq = 0  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
-channel_target = 'O2 '
-mcee_chans = copy.deepcopy(chans)
-
-mcee_data_target = signal_data[freq, :, chans.index(channel_target), :]
-mcee_sig_data = signal_data[freq, :, :, :]
-mcee_sig_data = np.delete(mcee_sig_data, chans.index(channel_target), axis=1) 
-
-mcee_w_target = w[freq, :, chans.index(channel_target), :]
-mcee_w = w[freq, :, :, :]
-mcee_w = np.delete(mcee_w, chans.index(channel_target), axis=1)
-
-del mcee_chans[mcee_chans.index(channel_target)]
-
-
-snr = mcee.snr_time(mcee_data_target)
-msnr = np.mean(snr)
-
-# MCEE optimization
-model_chans, snr_change = mcee.stepwise_MCEE(chans=mcee_chans, msnr=msnr, w=mcee_w,
-                        w_target=mcee_w_target, signal_data=mcee_sig_data,
-                        data_target=mcee_data_target)
-
-del mcee_data_target, mcee_sig_data, mcee_w_target, mcee_w, mcee_chans
+freq = 1  # 10Hz
 
 #%% pick channels
 w_i = w[:,:,[chans.index('P2 '), chans.index('CP2'), chans.index('C2 ')], :]
@@ -188,4 +162,4 @@ ax[1].legend(loc='best', fontsize=16)
 
 fig.tight_layout()
 plt.show()
-plt.savefig(r'F:\8-poz.png', dpi=600)
+#plt.savefig(r'F:\8-poz.png', dpi=600)

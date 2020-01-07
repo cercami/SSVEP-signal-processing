@@ -45,7 +45,7 @@ chan = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\chan_info.mat')
 pick_chans = chan['chan_info'].tolist()
 
 del chan
-#%%
+
 # plot
 fig, ax = plt.subplots(figsize=(24,24))
 
