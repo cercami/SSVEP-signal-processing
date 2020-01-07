@@ -23,14 +23,13 @@ import seaborn as sns
 
 #%% prepare data
 # pick channels from parietal and occipital areas
-tar_chans = ['PZ ','POZ','O1 ','OZ ','O2 ']
+tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 #tar_chans = ['POZ', 'O1 ', 'OZ ', 'O2 ']
 #tar_chans = ['O1 ', 'OZ ', 'O2 ']
 #tar_chans = ['POZ', 'OZ ']
+
 # (n_events, n_trials, n_chans, n_times)
 mcee_sig = np.zeros((3, 100, len(tar_chans), 1640))
-
-N = 10
 
 n_events = 3
 n_trials = 100
@@ -131,22 +130,27 @@ for nt in range(11):
             mcee_sig[nf,:,ntc,:] = w_ex_s
             del w_ex_s, model_chans, f_sig_i, sig_o, w_i, w_o, w, signal_data, f_sig_o
             
-    data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\b_60ms\mcee_5chan_%d.mat'%(nt)
-    io.savemat(data_path, {'mcee_sig': mcee_sig})
+    data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\b_140ms\mcee_5chan_%d.mat'%(nt)
+    io.savemat(data_path, {'mcee_sig': mcee_sig,
+                           'chan_info': tar_chans})
     
 #%% reload mcee data
 # begin from 140ms, 5 chans, 1140-1340(200ms)
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\b_140ms\mcee_5chan_2.mat')
 mcee_sig = eeg['mcee_sig']
-tar_chans = ['PZ ','POZ','O1 ','OZ ','O2 ']
+tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2']
 del eeg
 
 # (n_events, n_trials, n_times)
 pz = mcee_sig[:,:,0,1140:1540]   # 39
-poz = mcee_sig[:,:,1,1140:1540]  # 47
-o1 = mcee_sig[:,:,2,1140:1540]   # 52
-oz = mcee_sig[:,:,3,1140:1540]   # 53
-o2 = mcee_sig[:,:,4,1140:1540]   # 54
+po5 = mcee_sig[:,:,1,1140:1540]  # 45
+po3 = mcee_sig[:,:,2,1140:1540]  # 46
+poz = mcee_sig[:,:,3,1140:1540]  # 47
+po4 = mcee_sig[:,:,4,1140:1540]  # 48
+po6 = mcee_sig[:,:,5,1140:1540]  # 49
+o1 = mcee_sig[:,:,6,1140:1540]   # 52
+oz = mcee_sig[:,:,7,1140:1540]   # 53
+o2 = mcee_sig[:,:,8,1140:1540]   # 54
 del mcee_sig
 
 n_events = pz.shape[0]
@@ -161,7 +165,11 @@ del eeg
 
 # (n_events, n_trials, n_times)
 pz = ori_sig[:,:,39,:]
+po5 = ori_sig[:,:,45,:]
+po3 = ori_sig[:,:,46,:]
 poz = ori_sig[:,:,47,:]
+po4 = ori_sig[:,:,48,:]
+po6 = ori_sig[:,:,49,:]
 o1 = ori_sig[:,:,52,:]
 oz = ori_sig[:,:,53,:]
 o2 = ori_sig[:,:,54,:]
@@ -169,18 +177,30 @@ del ori_sig
 
 n_events = pz.shape[0]
 n_trials = pz.shape[1]
-del chan_info
+#del chan_info
 
 #%% correlation detection
 acc_cv = []
 mr = np.zeros((3,3))
 # divide test dataset & training dataset 
-te_d = copy.deepcopy(poz)
+te_d = copy.deepcopy(po5)
 # target identification template (n_events, n_times)
-template = np.mean(poz, axis=1)  
+template = np.mean(po5, axis=1)  
 
 # pick a single trial of test dataset & compute Pearson correlation
 # target: all events | input: all events, all trials
+def corr_detect(test_data, template):
+    '''
+    Offline Target identification for single-channel data
+        (using Pearson correlation coefficients)
+    Parameters:
+        test_data: array | (n_events, n_trials, n_times)
+        template: array | (n_events, n_times)
+    Returns:
+        acc: int | the total number of correct identifications
+        mr: square | (n_events (test dataset), n_events (template)),
+            the mean of Pearson correlation coefficients
+    '''
 rou = np.zeros((n_events,100,n_events))
 for nete in range(n_events):
     for ntte in range(100):

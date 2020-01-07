@@ -2,10 +2,14 @@
 """
 Created on Wed Dec 18 12:07:56 2019
 
-1. Three kinds of recursive algorithm to complete MCEE(Multi-channel Estimation Extraction)
-    (1)Backward
-    (2)Forward
-    (3)Stepwise
+1. Basic operating functions:
+    (1)Multi_linear regression: mlr
+    (2)SNR in time domain: snr_time
+    
+2. Three kinds of recursive algorithm to choose channels for optimization
+    (1)Backward: backward_MCEE
+    (2)Forward: forward_MCEE
+    (3)Stepwise: stepwise_MCEE
 
 2. Cross validation
 
@@ -722,3 +726,45 @@ def MCEE_optimize(chans, target_channel, w, signal_data):
     
     return w_ex_s
     
+
+#%% Correlation detect for single-channel data
+def corr_detect(test_data, template):
+    '''
+    Offline Target identification for single-channel data
+        (using Pearson correlation coefficients)
+    Parameters:
+        test_data: array | (n_events, n_trials, n_times)
+        template: array | (n_events, n_times)
+    Returns:
+        acc: int | the total number of correct identifications
+        mr: square | (n_events (test dataset), n_events (template)),
+            the mean of Pearson correlation coefficients between N th events'
+            test data and M th events' template
+        rou: array | (n_events (test dataset), n_trials, n_events (template))
+            details of mr
+    '''
+    # initialization
+    n_events = template.shape[0]
+    n_trials = test_data.shape[1]
+    
+    acc = []
+    mr = np.zeros((n_events, n_events))
+    rou = np.zeros((n_events, n_trials, n_events))
+    
+    # compute Pearson correlation coefficients & target identification
+    for nete in range(n_events):  # n_events' loop in test dataset
+        for ntte in range(n_trials):  # n_trials' loop in test dataset
+            for netr in range(n_events):  # n_events' loop in template (training dataset)
+                rou[nete,ntte,netr] = np.sum(np.tril(np.corrcoef(test_data[nete,ntte,:],template[netr,:]),-1))
+            del netr
+            if np.max(np.where([rou[nete,ntte,:] == np.max(rou[nete,ntte,:])])) == nete:  # correct
+                acc.append(1)
+        del ntte
+    del nete
+    acc = np.sum(acc)
+    
+    for j in range(n_events):
+        for k in range(n_events):
+            mr[j,k] = np.mean(rou[j,:,k])
+            
+    return acc, mr, rou
