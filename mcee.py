@@ -547,7 +547,7 @@ def stepwise_MCEE(chans, msnr, w, w_target, signal_data, data_target):
 
 
 #%% Target identification: TRCA method
-def trca(tr_fb_data, te_fb_data):
+def fbtrca(tr_fb_data, te_fb_data):
     '''
     TRCA is the method that extracts task-related components efficiently 
         by maximizing the reproducibility during the task period

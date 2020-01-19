@@ -21,7 +21,7 @@ import mcee
 
 import copy
 
-import fp_growth as fpg
+#import fp_growth as fpg
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -37,6 +37,27 @@ from mne.filter import filter_data
 from sklearn.linear_model import LinearRegression
 
 #%%******************** Holistic evaluation ********************%%#
+eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\mcee_3.mat')
+mcee_sig = eeg['mcee_sig'][:,:,:,1140:1540]
+chans = eeg['chan_info'].tolist()
+del eeg
+
+p0 = mcee_sig[0,:,:,:]
+p1 = mcee_sig[1,:,:,:]
+del mcee_sig
+
+# plot figures
+plt.plot(np.mean(p0[:,0,:], axis=0), label='PZ')
+plt.plot(np.mean(p0[:,1,:], axis=0), label='PO5')
+plt.plot(np.mean(p0[:,2,:], axis=0), label='PO3')
+plt.plot(np.mean(p0[:,3,:], axis=0), label='POZ')
+plt.plot(np.mean(p0[:,4,:], axis=0), label='PO4')
+plt.plot(np.mean(p0[:,5,:], axis=0), label='PO6')
+plt.plot(np.mean(p0[:,6,:], axis=0), label='O1')
+plt.plot(np.mean(p0[:,7,:], axis=0), label='OZ')
+plt.plot(np.mean(p0[:,8,:], axis=0), label='O2')
+plt.legend(loc='best')
+
 #%% load local data (extract from .cnt file)
 freq = 0  # 0 for 8Hz, 1 for 10Hz, 2 for 15Hz
 target_channel = 'O2 '
