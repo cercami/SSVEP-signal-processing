@@ -122,7 +122,7 @@ for nt in range(11):
             template = np.mean(tr_fb_data, axis=2)
 
             # main loop of TRCA
-            acc = mcee.trca(tr_fb_data, te_fb_data)
+            acc = mcee.fbtrca(tr_fb_data, te_fb_data)
             acc_temp.append(np.sum(acc))
             del acc
             # end                                

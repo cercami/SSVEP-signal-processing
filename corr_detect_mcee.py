@@ -23,19 +23,25 @@ import seaborn as sns
   
 #%% load mcee data
 # 9 chans, 1140-1540 (400ms)
-eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\60_b_140ms\mcee_0.mat')
+eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\mcee data\begin from 140ms\50_90_bp\mcee_7.mat')
+
+mcee_sig = np.zeros((2,120,9,1000))
+
 #mcee_sig = eeg['mcee_sig'][:,:,:,1140:1240]
-mcee_60_p = eeg['mcee_sig'][1,:,:,1140:1240]
+mcee_sig[:,:118,:,:] = eeg['mcee_sig'][:,:,:,1140:2140]  # 100ms
+mcee_sig[:,118:,:,:] = eeg['mcee_sig'][:,18:20,:,1140:2140]  
 tar_chans = eeg['chan_info'].tolist()
 del eeg
 
-eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\40_b_140ms\mcee_0.mat')
-mcee_40_p = eeg['mcee_sig'][1,:,:,1140:1240]
-del eeg
+plt.plot(np.mean(mcee_sig[0,:,:,:], axis=0).T)
+#%%
+#eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\raw & filtered data\mcee_0.mat')
+#mcee_40_p = eeg['mcee_sig'][1,:,:,1140:1240]
+#del eeg
 
-mcee_sig = np.zeros((2, mcee_60_p.shape[0], mcee_60_p.shape[1], mcee_60_p.shape[2]))
-mcee_sig[0,:,:,:] = mcee_60_p
-mcee_sig[1,:,:,:] = mcee_40_p
+#mcee_sig = np.zeros((2, mcee_60_p.shape[0], mcee_60_p.shape[1], mcee_60_p.shape[2]))
+#mcee_sig[0,:,:,:] = mcee_60_p
+#mcee_sig[1,:,:,:] = mcee_40_p
 #del mcee_60, mcee_40
 
 # (n_events, n_trials, n_times)
@@ -54,19 +60,28 @@ n_trials = mcee_sig.shape[1]
 
 #del mcee_sig
 
-# correlation detection of single-channel data
-acc = np.zeros((9))
-for i in range(9):
-    acc[i], mr, rou = mcee.corr_detect(test_data=mcee_sig[:,:,i,:], template=np.mean(mcee_sig[:,:,i,:], axis=1))
+acc = np.zeros((10,9))
+# cross-validation
+for cv in range(10):
+    a = cv * int(n_trials/10)
+    # train dataset (n_events, n_trials, n_chans, n_times)
+    tr_data = mcee_sig[:,a:a+int(n_trials/10),:,:]  # 12 trials
+    # test dataset (n_events, n_trials, n_chans, n_times)
+    te_data = copy.deepcopy(mcee_sig)
+    te_data = np.delete(te_data,
+        [a,a+1,a+2,a+3,a+4,a+5,a+6,a+7,a+8,a+9,a+10,a+11], axis=1)  # 108 trials
+    # correlation detection of single-channel data
+    for nc in range(9):  # n_chans
+        acc[cv,nc], mr, rou = mcee.corr_detect(test_data=tr_data,
+           template=np.mean(te_data[:,:,nc,:], axis=1))
 
 # reshape results
-acc/=240
-acc*=100
-acc = np.mat(acc)
+acc = np.mat(np.mean(acc, axis=0) / (12*2) * 100)
 
 #%% load origin data
-eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\f_data.mat')
-ori_sig = eeg['f_data'][:,:,:,2140:3040] * 1e6
+eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\raw & filtered data\50_90_bp.mat')
+ori_sig = eeg['f_data'][:,:,:,2140:3140] * 1e6
+#ori_sig = np.delete(ori_sig, [41,42], axis=1)
 #chan_info = eeg['chan_info'].tolist()
 del eeg
 
@@ -87,16 +102,25 @@ n_trials = ori_sig.shape[1]
 
 #del ori_sig
 #del chan_info
-
-# correlation detection of single-channel data
-acc = np.zeros((9))
-for i in range(9):
-    acc[i], mr, rou = mcee.corr_detect(test_data=ori_sig[:,:,i,:], template=np.mean(ori_sig[:,:,i,:], axis=1))
-
+plt.plot(ori_sig[0,:,7,:].T)
+#%%
+acc = np.zeros((10,9))
+# cross-validation
+for cv in range(10):
+    a = cv * int(n_trials/10)
+    # train dataset (n_events, n_trials, n_chans, n_times)
+    tr_data = ori_sig[:,a:a+int(n_trials/10),:,:]  # 12 trials
+    # test dataset (n_events, n_trials, n_chans, n_times)
+    te_data = copy.deepcopy(ori_sig)
+    te_data = np.delete(te_data,
+        [a,a+1,a+2,a+3,a+4,a+5,a+6,a+7,a+8,a+9,a+10,a+11], axis=1)  # 108 trials
+    # correlation detection of single-channel data
+    for nc in range(9):  # n_chans
+        acc[cv,nc], mr, rou = mcee.corr_detect(test_data=tr_data,
+           template=np.mean(te_data[:,:,nc,:], axis=1))
+        
 # reshape results
-acc/=480
-acc*=100
-acc = np.mat(acc)
+acc = np.mat(np.mean(acc, axis=0) / (12*2) * 100)
 
 #%% check waveform
 sns.set(style='whitegrid')
