@@ -577,7 +577,7 @@ def fbtrca(tr_fb_data, te_fb_data):
             temp = np.zeros((n_chans, int(tr_fb_data.shape[2]*n_times)))
             for z in range(n_chans):  # z for channels
                 # concatenated matrix of all trials in training dataset
-                temp[z,:] = tr_fb_data[2,y,:,z,:].flatten()
+                temp[z,:] = tr_fb_data[x,y,:,z,:].flatten()
             # compute matrix Q | (Toeplitz matrix): (n_chans, n_chans)
             # for each event & band, there should be a unique Q
             # so the total quantity of Q is n_bands*n_events (here is 30=x*y)
@@ -680,6 +680,93 @@ def fbtrca(tr_fb_data, te_fb_data):
     
     return acc
 
+
+def pure_trca(train_data, test_data):
+    '''
+    TRCA without filter banks
+    Parameters:
+        train_data: (n_events, n_trials, n_chans, n_times) | training dataset
+        test_data: (n_events, n_trials, n_chans, n_times) | test dataset
+    Returns:
+        accuracy: int | the number of correct identifications
+    '''
+    # template data: (n_events, n_chans, n_times) | basic element: (n_chans, n_times)
+    template = np.mean(train_data, axis=1)
+    
+    # basic parameters
+    n_events = train_data.shape[0]
+    n_chans = train_data.shape[2]
+    n_times = train_data.shape[3]
+    
+    # Matrix Q: inter-channel covariance
+    q = np.zeros((n_events, n_chans, n_chans))
+    for x in range(n_events):
+        temp = np.zeros((n_chans, int(train_data.shape[1]*n_times)))
+        for y in range(n_chans):
+            # concatenated matrix of all trials in training dataset
+            temp[y,:] = train_data[x,:,y,:].flatten()
+        del y
+        q[x,:,:] = np.cov(temp)
+        del temp
+    del x
+    
+    # Matrix S: inter-channels' inter-trial covariance
+    s = np.zeros((n_events, n_chans, n_chans))
+    for v in range(n_events):  # v for events
+        for w in range(n_chans):  # w for channels (j1)
+            for x in range(n_chans):  # x for channels (j2)
+                cov = []
+                for y in range(train_data.shape[1]):  # y for trials (h1)
+                    temp = np.zeros((2, n_times))
+                    temp[0,:] = train_data[v,y,w,:]
+                    for z in range(train_data.shape[1]):  # z for trials (h2)
+                        if z != y:  # h1 != h2
+                            temp[1,:] = train_data[v,z,x,:]
+                            cov.append(np.sum(np.tril(np.cov(temp),-1)))
+                        else:
+                            continue
+                    del z, temp
+                del y
+                s[v,w,x] = np.sum(cov)
+                del cov
+            del x
+        del w
+    del v
+    
+    # Spatial filter W
+    w = np.zeros((n_events, n_chans))
+    for z in range(n_events):
+        # Square Q^-1 * S
+        qs = np.mat(q[z,:,:]).I * np.mat(s[z,:,:])
+        # Eigenvalues & eigenvectors
+        e_value, e_vector = np.linalg.eig(qs)
+        # choose the eigenvector refering to the largest eigenvalue
+        w_index = np.max(np.where(e_value == np.max(e_value)))
+        w[z,:] = e_vector[:,w_index].T
+        del w_index
+    del z
+    
+    # Test dataset operating
+    r = np.zeros((n_events, test_data.shape[1], n_events))
+    for x in range(n_events):  # n_events in test dataset
+        for y in range(test_data.shape[1]):
+            for z in range(n_events):
+                temp_test = np.mat(test_data[x,y,:,:]).T * np.mat(w[z,:]).T
+                temp_template = np.mat(template[z,:,:]).T * np.mat(w[z,:]).T
+                r[x,y,z] = np.sum(np.tril(np.corrcoef(temp_test.T, temp_template.T),-1))
+            del z, temp_test, temp_template
+        del y
+    del x
+    
+    # Compute accuracy
+    acc = []
+    for x in range(r.shape[0]):  # ideal classification
+        for y in range(r.shape[1]):
+            if np.max(np.where(r[x,y,:] == np.max(r[x,y,:]))) == x:  # correct
+                acc.append(1)
+                
+    return acc
+    
 
 #%% Correlation detect for single-channel data
 def corr_detect(test_data, template):

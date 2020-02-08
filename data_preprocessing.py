@@ -298,6 +298,7 @@ plt.plot(fs[1,1,:], np.mean(w_p[1,:,:], axis=0), label='pi phase',
          color='tab:blue', linewidth=1)
 plt.ylim(0,0.14)
 plt.legend(loc='best', fontsize=16)
+plt.show()
 
 #%%
 plt.plot(np.mean(data[0,:,7,1140:], axis=0))

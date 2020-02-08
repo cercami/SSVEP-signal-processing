@@ -131,3 +131,10 @@ for nt in range(11):
     data_path = r'F:\SSVEP\dataset\preprocessed_data\weisiwen\b_140ms\mcee_5chan_%d.mat'%(nt)
     io.savemat(data_path, {'mcee_sig': mcee_sig,
                            'chan_info': tar_chans})
+    
+#%%
+eeg = io.loadmat(r'E:\Documents\SSVEP\dataset\preprocessed_data\wuqiaoyi\mcee data\begin from 140ms\50_90_bp\mcee_0.mat')
+data = eeg['mcee_sig']
+chan_info = eeg['chan_info']
+del eeg
+
