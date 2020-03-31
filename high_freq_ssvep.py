@@ -132,9 +132,52 @@ for nt in range(11):
     io.savemat(data_path, {'mcee_sig': mcee_sig,
                            'chan_info': tar_chans})
     
-#%%
-eeg = io.loadmat(r'E:\Documents\SSVEP\dataset\preprocessed_data\wuqiaoyi\mcee data\begin from 140ms\50_90_bp\mcee_0.mat')
-data = eeg['mcee_sig']
-chan_info = eeg['chan_info']
+#%% n cycles' data (n=55)
+#eeg = io.loadmat(r'E:\Documents\SSVEP\dataset\preprocessed_data\wuqiaoyi\mcee data\begin from 140ms\50_90_bp\mcee_7.mat')
+#data = eeg['mcee_sig'][:,:,[3,6,7,8],1140:]
+#chan_info = eeg['chan_info'].tolist()
+#model_info_0 = [x.T.tolist() for x in eeg['model_info_60p0'].flatten().tolist()]
+#model_info_1 = [x.T.tolist() for x in eeg['model_info_60p1'].flatten().tolist()]
+#del eeg
+eeg = io.loadmat(r'E:\Documents\SSVEP\dataset\preprocessed_data\wuqiaoyi\raw & filtered data\50_90_bp.mat')
+ori_data = eeg['f_data'][:,:,[45,51,52,53,54,55,58,59,60],2140:3140]*1e6
 del eeg
+
+cycle = 17
+n = 10
+n_events = data.shape[0]
+n_trials = data.shape[1]
+n_chans = data.shape[2]
+n_times = data.shape[3]
+
+nc_data = np.zeros((n_events, int(n_trials*int(n_times/(n*cycle))),
+                    n_chans, int(n*cycle)))
+
+for a in range(n_events):
+    for b in range(n_trials):
+        for c in range(n_chans):
+            for d in range(int(n_times/(n*cycle))):
+                nc_data[a,b*int(n_times/(n*cycle))+d,c,:] = data[a,b,c,d*cycle:(d+n)*cycle]
+del a,b,c,d
+
+#%% n_cycles pure TRCA
+print('Running TRCA alogrithm...')
+acc = []
+N = 9
+for cv in range(N):
+    # divide dataset
+    a = int(cv * (nc_data.shape[1]/N))
+    # test dataset: (n_events, n_trials, n_chans, n_times)
+    te_data = nc_data[:,a:a+int(nc_data.shape[1]/N),:,:]  # 715 trials
+    # train dataset: (n_events, n_trials, n_chans, n_times)
+    tr_data = copy.deepcopy(nc_data)
+    tr_data = np.delete(tr_data, [a+i for i in range(int(nc_data.shape[1]/N))], axis=1)
+    # main loop of TRCA
+    acc_temp = mcee.pure_trca(train_data=tr_data, test_data=te_data)
+    acc.append(np.sum(acc_temp))
+    del acc_temp
+    print(str(cv+1) + 'th cross-validation complete!\n')
+    
+acc = np.array(acc)/(te_data.shape[1]*2)
+
 

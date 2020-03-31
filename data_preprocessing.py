@@ -276,19 +276,16 @@ for nfile in range(2):
  
 #%% test part       
 # check data
-#eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\mcee data\begin from 140ms\50_90_bp\+1s.mat')
-eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\raw & filtered data\50_90_bp.mat')
-#data = eeg['mcee_sig']
-data = eeg['f_data'][:,:,[45,51,52,53,54,55,58,59,60],:]*1e6
-#data = np.delete(data, [41,42], axis=1)
-#chan_info = eeg['chan_info']
-#model_info_0 = [x.T.tolist() for x in eeg['model_info_60p0'].flatten().tolist()]
-#model_info_1 = [x.T.tolist() for x in eeg['model_info_60p1'].flatten().tolist()]
-#model_info_2 = eeg['model_info_2']
-#model_info_3 = eeg['model_info_3']
-#del eeg
+eeg = io.loadmat(r'E:\Documents\SSVEP\dataset\preprocessed_data\wuqiaoyi\mcee data\begin from 140ms\50_90_bp\mcee_7.mat')
+mcee_data = eeg['mcee_sig'][:,:,:,1140:]
+del eeg
+
+eeg = io.loadmat(r'E:\Documents\SSVEP\dataset\preprocessed_data\wuqiaoyi\raw & filtered data\50_90_bp.mat')
+ori_data = eeg['f_data'][:,:,[45,51,52,53,54,55,58,59,60],2140:3140]*1e6
+del eeg
+
 #%%
-w_p, fs = SPF.welch_p(data[:,:,7,1140:], sfreq=1000, fmin=40, fmax=90,
+w_p, fs = SPF.welch_p(data[:,:,7,:], sfreq=1000, fmin=40, fmax=90,
                       n_fft=1024, n_overlap=0, n_per_seg=1024)
 plt.title('origin data', fontsize=20)
 plt.tick_params(axis='both', labelsize=16)
@@ -296,16 +293,24 @@ plt.plot(fs[1,1,:], np.mean(w_p[0,:,:], axis=0), label='0 phase',
          color='tab:orange', linewidth=1)
 plt.plot(fs[1,1,:], np.mean(w_p[1,:,:], axis=0), label='pi phase',
          color='tab:blue', linewidth=1)
-plt.ylim(0,0.14)
+plt.ylim(0,0.175)
 plt.legend(loc='best', fontsize=16)
 plt.show()
 
-#%%
-plt.plot(np.mean(data[0,:,7,1140:], axis=0))
+#%% check time snr
+ori_snr = SPF.snr_time(ori_data[:,:,7,:])
+mcee_snr = SPF.snr_time(mcee_data[:,:,7,:])
+
+snr_raise_p0 = np.mean(mcee_snr[0,:] - ori_snr[0,:])
+snr_raise_p1 = np.mean(mcee_snr[1,:] - ori_snr[1,:])
+percent_p0 = snr_raise_p0/np.mean(ori_snr[0,:])*100
+percent_p1 = snr_raise_p1/np.mean(ori_snr[1,:])*100
+print(str(snr_raise_p0) + ': ' + str(percent_p0))
+print(str(snr_raise_p1) + ': ' + str(percent_p1))
 #%% check waveform
-ne = 1
+ne = 0
 bp = 1140
-ep = 1640
+ep = 2140
 plt.title('60Hz & pi phase (origin)', fontsize=20)
 plt.plot(np.mean(data[ne,:,0,bp:ep], axis=0).T, label='PZ')
 plt.plot(np.mean(data[ne,:,1,bp:ep], axis=0).T, label='PO5')
@@ -325,9 +330,5 @@ plt.tick_params(axis='both', labelsize=16)
 plt.legend(loc='best', fontsize=14)
 
 #%% cut data into pieces
-eeg = io.loadmat(r'I:\SSVEP\dataset\preprocessed_data\wuqiaoyi\mcee data\begin from 140ms\50_90_bp\+1s.mat')
-data = eeg['mcee_sig'][:2,:,:,1140:]
-chan_info = eeg['chan_info']
-model_info_0 = [x.T.tolist() for x in eeg['model_info_60p0'].flatten().tolist()]
-model_info_1 = [x.T.tolist() for x in eeg['model_info_60p1'].flatten().tolist()]
-del eeg
+#model_info_0 = [x.T.tolist() for x in eeg['model_info_60p0'].flatten().tolist()]
+#model_info_1 = [x.T.tolist() for x in eeg['model_info_60p1'].flatten().tolist()]
