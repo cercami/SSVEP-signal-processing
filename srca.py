@@ -25,25 +25,20 @@ updating...
 
 #%% Import third part module
 import numpy as np
-from numpy import transpose
-import scipy.io as io
-import pandas as pd
 
 from sklearn import linear_model
-from sklearn.linear_model import LinearRegression
 
 import copy
 import time
 
-import signal_processing_function as SPF
-
 #%% Basic operating function
 # extract optimized signals from linear model
 def SRCA_lm_extract(model_input, model_target, data_input, data_target,
-                 method='OLS', alpha=0.5, l1_ratio=0.5):
+                 method='OLS', alpha=0.5, l1_ratio=0.5, mode='a'):
     '''
     Use different linear models to achieve SRCA extraction
-    model_input: (n_trials, n_chans, n_times)
+    model_input: (n_trials, n_chans, n_times) for training
+        (n_chans, n_trials, n_times) for testing, the same as below
     model_target: (n_trials, n_times)
     data_input: (n_trials, n_chans, n_times)
     data_target: (n_trials, n_times)
@@ -57,47 +52,51 @@ def SRCA_lm_extract(model_input, model_target, data_input, data_target,
     # basic information
     n_times = data_input.shape[-1]
     if model_input.ndim == 3:
-        n_trials = model_input.shape[1]
+        if mode == 'a':  # (n_chans, n_trials, n_times)
+            n_trials = model_input.shape[1]
+        elif mode == 'b':  # (n_trials, n_chans, n_times)
+            n_trials = model_input.shape[0]
         # initialization
         estimate = np.zeros((n_trials, n_times))  # (n_trials, n_times)
         for i in range(n_trials):
-            # basic operating unit: (n_chans, n_times).T, (1, n_times).T
+            if mode == 'a':
+                x = model_input[:,i,:].T  # (n_times, n_chans)
+                z = data_input[:,i,:]
+            elif mode == 'b':
+                x = model_input[i,:,:].T
+                z = data_input[i,:,:]
+            y = model_target[i,:]  # (n_times,1)
             if method == 'OLS':  # ordinaru least squares
-                L = linear_model.LinearRegression().fit(model_input[:,i,:].T,
-                                           model_target[i,:].T)
+                L = linear_model.LinearRegression().fit(x,y)
             elif method == 'Ridge':  # Ridge Regression
-                L = linear_model.Ridge(alpha=alpha).fit(model_input[:,i,:].T,
-                                                        model_target[i,:].T)
+                L = linear_model.Ridge(alpha=alpha).fit(x,y)
             elif method == 'Lasso':  # Lasso Regression
-                L = linear_model.Lasso(alpha=alpha).fit(model_input[:,i,:].T,
-                                                        model_target[i,:].T)
+                L = linear_model.Lasso(alpha=alpha).fit(x,y)
             elif method == 'EN':  # ElasticNet Regression
-                L = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio).fit(
-                    model_input[:,i,:].T, model_target[i,:].T)
+                L = linear_model.ElasticNet(alpha=1, l1_ratio=l1_ratio).fit(x,y)
             RI = L.intercept_
             RC = L.coef_
-            estimate[i,:] = (np.mat(RC) * np.mat(data_input[:,i,:])).A + RI
+            estimate[i,:] = (np.mat(RC) * np.mat(z)).A + RI
         del i
     elif model_input.ndim == 2:  # avoid reshape error
         n_trials = model_input.shape[0]
         estimate = np.zeros((n_trials, n_times))
         for i in range(n_trials):
+            x = model_input[i,:]
+            y = model_target[i,:]
+            z = data_input[i,:]
             # basic operating unit: (n_chans, n_times).T, (1, n_times).T
             if method == 'OLS':  # ordinaru least squares
-                L = linear_model.LinearRegression().fit(np.mat(model_input[i,:]).T,
-                                           model_target[i,:].T)
+                L = linear_model.LinearRegression().fit(x,y)
             elif method == 'Ridge':  # Ridge Regression
-                L = linear_model.Ridge(alpha=alpha).fit(np.mat(model_input[i,:]).T,
-                                                        model_target[i,:].T)
+                L = linear_model.Ridge(alpha=alpha).fit(x,y)
             elif method == 'Lasso':  # Lasso Regression
-                L = linear_model.Lasso(alpha=alpha).fit(np.mat(model_input[i,:]).T,
-                                                        model_target[i,:].T)
+                L = linear_model.Lasso(alpha=alpha).fit(x,y)
             elif method == 'EN':  # ElasticNet Regression
-                L = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio).fit(
-                    np.mat(model_input[i,:]).T, model_target[i,:].T)
+                L = linear_model.ElasticNet(alpha=1, l1_ratio=l1_ratio).fit(x,y)
             RI = L.intercept_
             RC = L.coef_
-            estimate[i,:] = RC * data_input[i,:] + RI
+            estimate[i,:] = RC * z + RI
         del i
     extract = data_target - estimate  # extract optimized data
     return extract, estimate
@@ -175,7 +174,8 @@ def backward_SRCA(chans, msnr, w, w_target, signal_data, data_target):
                 temp_data = np.delete(temp_data, i, axis=1)
                 temp_w = np.delete(temp_w, i, axis=1)
                 # compare paramter
-                temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
+                temp_extract, temp_estimate = SRCA_lm_extract(temp_w, w_target,
+                        temp_data, data_target, method='Ridge')
                 temp_snr = snr_time(temp_extract)
                 mtemp_snr[i] = np.mean(temp_snr)
                 compare_snr[i] = mtemp_snr[i] - msnr
@@ -255,7 +255,8 @@ def forward_SRCA(chans, msnr, w, w_target, signal_data, data_target):
                 temp_data[:j-1, :, :] = core_data
                 temp_data[j-1, :, :] = signal_data[:,i,:]
             # multi-linear regression & snr computation
-            temp_extract, temp_estimate = mlr(temp_w, w_target, temp_data, data_target)
+            temp_extract, temp_estimate = SRCA_lm_extract(temp_w, w_target,
+                        temp_data, data_target)
             temp_snr = snr_time(temp_extract)
             # find the best choice in this turn
             mtemp_snr[i] = np.mean(temp_snr)
@@ -305,7 +306,8 @@ def forward_SRCA(chans, msnr, w, w_target, signal_data, data_target):
 
 
 # Stepwise SRCA
-def stepwise_SRCA(chans, msnr, w, w_target, signal_data, data_target):
+def stepwise_SRCA(chans, msnr, w, w_target, signal_data, data_target,
+                  method='OLS', alpha=0.5, l1_ratio=0.5):
     '''
     Stepward recursive algorithm to achieve SRCA
     The combination of Forward and Backward process:
@@ -332,7 +334,6 @@ def stepwise_SRCA(chans, msnr, w, w_target, signal_data, data_target):
     j = 1
     compare_snr = np.zeros((len(chans)))
     max_loop = len(chans)
-    
     remain_chans = []
     snr_change = []
     temp_snr = []
@@ -359,7 +360,8 @@ def stepwise_SRCA(chans, msnr, w, w_target, signal_data, data_target):
                 temp_data[j-1, :, :] = signal_data[:,i,:]
             # multi-linear regression & snr computation
             temp_extract, temp_estimate = SRCA_lm_extract(temp_w, w_target,
-                        temp_data, data_target, method='EN')
+                        temp_data, data_target, method=method, alpha=alpha,
+                        l1_ratio=l1_ratio, mode='a')
             del temp_w, temp_data, temp_estimate
             temp_snr = pearson_corr(temp_extract)
             # compare the snr with original one
@@ -423,7 +425,8 @@ def stepwise_SRCA(chans, msnr, w, w_target, signal_data, data_target):
                     temp_2_data[1, :, :] = signal_data[:, k, :]
                     # mlr & compute snr
                     temp_2_extract, temp_2_estimate = SRCA_lm_extract(temp_2_w,
-                        w_target, temp_2_data, data_target, method='EN')
+                        w_target, temp_2_data, data_target, method=method, alpha=alpha,
+                        l1_ratio=l1_ratio, mode='a')
                     temp_2_snr = pearson_corr(temp_2_extract)
                     mtemp_2_snr = np.mean(temp_2_snr)
                     temp_2_compare_snr[k] = mtemp_2_snr - msnr
@@ -513,7 +516,8 @@ def stepwise_SRCA(chans, msnr, w, w_target, signal_data, data_target):
                         temp_5_data[j-1, :, :] = signal_data[:, m, :]
                         # mlr & compute snr
                         temp_5_extract, temp_5_estimate = SRCA_lm_extract(temp_5_w,
-                            w_target, temp_5_data, data_target, method='EN')
+                            w_target, temp_5_data, data_target, method=method, alpha=alpha,
+                        l1_ratio=l1_ratio, mode='a')
                         temp_5_snr = pearson_corr(temp_5_extract)
                         mtemp_5_snr = np.mean(temp_5_snr)
                         temp_4_compare_snr[m] = mtemp_5_snr - msnr
