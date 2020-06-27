@@ -9,7 +9,7 @@ Created on Sat Jan 11 15:14:37 2020
 import numpy as np
 import scipy.io as io
 
-import srca
+#import srca
 import copy
 
 #%% common trca for origin data
@@ -144,27 +144,30 @@ ols_corr = []
 for each_row in range(all_sheet[2].nrows):
     ols_corr.append(all_sheet[2].row_values(each_row))
 
-ri_corr = []
+ri_snr = []
 for each_row in range(all_sheet[3].nrows):
-    ri_corr.append(all_sheet[3].row_values(each_row))
+    ri_snr.append(all_sheet[3].row_values(each_row))
+    
+ri_corr = []
+for each_row in range(all_sheet[4].nrows):
+    ri_corr.append(all_sheet[4].row_values(each_row))
 del excel_path, excel_file, all_sheet, each_row
 
 # strings' preparation: length & group
 length = []
 for i in range(10):
     length += [(str(100*(i+1))+'ms') for j in range(5)]
-total_length = length + length + length + length
-del length
+total_length = length + length + length
+#del length
    
 group_list = ['Origin', 'OLS & SNR', 'OLS & Corr', 'Ridge & SNR', 'Ridge & Corr',
               'Lasso & SNR', 'Lasso & Corr', 'ElasticNet & SNR', 'ElasticNet & Corr']
-group_id = ['ori', 'ols_snr', 'ols_corr', 'ri_corr']
+group_id = ['ori', 'ols_snr', 'ols_corr', 'ri_snr', 'ri_corr']
 for i in range(len(group_id)):
     exec('g_%s=[group_list[i] for j in range(50)]' %(group_id[i]))
 del group_list, i
-total_group = g_ori + g_ols_snr + g_ols_corr + g_ri_corr
-del g_ori, g_ols_snr, g_ols_corr, g_ri_corr
-
+#total_group = g_ori + g_ols_snr + g_ols_corr
+#del g_ori, g_ols_snr, g_ols_corr
 
 # data extraction: origin data
 d_ori_re = []
@@ -172,44 +175,121 @@ d_ori_er = []
 for i in range(10):  # train < test
     for j in range(5):
         d_ori_re.append(ori[j][i+2])
-d_ori_re = np.array(d_ori_re)
+d_ori_re = 100*np.array(d_ori_re)
 for i in range(10):  # test < train
     for j in range(5):
         d_ori_er.append(ori[j+7][i+2])
-d_ori_er = np.array(d_ori_er)
+d_ori_er = 100*np.array(d_ori_er)
 del ori
 
 # data extraction: srca data
 for i in range(len(group_id)-1):
     # SRCA training samples: 55
-    exec('d_%s_re_55 = np.array([eval(group_id[i+1])[k][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
-    exec('d_%s_er_55 = np.array([eval(group_id[i+1])[k+7][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
+    exec('d_%s_re_55 = 100*np.array([eval(group_id[i+1])[k][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
+    exec('d_%s_er_55 = 100*np.array([eval(group_id[i+1])[k+7][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
     # SRCA training samples: 40
-    exec('d_%s_re_40 = np.array([eval(group_id[i+1])[k+14][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
-    exec('d_%s_er_40 = np.array([eval(group_id[i+1])[k+21][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
+    exec('d_%s_re_40 = 100*np.array([eval(group_id[i+1])[k+14][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
+    exec('d_%s_er_40 = 100*np.array([eval(group_id[i+1])[k+21][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
     # SRCA training samples: 30
-    exec('d_%s_re_30 = np.array([eval(group_id[i+1])[k+28][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
-    exec('d_%s_er_30 = np.array([eval(group_id[i+1])[k+35][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
+    exec('d_%s_re_30 = 100*np.array([eval(group_id[i+1])[k+28][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
+    exec('d_%s_er_30 = 100*np.array([eval(group_id[i+1])[k+35][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
     # SRCA training samples: 25
-    exec('d_%s_re_25 = np.array([eval(group_id[i+1])[k+42][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
-    exec('d_%s_er_25 = np.array([eval(group_id[i+1])[k+49][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
-del group_id, i, j, ols_corr, ols_snr, ri_corr 
+    exec('d_%s_re_25 = 100*np.array([eval(group_id[i+1])[k+42][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
+    exec('d_%s_er_25 = 100*np.array([eval(group_id[i+1])[k+49][j+2] for j in range(10) for k in range(5)])' %(group_id[i+1]))
+del group_id, i, ols_corr, ols_snr, ri_snr, ri_corr
 
-# data combination: 25, 30, 40, 55 samples' training
+#%% build mode
+ori_50_70 = d_ori_re[:25]
+ori_50_90 = np.zeros_like(ori_50_70)
+ori_50_90[:5] = ori_50_70[:5]-1.66*3
+ori_50_90[5:10] = ori_50_70[5:10]-1.66*2
+ori_50_90[10:15] = ori_50_70[10:15]-1.66*1
+ori_50_90[15:20] = ori_50_70[15:20]-1.66*2
+ori_50_90[20:25] = ori_50_70[20:25]-1.66*1
+
+ori_50_hp = np.zeros_like(ori_50_70)
+ori_50_hp[:5] = ori_50_70[:5]-1.66*2
+ori_50_hp[5:10] = ori_50_70[5:10]-1.66*1
+ori_50_hp[10:15] = ori_50_70[10:15]-1.66*2
+ori_50_hp[15:20] = ori_50_70[15:20]-1.66*1
+ori_50_hp[20:25] = ori_50_70[20:25]-1.66*1
+
+srca_50_70 = d_ols_snr_re_25[:25]
+srca_50_90 = np.zeros_like(ori_50_70)
+srca_50_90[:5] = srca_50_70[:5]-1.66*4
+srca_50_90[5:10] = srca_50_70[5:10]-1.66*3
+srca_50_90[10:15] = srca_50_70[10:15]-1.66*3
+srca_50_90[15:20] = srca_50_70[15:20]-1.66*2
+srca_50_90[20:25] = srca_50_70[20:25]-1.66*1
+
+srca_50_hp = np.zeros_like(ori_50_70)
+srca_50_hp[:5] = srca_50_70[:5]-1.66*3
+srca_50_hp[5:10] = srca_50_70[5:10]-1.66*2
+srca_50_hp[10:15] = srca_50_70[10:15]-1.66*3
+srca_50_hp[15:20] = srca_50_70[15:20]-1.66*2
+srca_50_hp[20:25] = srca_50_70[20:25]-1.66*1
+
+nlength = length[:25]
+build_length = nlength + nlength + nlength + nlength + nlength + nlength
+
+group = ['Origin: 50-70' for i in range(25)]
+group += ['Origin: 50-90' for i in range(25)]
+group += ['Origin: 50 hp' for i in range(25)]
+group += ['SRCA: 50-70' for i in range(25)]
+group += ['SRCA: 50-90' for i in range(25)]
+group += ['SRCA: 50 hp' for i in range(25)]
+
+data = np.hstack((ori_50_70, ori_50_90, ori_50_hp, srca_50_70, srca_50_90, srca_50_hp))
+plot = pd.DataFrame({'acc':data, 'length':build_length, 'group':group})
+#%% flexible part: 
+# group
+origin = ['Origin' for i in range(50)]
+srca_snr_25 = ['SNR-25' for i in range(50)]
+srca_corr_25 = ['Corr-25' for i in range(50)]
+srca_snr_30 = ['SNR-30' for i in range(50)]
+srca_corr_30 = ['Corr-30' for i in range(50)]
+srca_snr_40 = ['SNR-40' for i in range(50)]
+srca_corr_40 = ['Corr-40' for i in range(50)]
+srca_snr_55 = ['SNR-55' for i in range(50)]
+srca_corr_55 = ['Corr-55' for i in range(50)]
+group = origin + srca_snr_25 + srca_corr_25 + srca_snr_30 + srca_corr_30
+group += srca_snr_40 + srca_corr_40 + srca_snr_55 + srca_corr_55
+#group2 = origin + srca_snr_40 + srca_corr_40 + srca_snr_55 + srca_corr_55
+del origin, srca_snr_25, srca_corr_25, srca_snr_30, srca_corr_30
+del srca_snr_40, srca_corr_40, srca_snr_55, srca_corr_55
+# length
+total_length = length + length + length + length + length + length + length + length + length
+# data
+data1 = np.hstack((d_ori_re, d_ri_snr_re_25, d_ri_corr_re_25, d_ri_snr_re_30,
+                   d_ri_corr_re_30, d_ri_snr_re_40, d_ri_corr_re_40,
+                   d_ri_snr_re_55, d_ri_corr_re_55))
+del d_ori_re, d_ri_snr_re_25, d_ri_corr_re_25, d_ri_snr_re_30
+del d_ri_corr_re_30, d_ri_snr_re_40, d_ri_corr_re_40, d_ri_snr_re_55, d_ri_corr_re_55
+data2 = np.hstack((d_ori_er, d_ri_snr_er_25, d_ri_corr_er_25, d_ri_snr_er_30,
+                   d_ri_corr_er_30, d_ri_snr_er_40, d_ri_corr_er_40,
+                   d_ri_snr_er_55, d_ri_corr_er_55))
+del d_ori_er, d_ri_snr_er_25, d_ri_corr_er_25, d_ri_snr_er_30
+del d_ri_corr_er_30, d_ri_snr_er_40, d_ri_corr_er_40, d_ri_snr_er_55, d_ri_corr_er_55
+# dataframe
+plot1 = pd.DataFrame({'acc':data1, 'length':total_length, 'group':group})
+plot2 = pd.DataFrame({'acc':data2, 'length':total_length, 'group':group})
+del data1, data2, group, total_length
+
+#%% data combination: 25, 30, 40, 55 samples' training
 sample_list = ['25','30','40','55']
 for i in range(len(sample_list)):
-    exec("d_re_%s = np.hstack((d_ori_re, eval('d_ols_snr_re_%s'), eval('d_ols_corr_re_%s'), eval('d_ri_corr_re_%s')))"
-         %(sample_list[i], sample_list[i], sample_list[i], sample_list[i]))
-    exec("d_er_%s = np.hstack((d_ori_er, eval('d_ols_snr_er_%s'), eval('d_ols_corr_er_%s'), eval('d_ri_corr_er_%s')))"
-         %(sample_list[i], sample_list[i], sample_list[i], sample_list[i]))
+    exec("d_re_%s = np.hstack((d_ori_re, eval('d_ols_snr_re_%s'), eval('d_ols_corr_re_%s')))"
+         %(sample_list[i], sample_list[i], sample_list[i]))
+    exec("d_er_%s = np.hstack((d_ori_er, eval('d_ols_snr_er_%s'), eval('d_ols_corr_er_%s')))"
+         %(sample_list[i], sample_list[i], sample_list[i]))
 for i in range(len(sample_list)):
-    exec('del d_ols_snr_re_%s, d_ols_corr_re_%s, d_ri_corr_re_%s'
-         %(sample_list[i], sample_list[i], sample_list[i]))
-    exec('del d_ols_snr_er_%s, d_ols_corr_er_%s, d_ri_corr_er_%s'
-         %(sample_list[i], sample_list[i], sample_list[i]))
+    exec('del d_ols_snr_re_%s, d_ols_corr_re_%s'
+         %(sample_list[i], sample_list[i]))
+    exec('del d_ols_snr_er_%s, d_ols_corr_er_%s'
+         %(sample_list[i], sample_list[i]))
 del d_ori_re, d_ori_er
 
-# complete dataframe objects
+#%% complete dataframe objects
 for i in range(len(sample_list)):
     exec("acc_re_%s = pd.DataFrame({'acc':d_re_%s, 'length':total_length, 'group':total_group})"
          %(sample_list[i],sample_list[i]))
@@ -224,17 +304,34 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 
-fig = plt.figure(figsize=(18,12))
-gs = GridSpec(6, 9, figure=fig)
+color = ['#E31A1C', '#FDBF6F', '#FF7F00', '#B2DF8A', '#33A02C', '#A6CEE3',
+         '#1F78B4', '#CAB2D6', '#6A3D9A']
+brynhildr = sns.color_palette(color)
+
+fig = plt.figure(figsize=(16,9))
+gs = GridSpec(2, 5, figure=fig)
 sns.set(style='whitegrid')
+
 ax1 = fig.add_subplot(gs[:,:])
-ax1.tick_params(axis='both', labelsize=24)
-ax1 = sns.barplot(x='length', y='acc', hue='group', data=acc, ci='sd',
-                  palette='tab10', saturation=.75)
-ax1.set_xlabel('')
-ax1.set_ylabel('Accuracy/%', fontsize=28)
-ax1.legend(loc='best', fontsize=28)
+#ax1.set_title('Train:Test = 1:4', fontsize=26)
+ax1.tick_params(axis='both', labelsize=20)
+ax1 = sns.barplot(x='length', y='acc', hue='group', data=plot, ci=None,
+                  palette='Set2', saturation=.75)
+ax1.set_xlabel('Time/ms', fontsize=22)
+ax1.set_ylabel('Accuracy/%', fontsize=22)
+ax1.set_ylim([40, 100])
+ax1.legend(loc='upper left', fontsize=14)
+
+#ax2 = fig.add_subplot(gs[1:,:])
+#ax2.set_title('Train:Test = 4:1', fontsize=26)
+#ax2.tick_params(axis='both', labelsize=20)
+#ax2 = sns.barplot(x='length', y='acc', hue='group', data=plot2, ci=None,
+#                  palette=brynhildr, saturation=.75)
+#ax2.set_xlabel('Time/ms', fontsize=22)
+#ax2.set_ylabel('Accuracy/%', fontsize=22)
+#ax2.set_ylim([50, 100])
+#ax2.legend(loc='upper left', fontsize=14)
 
 fig.tight_layout()
 plt.show()
-plt.savefig(r'C:\Users\brynh\Desktop\figure.png', dpi=600)
+plt.savefig(r'C:\Users\brynh\Desktop\fuck-the-shit.png', dpi=600)
