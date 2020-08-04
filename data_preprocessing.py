@@ -219,7 +219,7 @@ for i in range(4):
         summ[i,j,:] = para_ri + para_ols
 ratio = (np.mean((delta+summ)/(summ-delta))-1)*100
 
-#%% real te tr
+#%% real te tr (obsolete)
 # pick channels from parietal and occipital areas
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 regressionList = ['OLS', 'Ridge']  # choose multi-linear regression method
@@ -278,50 +278,68 @@ for reg in range(len(regressionList)):
                 data_path = r'F:\SSVEP\SRCA data\real_cv\%s\%s\%d_60\srca_%d.mat' %(regression, method, ns, nt)             
                 io.savemat(data_path, {'model_info': model_info, 'parameter': para_alteration})
 
-#%% e-trca for origin data
-tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-trainNum = [55, 40, 30, 25]
-acc_srca_ori = np.zeros((5, 10))
-for nt in range(10):
-    eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-    temp = eeg['f_data'][:,-60:,[45,51,52,53,54,55,58,59,60],2200:int(2300+nt*100)]*1e6
-    data = np.zeros_like(temp)
-    data[0,:,:,:] = temp[0,:,:,:]
-    data[1,:,:,:] = np.swapaxes(eeg['f_data'][1,-60:,[45,51,52,53,54,55,58,59,60],2200:int(2300+nt*100)]*1e6, 0, 1)
-    del eeg, temp
-    acc = []
-    N = 5
-    print('running ensemble TRCA...')
-    for cv in range(N):
-        a = int(cv * (data.shape[1]/N))
-        tr_data = data[:,a:a+int(data.shape[1]/N),:,:]
-        te_data = copy.deepcopy(data)
-        te_data = np.delete(te_data, [a+i for i in range(tr_data.shape[1])], axis=1)
-        acc_temp = mcee.e_trca(te_data, tr_data)
-        acc.append(np.sum(acc_temp))
-        del acc_temp
-        print(str(cv+1) + 'th cv complete')
-    acc = np.array(acc)/(tr_data.shape[1]*2)
-    acc_srca_ori[:, nt] = acc
-    del acc
 
-#%% trca for origin data: new method
-trainNum = [55, 40, 30, 25]
-acc_srca_ori = np.zeros((4,5))
-for nfile in range(len(trainNum)):
-    for nt in range(5):
-        acc = []
-        print('data length: %d00ms' %(nt+1))
-        eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-        tr_data = eeg['f_data'][:,:trainNum[nfile],[45,51,52,53,54,55,58,59,60],2140:int(2240+nt*100)]*1e6
-        te_data = eeg['f_data'][:,-60:,[45,51,52,53,54,55,58,59,60],2140:int(2240+nt*100)]*1e6
-        acc_temp = mcee.pure_trca(tr_data, te_data)
-        acc.append(np.sum(acc_temp))
-        del acc_temp
-        acc_srca_ori[nfile,nt] = np.array(acc)/(te_data.shape[1]*2)
-        del acc
+#%% TRCA/eTRCA for SRCA/origin data (Online Mode)
+tarChans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
+trainNum = [10, 20, 30, 40]
+acc_srca_trca = np.zeros((len(trainNum), 5, 5))  # (trainNum, cv, n_length)
+acc_srca_etrca = np.zeros_like(acc_srca_trca)
+acc_ori_trca = np.zeros_like(acc_srca_trca)
+acc_ori_etrca = np.zeros_like(acc_srca_trca)
+
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
+f_data = eeg['f_data'][:, :, [45,51,52,53,54,55,58,59,60], 1000:2640] * 1e6
+chans = eeg['chan_info'].tolist()
+nTargetChan = f_data.shape[2]
+del eeg
+
+for tn in range(len(trainNum)):
+    ns = trainNum[tn]
+    for cv in range(5):  # cross-validation in training
+        print('CV: %d turn...' %(cv+1))
+        for nt in range(5):
+            print('Data length: %d00ms' %(nt+1))
+            srcaModel = io.loadmat(r'F:\SSVEP\realCV\OLS\SNR\train_%d\loop_%d\srca_%d.mat' 
+                                   %(tn, cv, nt))
+            # extract model info used in SRCA
+            modelInfo = srcaModel['model_info'].flatten().tolist()
+            modelChans = []
+            for i in range(len(modelInfo)):
+                modelChans.append(modelInfo[i].tolist())
+            del modelInfo
+            # error shouldn't exist hhh
+            modelChans = modelChans[nt*nTargetChan*2:(nt+1)*nTargetChan*2]
+            # extract trials info used in Cross Validation
+            # another name error (trail) hhh
+            trainTrial = np.mean(srcaModel['trail_info'], axis=0).astype(int)
+            del srcaModel
+            # extract origin data with correct trials & correct length
+            trainData = f_data[:, trainTrial[:ns], :, :1240+nt*100]
+            testData = f_data[:, trainTrial[-60:], :, :1240+nt*100]
+            del trainTrial
+            # target identification main process
+            accTRCA = mcee.srca_trca(trainData, testData, tarChans, modelChans, chans,
+                                 'OLS', 1140)
+            acceTRCA = mcee.e_srca_trca(trainData, testData, tarChans, modelChans, chans,
+                                 'OLS', 1140)
+            accOriTRCA = mcee.pure_trca(trainData, testData)
+            accOrieTRCA = mcee.e_trca(trainData, testData)
+            # re-arrange accuracy data
+            accTRCA = np.sum(accTRCA)/(testData.shape[1]*2)
+            acceTRCA = np.sum(acceTRCA)/(testData.shape[1]*2)
+            accOriTRCA = np.sum(accOriTRCA)/(testData.shape[1]*2)
+            accOrieTRCA = np.sum(accOrieTRCA)/(testData.shape[1]*2)
+            # save accuracy data
+            acc_srca_trca[tn, cv, nt] = accTRCA
+            acc_srca_etrca[tn, cv, nt] = acceTRCA
+            acc_ori_trca[tn, cv, nt] = accOriTRCA
+            acc_ori_etrca[tn, cv, nt] = accOrieTRCA
+            del accTRCA, acceTRCA, accOriTRCA, accOrieTRCA
+        print(str(cv+1) + 'th cross-validation complete!\n')
+    print(str(ns) + ' training trials complete!\n')
+
     
-#%% ensemble trca
+#%% ensemble trca (obsolete)
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 regressionList = ['OLS']
 #regressionList = ['OLS', 'Ridge']
@@ -369,63 +387,7 @@ for reg in range(len(regressionList)):
                 acc = np.array(acc)/(te_data.shape[1]*2)
                 acc_srca_tr[reg, met, nfile, nt] = acc
                 del acc
-                
-#%%
-tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-regressionList = ['OLS']
-#regressionList = ['OLS', 'Ridge']
-methodList = ['SNR', 'Corr']
-#methodList = ['SNR']
-#trainNum = [55]
-trainNum = [55, 40, 30, 25]
-acc_srca_te = np.zeros((len(regressionList), len(methodList), len(trainNum), 5, 5))
-for reg in range(len(regressionList)):
-    regression = regressionList[reg]
-    for met in range(len(methodList)):
-        method = methodList[met]
-        for nfile in range(len(trainNum)):
-            ns = trainNum[nfile]
-            for nt in range(5):
-                # extract model info used in SRCA
-                eeg = io.loadmat(r'F:\SSVEP\SRCA data\begin：200ms\%s\%s\%d_60\srca_%d.mat'
-                                     %(regression, method, ns, nt))
-                model = eeg['model_info'].flatten().tolist()
-                model_chans = []
-                for i in range(18):
-                    model_chans.append(model[i].tolist())
-                print('Data length:' + str((nt+1)*100) + 'ms')
-                del model, eeg       
-                # extract origin data
-                eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-                temp = eeg['f_data'][:,-60:,:,1000:int(2300+nt*100)]*1e6
-                data = np.zeros_like(temp)
-                data[0,:,:,:] = temp[0,:,:,:]
-                data[1,:,:,:] = eeg['f_data'][1,-60:,:,1000:int(2300+nt*100)]*1e6
-                chans = eeg['chan_info'].tolist()
-                del eeg, temp
-                # cross validation
-                acc = []
-                N = 5
-                print('running TRCA program...')
-                for cv in range(N):
-                    a = int(cv * (data.shape[1]/N))
-                    tr_data = data[:,a:a+int(data.shape[1]/N),:,:]
-                    te_data = copy.deepcopy(data)
-                    te_data = np.delete(te_data, [a+i for i in range(tr_data.shape[1])], axis=1)
-                    acc_temp = mcee.srca_trca(train_data=te_data, test_data=tr_data,
-                        tar_chans=tar_chans, model_chans=model_chans, chans=chans,
-                        regression=regression, sp=1200)
-                    acc.append(np.sum(acc_temp))
-                    del acc_temp
-                    print(str(cv+1) + 'th cv complete')
-                acc = np.array(acc)/(tr_data.shape[1]*2)
-                acc_srca_te[reg, met, nfile, :, nt] = acc
-                del acc
-                
-#%%
-data_path = r'F:\SSVEP\SRCA data\begin：140ms\trca_result.mat'
-io.savemat(data_path, {'tr<te':acc_srca_tr, 'te<tr':acc_srca_te})
-
+                            
 #%%
 regressionList = ['OLS']
 trainNum = [55, 40, 30, 25]
@@ -503,7 +465,7 @@ chans = eeg['chan_info'].tolist()
 del eeg
 
 # SRCA training
-for loop in range(2):                                  # loop in cross validation
+for loop in range(5):                                  # loop in cross validation
     for reg in range(len(regressionList)):             # loop in regression method
         regression = regressionList[reg]
         for met in range(len(methodList)):             # loop in SRCA parameters
@@ -544,8 +506,9 @@ for loop in range(2):                                  # loop in cross validatio
                     # save data as .mat file
                     data_path = r'F:\SSVEP\realCV\%s\%s\train_%d\loop_%d\srca_%d.mat' %(regression,
                                         method, ns, loop+1, nt)             
-                    io.savemat(data_path, {'model_info': model_info,
-                                           'parameter': para_alteration})
+                    io.savemat(data_path, {'modelInfo': model_info,
+                                           'parameter': para_alteration,
+                                           'trialInfo': randPick})
 
 #%% Real Cross Validation: SNR
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
@@ -567,7 +530,7 @@ chans = eeg['chan_info'].tolist()
 del eeg
 
 # SRCA training
-for loop in range(2):                                  # loop in cross validation
+for loop in range(5):                                  # loop in cross validation
     for reg in range(len(regressionList)):             # loop in regression method
         regression = regressionList[reg]
         for met in range(len(methodList)):             # loop in SRCA parameters
@@ -609,8 +572,9 @@ for loop in range(2):                                  # loop in cross validatio
                     # save data as .mat file
                     data_path = r'F:\SSVEP\realCV\%s\%s\train_%d\loop_%d\srca_%d.mat' %(regression,
                                         method, ns, loop+1, nt)             
-                    io.savemat(data_path, {'model_info': model_info,
-                                           'parameter': para_alteration})
+                    io.savemat(data_path, {'modelInfo': model_info,
+                                           'parameter': para_alteration,
+                                           'trialInfo': randPick})
 
 
 #%%
