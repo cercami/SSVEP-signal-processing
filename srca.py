@@ -25,86 +25,69 @@ updating...
 
 #%% Import third part module
 import numpy as np
-
 from sklearn import linear_model
-
 import copy
 import time
 
 #%% Basic operating function
-# extract optimized signals from linear model
+# Extract optimized signals from linear model
 def SRCA_lm_extract(model_input, model_target, data_input, data_target,
-                 method='OLS', alpha=0.5, l1_ratio=0.5, mode='a'):
+                 regression='OLS', alpha=0.5, l1_ratio=0.5):
     '''
     Use different linear models to achieve SRCA extraction
-    model_input: (n_trials, n_chans, n_times) for training
-        (n_chans, n_trials, n_times) for testing, the same as below
-    model_target: (n_trials, n_times)
-    data_input: (n_trials, n_chans, n_times)
-    data_target: (n_trials, n_times)
-    method | linear models (str)
-        OLS : Ordinary Least Squares
-        Ridge : Ridge Regression
-        Lasso : Lasso Regression
-        EN: ElasticNet Regression
-        updating...
+    Parameters:
+        model_input: (n_trials, n_chans, n_times)
+        model_target: (n_trials, n_times)
+        data_input: (n_trials, n_chans, n_times)
+        data_target: (n_trials, n_times)
+        regression | linear models (str):
+            OLS : Ordinary Least Squares
+            Ridge : Ridge Regression
+            Lasso : Lasso Regression
+            EN: ElasticNet Regression
+            updating...
+        alpha: float | default 0.5, parameters used in Ridge, Lasso and EN regression
+        l1_ratio: float | default 0.5, parameters used in EN regression
+    Returns:
+        extract: (n_trials, n_times) | filtered data
     '''
     # basic information
     n_times = data_input.shape[-1]
-    if model_input.ndim == 3:
-        if mode == 'a':  # (n_chans, n_trials, n_times)
-            n_trials = model_input.shape[1]
-        elif mode == 'b':  # (n_trials, n_chans, n_times)
-            n_trials = model_input.shape[0]
-        # initialization
-        estimate = np.zeros((n_trials, n_times))  # (n_trials, n_times)
-        for i in range(n_trials):
-            if mode == 'a':
-                x = model_input[:,i,:].T  # (n_times, n_chans)
-                z = data_input[:,i,:]
-            elif mode == 'b':
-                x = model_input[i,:,:].T
-                z = data_input[i,:,:]
-            y = model_target[i,:]  # (n_times,1)
-            if method == 'OLS':  # ordinaru least squares
-                L = linear_model.LinearRegression().fit(x,y)
-            elif method == 'Ridge':  # Ridge Regression
-                L = linear_model.Ridge(alpha=alpha).fit(x,y)
-            elif method == 'Lasso':  # Lasso Regression
-                L = linear_model.Lasso(alpha=alpha).fit(x,y)
-            elif method == 'EN':  # ElasticNet Regression
-                L = linear_model.ElasticNet(alpha=1, l1_ratio=l1_ratio).fit(x,y)
-            RI = L.intercept_
-            RC = L.coef_
-            estimate[i,:] = (np.mat(RC) * np.mat(z)).A + RI
-        del i
-    elif model_input.ndim == 2:  # avoid reshape error
-        n_trials = model_input.shape[0]
-        estimate = np.zeros((n_trials, n_times))
-        for i in range(n_trials):
-            x = model_input[i,:]
-            y = model_target[i,:]
-            z = data_input[i,:]
-            # basic operating unit: (n_chans, n_times).T, (1, n_times).T
-            if method == 'OLS':  # ordinaru least squares
-                L = linear_model.LinearRegression().fit(x,y)
-            elif method == 'Ridge':  # Ridge Regression
-                L = linear_model.Ridge(alpha=alpha).fit(x,y)
-            elif method == 'Lasso':  # Lasso Regression
-                L = linear_model.Lasso(alpha=alpha).fit(x,y)
-            elif method == 'EN':  # ElasticNet Regression
-                L = linear_model.ElasticNet(alpha=1, l1_ratio=l1_ratio).fit(x,y)
-            RI = L.intercept_
-            RC = L.coef_
+    n_trials = model_input.shape[0]
+    estimate = np.zeros((n_trials, n_times))  # initialization
+    for i in range(n_trials):
+        if model_input.ndim == 3:             # (n_trials, n_chans, n_times)
+            x = np.mat(model_input[i,:,:]).T  # (n_times, n_chans)
+            z = data_input[i,:,:]             # (n_chans, n_times)
+        elif model_input.ndim == 2:           # (n_trials, n_times) for single channel
+            x = np.mat(model_input[i,:]).T    # (n_times, 1)
+            z = data_input[i,:]               # (1, n_times)
+        y = np.mat(model_target[i,:]).T       # (n_times,1)
+        if regression == 'OLS':               # ordinaru least squares
+            L = linear_model.LinearRegression().fit(x,y)
+        elif regression == 'Ridge':           # Ridge Regression
+            L = linear_model.Ridge(alpha=alpha).fit(x,y)
+        elif regression == 'Lasso':           # Lasso Regression
+            L = linear_model.Lasso(alpha=alpha).fit(x,y)
+        elif regression == 'EN':              # ElasticNet Regression
+            L = linear_model.ElasticNet(alpha=1, l1_ratio=l1_ratio).fit(x,y)
+        RI = L.intercept_
+        RC = L.coef_
+        if model_input.ndim == 3:
+            estimate[i,:] = np.mat(RC) * np.mat(z) + RI
+        elif model_input.ndim == 2:
             estimate[i,:] = RC * z + RI
-        del i
-    extract = data_target - estimate  # extract optimized data
-    return extract, estimate
+    extract = data_target - estimate          # extract optimized data
+    return extract
 
-# compute time-domain snr
+# Compute time-domain SNR
 def snr_time(data):
     '''
-    data:(n_trials, n_times)
+    Compute the mean of SSVEP's SNR in time domain
+    Parameters:
+        data: (n_trials, n_times)
+    Returns:
+        snr: float | the mean of SNR sequence
     '''
     snr = np.zeros((data.shape[1]))             # (n_times)
     ex = np.mat(np.mean(data, axis=0))          # one-channel data: (1, n_times)
@@ -115,462 +98,64 @@ def snr_time(data):
     snr = ex/var
     return snr
 
+# Compute time-domain Pearson Correlation Coefficient
 def pearson_corr(data):
     '''
-    data | (n_trials, n_times): input 3-D data array
-    corr | pearson correlation coefficients sequence
-    mcorr | mean of sequence
+    Compute the mean of Pearson correlation coefficient in time domain
+    Parameters:
+        data: (n_trials, n_times)
+    Returns:
+        mcorr float | the mean of corr sequence
     '''
     template = np.mean(data, axis=0)
     n_trials = data.shape[0]
     corr = np.zeros((n_trials))
     for i in range(n_trials):
         corr[i] = np.sum(np.tril(np.corrcoef(template, data[i,:]),-1))
-    
     return corr
 
-
-#%% SRCA based on SNR
-# Backward SRCA
-def backward_SRCA(chans, msnr, w, w_target, signal_data, data_target):
+# Compute Fisher Score
+def fisher_score(data):
     '''
-    Backward recursive algorithm to achieve SRCA
-        (1)take all possible channels to form a model
-        (2)delete one element each time respectively and keep the best choice
-        (3)repeat the lase process until there will be no better choice
-            i.e. the convergence point of the recursive algorithm
+    Compute the mean of Fisher Score in time domain
     Parameters:
-        chans | list: the list order corresponds to the data array's
-        msnr | float: the mean of original signal's SNR in time domain(0-500ms)
-        w | (n_trials, n_chans, n_times): background part input data array 
-        w_target | (n_trials, n_times): background part target data array 
-        signal_data | (n_trials, n_chans, n_times): signal part input data array 
-        data_target | (n_trials, n_times): signal part target data array 
+        data: (n_events, n_trails, n_times)
     Returns:
-        model_chans | list: channels which should be used in SRCA
-        snr_change | list: SNR's alteration
+        fs: float | the mean of fisher score
     '''
-    # initialize variables
-    print('Running Backward SRCA...')
-    start = time.clock()
-    compare_snr = np.zeros((len(chans)))
-    delete_chans = []
-    snr_change = []
-    # begin loop
-    j = 0
-    active = True
-    while active:
-        if len(chans) > 1:
-            compare_snr = np.zeros((len(chans)))
-            mtemp_snr = np.zeros((len(chans)))
-            # delete 1 channel respectively and compare the parameter with original one
-            for i in range(len(chans)):
-                # initialization
-                temp_chans = copy.deepcopy(chans)
-                temp_data = copy.deepcopy(signal_data)
-                temp_w = copy.deepcopy(w)
-                # delete one channel
-                del temp_chans[i]
-                temp_data = np.delete(temp_data, i, axis=1)
-                temp_w = np.delete(temp_w, i, axis=1)
-                # compare paramter
-                temp_extract, temp_estimate = SRCA_lm_extract(temp_w, w_target,
-                        temp_data, data_target, method='Ridge')
-                temp_snr = snr_time(temp_extract)
-                mtemp_snr[i] = np.mean(temp_snr)
-                compare_snr[i] = mtemp_snr[i] - msnr
-            # keep the channels which can improve snr forever
-            chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
-            delete_chans.append(chans.pop(chan_index))
-            snr_change.append(np.max(compare_snr))
-            # refresh data
-            signal_data = np.delete(signal_data, chan_index, axis=1)
-            w = np.delete(w, chan_index, axis=1)
-            # significant loop mark
-            j += 1 
-            print('Complete ' + str(j) + 'th loop')
-        # Backward SRCA complete
-        else:
-            end = time.clock()
-            print('Backward SRCA complete!')
-            print('Recursive running time: ' + str(end - start) + 's')
-            active = False
-        
-    model_chans = chans + delete_chans[-2:]
-    return model_chans, snr_change
+    # initialization
+    sampleNum = data.shape[1]    # n_trials
+    featureNum = data.shape[-1]  # n_times
+    groupNum = data.shape[0]     # n_events
+    miu = np.mean(data, axis=1)  # (n_events, n_times)
+    all_miu = np.mean(miu, axis=0)
+    # inter-class divergence
+    ite_d = np.sum(sampleNum * (miu - all_miu)**2, axis=0)
+    # intra-class divergence
+    itr_d= np.zeros((groupNum, featureNum))
+    for i in range(groupNum):
+        for j in range(featureNum):
+            itr_d[i,j] = np.sum((data[i,:,j] - miu[i,j])**2)
+    # fisher score
+    fs = (ite_d) / np.sum(sampleNum * itr_d, axis=0)
+    return fs
 
-
-# Forward SRCA
-def forward_SRCA(chans, msnr, w, w_target, signal_data, data_target):
+# Apply SRCA model
+def applySRCA(data, tar_chans, model_chans, regression, sp=1140):
     '''
-    Forward recursive algorithm to achieve SRCA
-    Contrary to Backward process:
-        (1)this time form an empty set
-        (2)add one channel each time respectively and keep the best choice
-        (3)repeat the last process until there will be no better choice
-            i.e. the convergence point of the recursive algorithm
+    Apply SRCA model in test dataset
     Parameters:
-        chans: list of channels; the list order corresponds to the data array's
-        msnr: float; the mean of original signal's SNR in time domain(0-500ms)
-        w: background part input data array (n_trials, n_chans, n_times)
-        w_target: background part target data array (n_trials, n_times)
-        signal_data: signal part input data array (n_trials, n_chans, n_times)
-        data_target: signal part target data array (n_trials, n_times)
+        data: (n_trials, n_chans, n_times) | test dataset
+        tar_chans: str list | names of target channels
+        model_chans: str list | names of SRCA channels for each target channel
+        regression: str | OLS, Ridge, Lasso or ElasticNet
+        sp: int | start point of mission state (default 1140)
     Returns:
-        model_chans: list of channels which should be used in SRCA
-        snr_change: list of SNR's alteration
+        f_data: (n_trials, n_chans, n_times) | filtered data
     '''
-    # initialize variables
-    print('Running Forward SRCA...')
-    start = time.clock()
     
-    j = 1
-    
-    compare_snr = np.zeros((len(chans)))
-    max_loop = len(chans)
-    
-    remain_chans = []
-    snr_change = []
-    temp_snr = []
-    core_data = []
-    core_w = []
-    # begin loop
-    active = True
-    while active and len(chans) <= max_loop:
-        # initialization
-        compare_snr = np.zeros((len(chans)))
-        mtemp_snr = np.zeros((len(chans)))
-        # add 1 channel respectively and compare the snr with original one
-        for i in range(len(chans)):
-            # avoid reshape error in multi-dimension array
-            if j == 1:
-                temp_w = w[:,i,:]
-                temp_data = signal_data[:,i,:]
-            else:
-                temp_w = np.zeros((j, w.shape[0], w.shape[2]))
-                temp_w[:j-1, :, :] = core_w
-                temp_w[j-1, :, :] = w[:,i,:]
-        
-                temp_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-                temp_data[:j-1, :, :] = core_data
-                temp_data[j-1, :, :] = signal_data[:,i,:]
-            # multi-linear regression & snr computation
-            temp_extract, temp_estimate = SRCA_lm_extract(temp_w, w_target,
-                        temp_data, data_target)
-            temp_snr = snr_time(temp_extract)
-            # find the best choice in this turn
-            mtemp_snr[i] = np.mean(temp_snr)
-            compare_snr[i] = mtemp_snr[i] - msnr
-        # keep the channels which can improve snr most
-        chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
-        remain_chans.append(chans.pop(chan_index))
-        snr_change.append(np.max(compare_snr))
-        # avoid reshape error at the beginning of Forward SRCA
-        if j == 1:
-            core_w = w[:, chan_index, :]
-            core_data = signal_data[:, chan_index, :]
-            # refresh data
-            signal_data = np.delete(signal_data, chan_index, axis=1)
-            w = np.delete(w ,chan_index, axis=1)
-            # significant loop mark
-            print('Complete ' + str(j) + 'th loop')
-            j += 1
-        else:
-            temp_core_w = np.zeros((j, w.shape[0], w.shape[2]))
-            temp_core_w[:j-1, :, :] = core_w
-            temp_core_w[j-1, :, :] = w[:, chan_index, :]
-            core_w = copy.deepcopy(temp_core_w)
-            del temp_core_w
-            
-            temp_core_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-            temp_core_data[:j-1, :, :] = core_data
-            temp_core_data[j-1, :, :] = signal_data[:, chan_index, :]
-            core_data = copy.deepcopy(temp_core_data)
-            del temp_core_data
-            # add judge condition to stop program while achieving the target
-            if snr_change[j-1] < np.max(snr_change):
-                end = time.clock()
-                print('Forward SRCA complete!')
-                print('Recursive running time: ' + str(end - start) + 's')
-                active = False
-            else:
-                # refresh data
-                signal_data = np.delete(signal_data, chan_index, axis=1)
-                w = np.delete(w ,chan_index, axis=1)
-                # significant loop mark
-                print('Complete ' + str(j) + 'th loop')
-                j += 1
-        
-    remain_chans = remain_chans[:len(remain_chans)-1]
-    return remain_chans, snr_change
+    pass
 
-
-# Stepwise SRCA
-def stepwise_SRCA(chans, msnr, w, w_target, signal_data, data_target,
-                  method='OLS', alpha=0.5, l1_ratio=0.5):
-    '''
-    Stepward recursive algorithm to achieve SRCA
-    The combination of Forward and Backward process:
-        (1)this time form an empty set; 
-        (2)add one channel respectively and pick the best one; 
-        (3)add one channel respectively and delete one respectively (except the just-added one)
-            keep the best choice;
-        (4)repeat those process until there will be no better choice
-            i.e. the convergence point of the recursive algorithm
-    Parameters:
-        chans: list of channels; the list order corresponds to the data array's
-        msnr: float; the mean of original signal's SNR in time domain(0-500ms)
-        w: background part input data array (n_trials, n_chans, n_times)
-        w_target: background part target data array (n_trials, n_times)
-        signal_data: signal part input data array (n_trials, n_chans, n_times)
-        data_target: signal part target data array (n_trials, n_times)
-    Returns:
-        model_chans: list of channels which should be used in SRCA
-        snr_change: list of SNR's alteration
-    '''
-    # initialize variables
-    print('Running Stepwise SRCA...')
-    start = time.clock()
-    j = 1
-    compare_snr = np.zeros((len(chans)))
-    max_loop = len(chans)
-    remain_chans = []
-    snr_change = []
-    temp_snr = []
-    core_data = []
-    core_w = []
-    # begin loop
-    active = True
-    while active and len(chans) <= max_loop:
-        # initialization
-        compare_snr = np.zeros((len(chans)))
-        mtemp_snr = np.zeros((len(chans)))
-        # add 1 channel respectively & compare the snr (Forward SRCA)
-        for i in range(len(chans)):
-            # avoid reshape error in multi-dimension array
-            if j == 1:
-                temp_w = w[:,i,:]
-                temp_data = signal_data[:,i,:]
-            else:
-                temp_w = np.zeros((j, w.shape[0], w.shape[2]))
-                temp_w[:j-1, :, :] = core_w
-                temp_w[j-1, :, :] = w[:,i,:]           
-                temp_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-                temp_data[:j-1, :, :] = core_data
-                temp_data[j-1, :, :] = signal_data[:,i,:]
-            # multi-linear regression & snr computation
-            temp_extract, temp_estimate = SRCA_lm_extract(temp_w, w_target,
-                        temp_data, data_target, method=method, alpha=alpha,
-                        l1_ratio=l1_ratio, mode='a')
-            del temp_w, temp_data, temp_estimate
-            temp_snr = pearson_corr(temp_extract)
-            # compare the snr with original one
-            mtemp_snr[i] = np.mean(temp_snr)
-            compare_snr[i] = mtemp_snr[i] - msnr
-        # keep the channels which can improve snr most
-        chan_index = np.max(np.where(compare_snr == np.max(compare_snr)))
-        remain_chans.append(chans.pop(chan_index))
-        snr_change.append(np.max(compare_snr))
-        del temp_extract, compare_snr, mtemp_snr, temp_snr
-        # avoid reshape error at the beginning of Forward SRCA while refreshing data
-        if j == 1: 
-            core_w = w[:, chan_index, :]
-            core_data = signal_data[:, chan_index, :]
-            # refresh data
-            signal_data = np.delete(signal_data, chan_index, axis=1)
-            w = np.delete(w ,chan_index, axis=1)
-            # significant loop mark
-            print('Complete ' + str(j) + 'th loop')
-        # begin stepwise part (delete & add) 
-        if j == 2:  
-            # save new data
-            temp_core_w = np.zeros((j, w.shape[0], w.shape[2]))
-            temp_core_w[0, :, :] = core_w
-            temp_core_w[1, :, :] = w[:, chan_index, :]
-            core_w = copy.deepcopy(temp_core_w)
-            del temp_core_w
-            temp_core_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-            temp_core_data[0, :, :] = core_data
-            temp_core_data[1, :, :] = signal_data[:, chan_index, :]
-            core_data = copy.deepcopy(temp_core_data)
-            del temp_core_data
-            # add judge condition to stop program while achieving the target
-            if snr_change[-1] < np.max(snr_change):
-                print('Stepwise SRCA complete!')
-                end = time.clock()
-                print('Recursive running time: ' + str(end - start) + 's')
-                # if this judgement is not passed, then there's no need to continue
-                active = False
-            # delete 1st channel, then add a new one
-            else:
-                # refresh data
-                signal_data = np.delete(signal_data, chan_index, axis=1)
-                w = np.delete(w, chan_index, axis=1)
-                # initialization
-                temp_1_chans = copy.deepcopy(remain_chans)
-                temp_1_data = copy.deepcopy(core_data)
-                temp_1_w = copy.deepcopy(core_w)
-                # delete 1st channel
-                del temp_1_chans[0]
-                temp_1_data = np.delete(temp_1_data, 0, axis=0)
-                temp_1_w = np.delete(temp_1_w, 0, axis=0)
-                # add one channel
-                temp_2_compare_snr = np.zeros((signal_data.shape[1]))
-                for k in range(signal_data.shape[1]):
-                    temp_2_w = np.zeros((2, w.shape[0], w.shape[2]))
-                    temp_2_w[0, :, :] = temp_1_w
-                    temp_2_w[1, :, :] = w[:, k, :]
-                    temp_2_data = np.zeros((2, signal_data.shape[0], signal_data.shape[2]))
-                    temp_2_data[0, :, :] = temp_1_data
-                    temp_2_data[1, :, :] = signal_data[:, k, :]
-                    # mlr & compute snr
-                    temp_2_extract, temp_2_estimate = SRCA_lm_extract(temp_2_w,
-                        w_target, temp_2_data, data_target, method=method, alpha=alpha,
-                        l1_ratio=l1_ratio, mode='a')
-                    temp_2_snr = pearson_corr(temp_2_extract)
-                    mtemp_2_snr = np.mean(temp_2_snr)
-                    temp_2_compare_snr[k] = mtemp_2_snr - msnr
-                # keep the best choice
-                temp_2_chan_index = np.max(np.where(temp_2_compare_snr == np.max(temp_2_compare_snr)))
-                # judge if there's any improvement
-                if temp_2_compare_snr[temp_2_chan_index] > snr_change[-1]:  # has improvement
-                    # refresh data
-                    chan_index = temp_2_chan_index
-                    remain_chans.append(chans.pop(chan_index))
-                    snr_change.append(temp_2_compare_snr[temp_2_chan_index])
-                    # delete useless data & add new data
-                    core_w = np.delete(core_w, 0, axis=0)
-                    temp_2_core_w = np.zeros((2, w.shape[0], w.shape[2]))
-                    temp_2_core_w[0, :, :] = core_w
-                    temp_2_core_w[1, :, :] = w[:, chan_index, :]
-                    core_w = copy.deepcopy(temp_2_core_w)
-                    del temp_2_core_w
-                    core_data = np.delete(core_data, 0, axis=0)
-                    temp_2_core_data = np.zeros((2, signal_data.shape[0], signal_data.shape[2]))
-                    temp_2_core_data[0, :, :] = core_data
-                    temp_2_core_data[1, :, :] = signal_data[:, chan_index, :]
-                    core_data = copy.deepcopy(temp_2_core_data)
-                    del temp_2_core_data
-                    signal_data = np.delete(signal_data, chan_index, axis=1)
-                    w = np.delete(w, chan_index, axis=1)
-                    # release RAM
-                    del remain_chans[0]
-                    del temp_2_chan_index, temp_2_extract, temp_2_estimate, temp_2_snr
-                    del mtemp_2_snr, temp_2_compare_snr, temp_2_w, temp_2_data
-                    del temp_1_chans, temp_1_data, temp_1_w
-                    # significant loop mark
-                    print('Complete ' + str(j) + 'th loop')
-                else:  # no improvement
-                    # release RAM
-                    del temp_1_chans, temp_1_data, temp_1_w
-                    # reset
-                    print("Already best in 2 channels' contidion!")
-        # now we have at least 3 elements in remain_chans,
-        # delete one channel, then add a new one
-        if j > 2:
-            # save data
-            temp_core_w = np.zeros((j, w.shape[0], w.shape[2]))
-            temp_core_w[:j-1, :, :] = core_w
-            temp_core_w[j-1, :, :] = w[:, chan_index, :]
-            core_w = copy.deepcopy(temp_core_w)
-            del temp_core_w
-            temp_core_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-            temp_core_data[:j-1, :, :] = core_data
-            temp_core_data[j-1, :, :] = signal_data[:, chan_index, :]
-            core_data = copy.deepcopy(temp_core_data)
-            del temp_core_data
-            # add judge condition to stop program while achieving the target
-            if snr_change[-1] < np.max(snr_change):
-                print('Stepwise SRCA complete!')
-                end = time.clock()
-                print('Recursive running time: ' + str(end - start) + 's')
-                # if this judge is not passed, then there's no need to continue
-                active = False
-            # now the last snr_change is still the largest in the total sequence
-            else:
-                # refresh data
-                signal_data = np.delete(signal_data, chan_index, axis=1)
-                w = np.delete(w, chan_index, axis=1)
-                # initialization (make copies)
-                temp_3_chans = copy.deepcopy(remain_chans)
-                temp_3_compare_snr = np.zeros((len(temp_3_chans)-1))
-                temp_3_chan_index = []
-                # delete one channel except the latest one
-                for l in range(len(temp_3_chans)-1):
-                    # initialization (make copies)
-                    temp_4_chans = copy.deepcopy(remain_chans)
-                    temp_4_data = copy.deepcopy(core_data)
-                    temp_4_w = copy.deepcopy(core_w)
-                    # delete one channel
-                    del temp_4_chans[l]
-                    temp_4_data = np.delete(temp_4_data, l, axis=0)
-                    temp_4_w = np.delete(temp_4_w, l, axis=0)
-                    # add one channel
-                    temp_4_compare_snr = np.zeros((signal_data.shape[1]))
-                    for m in range(signal_data.shape[1]):
-                        temp_5_w = np.zeros((j, w.shape[0], w.shape[2]))
-                        temp_5_w[:j-1, :, :] = temp_4_w
-                        temp_5_w[j-1, :, :] = w[:, m, :]
-                        temp_5_data = np.zeros((j, signal_data.shape[0], signal_data.shape[2]))
-                        temp_5_data[:j-1, :, :] = temp_4_data
-                        temp_5_data[j-1, :, :] = signal_data[:, m, :]
-                        # mlr & compute snr
-                        temp_5_extract, temp_5_estimate = SRCA_lm_extract(temp_5_w,
-                            w_target, temp_5_data, data_target, method=method, alpha=alpha,
-                        l1_ratio=l1_ratio, mode='a')
-                        temp_5_snr = pearson_corr(temp_5_extract)
-                        mtemp_5_snr = np.mean(temp_5_snr)
-                        temp_4_compare_snr[m] = mtemp_5_snr - msnr
-                    # keep the best choice
-                    temp_4_chan_index = np.max(np.where(temp_4_compare_snr == np.max(temp_4_compare_snr)))
-                    temp_3_chan_index.append(str(temp_4_chan_index))
-                    temp_3_compare_snr[l] = temp_4_compare_snr[temp_4_chan_index]
-                # judge if there's improvement
-                if np.max(temp_3_compare_snr) > np.max(snr_change):  # has improvement
-                    # find index
-                    delete_chan_index = np.max(np.where(temp_3_compare_snr == np.max(temp_3_compare_snr)))
-                    add_chan_index = int(temp_3_chan_index[delete_chan_index])
-                    # operate (refresh data)
-                    del remain_chans[delete_chan_index]
-                    remain_chans.append(chans[add_chan_index])
-                    chan_index = add_chan_index
-                    snr_change.append(temp_3_compare_snr[delete_chan_index])
-                    # delete useless data & add new data
-                    core_w = np.delete(core_w, delete_chan_index, axis=0)
-                    temp_6_core_w = np.zeros((core_w.shape[0]+1, core_w.shape[1], core_w.shape[2]))
-                    temp_6_core_w[:core_w.shape[0], :, :] = core_w
-                    temp_6_core_w[core_w.shape[0], :, :] = w[:, add_chan_index, :]
-                    core_w = copy.deepcopy(temp_6_core_w)
-                    del temp_6_core_w
-                    core_data = np.delete(core_data, delete_chan_index, axis=0)
-                    temp_6_core_data = np.zeros((core_data.shape[0]+1, core_data.shape[1], core_data.shape[2]))
-                    temp_6_core_data[:core_data.shape[0], :, :] = core_data
-                    temp_6_core_data[core_data.shape[0], :, :] = signal_data[:, add_chan_index, :]
-                    core_data = copy.deepcopy(temp_6_core_data)
-                    del temp_6_core_data
-                    signal_data = np.delete(signal_data, add_chan_index, axis=1)
-                    w = np.delete(w, add_chan_index, axis=1)
-                    del chans[add_chan_index]
-                    # release RAM
-                    del temp_3_chans, temp_3_compare_snr, temp_3_chan_index
-                    del temp_4_chans, temp_4_data, temp_4_w, temp_4_compare_snr, temp_4_chan_index
-                    del temp_5_data, temp_5_w, temp_5_extract, temp_5_estimate, mtemp_5_snr, temp_5_snr
-                    # significant loop mark
-                    print('Complete ' + str(j) + 'th loop')
-                # no improvement
-                else:
-                    # release RAM
-                    del temp_3_chans, temp_3_compare_snr, temp_3_chan_index
-                    del temp_4_chans, temp_4_data, temp_4_w, temp_4_compare_snr, temp_4_chan_index
-                    del temp_5_data, temp_5_w, temp_5_extract, temp_5_estimate, mtemp_5_snr, temp_5_snr
-                    # reset
-                    print('Complete ' + str(j) + 'th loop')
-                    print("Already best in " + str(j) + " channels' condition!")
-        j += 1
-    remain_chans = remain_chans[:len(remain_chans)-1]
-    return remain_chans, snr_change
-
-    
 #%% Target identification: TRCA method
 def fbtrca(tr_fb_data, te_fb_data):
     '''
@@ -586,14 +171,12 @@ def fbtrca(tr_fb_data, te_fb_data):
         
     '''
     # template data: (n_events, n_bands, n_chans, n_times)|basic element: (n_chans, n_times)
-    template = np.mean(tr_fb_data, axis=2)
-    
+    template = np.mean(tr_fb_data, axis=2)    
     # basic parameters
     n_events = tr_fb_data.shape[0]
     n_bands = tr_fb_data.shape[1]
     n_chans = tr_fb_data.shape[3]
-    n_times = tr_fb_data.shape[4]
-    
+    n_times = tr_fb_data.shape[4]   
     # Matrix Q: inter-channel covariance
     q = np.zeros((n_events, n_bands, n_chans, n_chans))
     # all events(n), all bands(m)
@@ -610,7 +193,6 @@ def fbtrca(tr_fb_data, te_fb_data):
             del temp, z
         del y
     del x
-
     # Matrix S: inter-channels' inter-trial covariance
     # all events(n), all bands(m), inter-channel(n_chans, n_chans)
     s = np.zeros((n_events, n_bands, n_chans, n_chans))
@@ -648,8 +230,7 @@ def fbtrca(tr_fb_data, te_fb_data):
                 del x
             del w
         del v
-    del u
-    
+    del u   
     # Spatial filter W
     # all events(n), all bands(m)
     w = np.zeros((n_events, n_bands, n_chans))
@@ -667,7 +248,6 @@ def fbtrca(tr_fb_data, te_fb_data):
         del z
     del y
     # from now on, never use w as loop mark for we have variable named w
-
     # Test dataset operating
     # basic element of r is (n_bands, n_events)
     r = np.zeros((n_events, te_fb_data.shape[2], n_bands, n_events))
@@ -683,28 +263,23 @@ def fbtrca(tr_fb_data, te_fb_data):
             del y
         del x
     del v
-
     # Feature for target identification
     r = r**2
     # identification function a(m)
     a = np.matrix([(m+1)**-1.25+0.25 for m in range(n_bands)])
     rou = np.zeros((n_events, te_fb_data.shape[2], n_events))
-
     for y in range(n_events):
         for z in range(te_fb_data.shape[2]):  # trials in test dataset (of one event)
             # (yth event, zth trial) test data | will have n_events' value, here is 3
             # the location of the largest value refers to the class of this trial
-            rou[y,z,:] = a * np.mat(r[y,z,:,:])
-    
+            rou[y,z,:] = a * np.mat(r[y,z,:,:])  
     acc = []
     # compute accuracy
     for x in range(rou.shape[0]):  # ideal classification
         for y in range(rou.shape[1]):
             if np.max(np.where(rou[x,y,:] == np.max(rou[x,y,:]))) == x:  # correct
-                acc.append(1)
-    
+                acc.append(1)  
     return acc
-
 
 def pure_trca(train_data, test_data):
     '''
@@ -716,13 +291,11 @@ def pure_trca(train_data, test_data):
         accuracy: int | the number of correct identifications
     '''
     # template data: (n_events, n_chans, n_times) | basic element: (n_chans, n_times)
-    template = np.mean(train_data, axis=1)
-    
+    template = np.mean(train_data, axis=1) 
     # basic parameters
     n_events = train_data.shape[0]
     n_chans = train_data.shape[2]
-    n_times = train_data.shape[3]
-    
+    n_times = train_data.shape[3]   
     # Matrix Q: inter-channel covariance
     q = np.zeros((n_events, n_chans, n_chans))
     for x in range(n_events):
@@ -730,11 +303,7 @@ def pure_trca(train_data, test_data):
         for y in range(n_chans):
             # concatenated matrix of all trials in training dataset
             temp[y,:] = train_data[x,:,y,:].flatten()
-        del y
-        q[x,:,:] = np.cov(temp)
-        del temp
-    del x
-    
+        q[x,:,:] = np.cov(temp) 
     # Matrix S: inter-channels' inter-trial covariance
     s = np.zeros((n_events, n_chans, n_chans))
     for v in range(n_events):  # v for events
@@ -750,14 +319,7 @@ def pure_trca(train_data, test_data):
                             cov.append(np.sum(np.tril(np.cov(temp),-1)))
                         else:
                             continue
-                    del z, temp
-                del y
-                s[v,w,x] = np.sum(cov)
-                del cov
-            del x
-        del w
-    del v
-    
+                s[v,w,x] = np.sum(cov) 
     # Spatial filter W
     w = np.zeros((n_events, n_chans))
     for z in range(n_events):
@@ -767,10 +329,7 @@ def pure_trca(train_data, test_data):
         e_value, e_vector = np.linalg.eig(qs)
         # choose the eigenvector refering to the largest eigenvalue
         w_index = np.max(np.where(e_value == np.max(e_value)))
-        w[z,:] = e_vector[:,w_index].T
-        del w_index
-    del z
-    
+        w[z,:] = e_vector[:,w_index].T 
     # Test dataset operating
     r = np.zeros((n_events, test_data.shape[1], n_events))
     for x in range(n_events):  # n_events in test dataset
@@ -778,22 +337,16 @@ def pure_trca(train_data, test_data):
             for z in range(n_events):
                 temp_test = np.mat(test_data[x,y,:,:]).T * np.mat(w[z,:]).T
                 temp_template = np.mat(template[z,:,:]).T * np.mat(w[z,:]).T
-                r[x,y,z] = np.sum(np.tril(np.corrcoef(temp_test.T, temp_template.T),-1))
-            del z, temp_test, temp_template
-        del y
-    del x
-    
+                r[x,y,z] = np.sum(np.tril(np.corrcoef(temp_test.T, temp_template.T),-1))  
     # Compute accuracy
     acc = []
     for x in range(r.shape[0]):  # ideal classification
         for y in range(r.shape[1]):
             if np.max(np.where(r[x,y,:] == np.max(r[x,y,:]))) == x:  # correct
-                acc.append(1)
-                
+                acc.append(1)               
     return acc
     
-
-#%% Correlation detect for single-channel data
+# Correlation detect for single-channel data
 def corr_detect(test_data, template):
     '''
     Offline Target identification for single-channel data
@@ -812,11 +365,9 @@ def corr_detect(test_data, template):
     # initialization
     n_events = template.shape[0]
     n_trials = test_data.shape[1]
-    
     acc = []
     mr = np.zeros((n_events, n_events))
     rou = np.zeros((n_events, n_trials, n_events))
-    
     # compute Pearson correlation coefficients & target identification
     for nete in range(n_events):  # n_events' loop in test dataset
         for ntte in range(n_trials):  # n_trials' loop in test dataset
@@ -825,12 +376,271 @@ def corr_detect(test_data, template):
             del netr
             if np.max(np.where([rou[nete,ntte,:] == np.max(rou[nete,ntte,:])])) == nete:  # correct
                 acc.append(1)
-        del ntte
-    del nete
     acc = np.sum(acc)
-    
     for j in range(n_events):
         for k in range(n_events):
-            mr[j,k] = np.mean(rou[j,:,k])
-            
+            mr[j,k] = np.mean(rou[j,:,k])       
     return acc, mr, rou
+
+#%% Spatial Related Component Analysis: SRCA
+class SRCA:
+    # initialise the spatial related component analysis process
+    def __init__(self, data=None, target=None, chan_info=None, model_num=None,
+                 model_length=None, signal_num=None, signal_length=None, start_point=None):
+        '''
+        target | list: name of target channels
+        chan_info | list: names of all channels
+        data | (n_events, n_trials, n_chans, n_times)
+        '''
+        # basic infomation
+        self.target = target
+        self.n_events = data.shape[0]        
+        srca_chans = copy.deepcopy(chan_info)
+        del srca_chans[chan_info.index(self.target)]
+        self.train_chans = srca_chans
+        del srca_chans
+        
+        # initialise model data (train dataset)
+        tr_w = data[:, :model_num, :, (start_point-model_length):start_point]
+        tr_w_temp = copy.deepcopy(tr_w)
+        # model input: (n_events, n_trials, n_chans, n_times)
+        self.tr_w_i = np.delete(tr_w_temp, chan_info.index(target), axis=2)
+        # model output: (n_events, n_trials, n_times)
+        self.tr_w_o = tr_w[:, :, chan_info.index(target), :]
+        del tr_w, tr_w_temp      
+        
+        # initialise mission data (train dataset)
+        tr_sig = data[:, :model_num, :, start_point:(start_point+signal_length)]
+        tr_sig_temp = copy.deepcopy(tr_sig)
+        # model input: (n_events, n_trials, n_chans, n_times)
+        self.tr_sig_i = np.delete(tr_sig_temp, chan_info.index(target), axis=2)
+        # model output: (n_events, n_trials, n_times)
+        self.tr_sig_o = tr_sig[:, chan_info.index(target), :]
+        del tr_sig, tr_sig_temp       
+        
+        # initialise model data (test dataset)
+        te_w = data[:, -signal_num:, :, (start_point-model_length):start_point]
+        te_w_temp = copy.deepcopy(te_w)
+        # model input: (n_events, n_trials, n_chans, n_times)
+        self.te_w_i = np.delete(te_w_temp, chan_info.index(target), axis=2)
+        # model output: (n_events, n_trials, n_times)
+        self.te_w_o = te_w[:, :, chan_info.index(target), :]
+        del te_w, te_w_temp
+        
+        # initialise mission data (test dataset) 
+        te_sig = data[:, -signal_num:, :, start_point:(start_point+signal_length)]
+        te_sig_temp = copy.deepcopy(te_sig)
+        # model input: (n_events, n_trials, n_chans, n_times)
+        self.te_sig_i = np.delete(te_sig_temp, chan_info.index(target), axis=2)
+        # model output: (n_events, n_trials, n_times)
+        self.te_sig_o = te_sig[:, :, chan_info.index(target), :]
+        del te_sig, te_sig_temp
+        pass
+    
+    # config unique requirement
+    def prepare(self, evaluation='SNR'):
+        # compute parameters
+        if evaluation == 'SNR':     # Signal-Noise Ratio
+            self.tr_para = np.zeros((self.n_events))
+            self.ori_te_para = np.zeros_like(self.tr_para)
+            for i in range(self.n_events):
+                self.tr_para[i] = np.mean(snr_time(self.tr_sig_o[i, :, :]))
+                self.ori_te_para[i] = np.mean(snr_time(self.te_sig_o[i, :, :]))
+        elif evaluation == 'Corr':  # Pearson Correlation Coefficient
+            self.tr_para = np.zeros((self.n_events))
+            self.ori_te_para = np.zeros_like(self.tr_para)
+            for i in range(self.n_events):
+                self.tr_para[i] = np.mean(pearson_corr(self.tr_sig_o[i, :, :]))
+                self.ori_te_para[i] = np.mean(pearson_corr(self.te_sig_o[i, :, :]))
+        elif evaluation == 'FS':    # Fisher Score
+            self.tr_para = np.mean(self.tr_sig_o)
+            self.ori_te_para = np.mean(self.te_sig_o)
+        self.remain_chans = []
+        self.para_change = []
+        pass
+    
+    # stepwise preparation
+    def move_forward(self, evaluation='SNR', alpha=0.5, l1_ratio=0.5,
+                     regression='OLS', first=False, loop=None):
+        n_tc = len(self.train_chans)
+        compare_para = np.zeros((n_tc))
+        for i in range(n_tc):  # add 1 channel respectively
+            # data preparation
+            if first:  # avoid reshape error
+                temp_w = self.tr_w_i[:, i, :]
+                temp_sig = self.tr_sig_i[:, i, :]
+            # based on data from last turn
+            elif first==False and self.train_chans[i] not in self.remain_chans :
+                temp_w = np.zeros((self.tr_w_i.shape[0], loop, self.tr_w_i.shape[-1]))
+                temp_w[:, :(loop-1), :] = self.core_w
+                temp_w[:, -1, :] = self.tr_w_i[:, i, :]
+                
+                temp_sig = np.zeros((self.tr_sig_i.shape[0], loop, self.tr_sig_i.shape[-1]))
+                temp_sig[:, :(loop-1), :] = self.core_sig
+                temp_sig[:, -1, :] = self.tr_sig_i[:, i, :]
+            else:
+                continue
+            # multi-linear regression & extraction
+            temp_estimate, temp_extract = SRCA_lm_extract(temp_w, self.tr_w_o,
+                temp_sig, self.tr_sig_o, regression, alpha, l1_ratio)
+            del temp_estimate, temp_w, temp_sig  # release RAM
+            # parameter computaion
+            if evaluation == 'SNR':
+                temp_para = np.mean(snr_time(temp_extract))
+            elif evaluation == 'Corr':
+                temp_para = np.mean(pearson_corr(temp_extract))
+            compare_para[i] = temp_para - self.tr_para
+            del temp_para
+        # keep the best choice & refresh channel list
+        chan_index = np.max(np.where(compare_para == np.max(compare_para)))
+        self.remain_chans.append(self.train_chans[chan_index])
+        self.para_change.append(np.max(compare_para))
+        self.add_chan = chan_index
+        pass
+    
+    def move_stepwise(self, evaluation='SNR', alpha=0.5, l1_ratio=0.5,
+                      regression='OLS', first=False, loop=None):
+        del_num = len(self.remain_chans) - 1  # except the last one
+        add_num = len(self.train_chans)       # except the same channels
+        compare_para = np.zeros((del_num, add_num))
+        # delete 1 channel from existed data
+        for i in range(del_num):
+            # initialization (make copies)
+            #temp_del_chan = copy.deepcopy(self.remain_chans)
+            temp_del_sig = copy.deepcopy(self.core_sig)
+            temp_del_w = copy.deepcopy(self.core_w)
+            # delete one channel except the last one
+            #del temp_del_chan[i]
+            temp_del_sig = np.delete(temp_del_sig, i, axis=1)
+            temp_del_w = np.delete(temp_del_w, i, axis=1)
+            # then add one channel
+            for j in range(len(self.train_chans)):
+                if self.train_chans[j] not in self.remain_chans:
+                    # initialization (make copies)
+                    #temp_add_chan = copy.deepcopy(self.train_chans)
+                    temp_add_w = np.zeros((self.tr_w_i.shape[0], loop, self.tr_w_i.shape[-1]))
+                    temp_add_w[:, :(loop-1), :] = temp_del_w
+                    temp_add_w[:, :-1, :] = self.tr_w_i[:, j, :]
+                    
+                    temp_add_sig = np.zeros((self.tr_sig_i.shape[0], loop, self.tr_sig_i.shape[-1]))
+                    temp_add_sig[:, :(loop-1), :] = temp_del_sig
+                    temp_add_sig[:, :-1, :] = self.tr_sig_i[:, j, :]
+                    # multi-linear regression & extraction
+                    temp_estimate, temp_extract = SRCA_lm_extract(temp_add_w,
+                        self.tr_w_o, temp_add_sig, self.tr_sig_o, regression=regression,
+                        alpha=alpha, l1_ratio=l1_ratio)
+                    del temp_estimate, temp_add_w, temp_add_sig
+                    # parameter computation
+                    if evaluation == 'SNR':
+                        temp_para = np.mean(snr_time(temp_extract))
+                    elif evaluation == 'Corr':
+                        temp_para = np.mean(pearson_corr(temp_extract))
+                    compare_para[i,j] = temp_para - self.tr_para
+                else:
+                    compare_para[i,j] = -999
+            # keep the best choice (del & add)
+            del_item, add_item = np.where(compare_para == np.max(compare_para))
+            del_item = np.max(del_item)
+            add_item = np.max(add_item)
+            # 
+            pass
+        pass
+    
+    # judge condition
+    def check_end(self, loop, stop=True):
+        if stop:  # maybe need to stop training
+            if self.para_change[-1] < np.max(self.para_change):  # no improvement
+                print('Stepwise optimization complete!')
+                self.end  = time.clock()
+                print('Training time: ' + str(self.end - self.start) + 's')
+                status = False
+            else:  # still has improvement
+                print(str(loop) + 'th loop complete!')
+                status = True
+        else:  # no need to stop training
+            if self.para_change[-1] < np.max(self.para_change):  # no improvement
+                print('Already best in ' + str(loop) + 'th turn')
+            else:  # still has improvement
+                # save temp data
+                print('fuck')
+            status = True
+        return status    
+        pass
+    
+    # update train data
+    def update(self, first=False, loop=None):
+        if first:
+            self.core_w = self.tr_w_i[:, self.add_chan, :]
+            self.core_sig = self.tr_sig_i[:, self.add_chan, :]
+        else:
+            temp_core_w = np.zeros((self.core_w.shape[0], loop, self.core_w.shape[-1]))
+            temp_core_w[:, :(loop-1), :] = self.core_w
+            temp_core_w[:, -1, :] = self.tr_w_i[:, self.chan_index, :]
+            self.core_w = temp_core_w
+            del temp_core_w
+            
+            temp_core_sig = np.zeros((self.core_sig.shape[0], loop, self.core_sig.shape[-1]))
+            temp_core_sig[:, :(loop-1), :] = self.core_sig
+            temp_core_sig[:, -1, :] = self.tr_sig_i[:, self.chan_index, :]
+            self.core_sig = temp_core_sig
+            del temp_core_sig   
+        pass
+    
+    # stepwise recursion
+    def train(self, evaluation='SNR', regression='OLS', mode='stepwise',
+              alpha=0.5, l1_ratio=0.5):
+        print('SRCA training ({} + {} + {})...'.format(mode, evaluation, regression))
+        self.start = time.perf_counter()
+        max_loop = len(self.train_chans)
+        # begin loop
+        active = True
+        loop = 1
+        if mode == 'stepwise':
+            for i in range(self.n_events):
+                self.
+            while active and len(self.train_chans) <= max_loop:
+                if loop == 1:  # 1st round: just step forward
+                    self.move_forward(evaluation=evaluation, regression=regression,
+                                  alpha=alpha, l1_ratio=l1_ratio, first=True)
+                    self.update(first=True)
+                    print('1st loop complete')
+                elif loop == 2:  # 2nd round: begin stepwise
+                    # step forward
+                    self.move_forward(evaluation=evaluation, regression=regression,
+                                  alpha=alpha, l1_ratio=l1_ratio, loop=loop)
+                    self.update() 
+                    # step backward then forward
+                    self.move_stepwise(evaluation=evaluation, regression=regression,
+                                   alpha=alpha, l1_ratio=l1_ratio)
+                    active = self.check_end(loop=loop, stop=False)  # check improved or not
+                    self.update()
+                else:  # num of model_chans > 2
+                    self.move_forward(evaluation=evaluation, regression=regression,
+                                  alpha=alpha, l1_ratio=l1_ratio)
+                    active = self.check_end(loop=loop)  # check whether target is achieved
+                    self.update()
+                    self.move_stepwise(evaluation=evaluation, regression=regression,
+                                   alpha=alpha, l1_ratio=l1_ratio)
+                    active = self.check_end(loop=loop, stop=False)  # check improved or not
+                    self.update()
+                loop += 1
+        elif mode == 'backward':
+            pass
+        elif mode == 'forward':
+            pass
+        pass
+
+    # Fisher score recursive
+    def fs_train(self, evaluation='snr', regression='OLS',
+                       alpha=0.5, l1_ratio=0.5):
+        pass
+  
+    # apply srca models into test dataset
+    def apply_model(self):
+        pass
+    
+    # check training effects
+    def performance_evaluation(self, cross_validation=5, tr_te=True):
+        #return acc
+        pass
+    

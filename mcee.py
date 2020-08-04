@@ -33,10 +33,14 @@ import time
 # multi-linear regression
 def mlr(model_input, model_target, data_input, data_target, regression):
     '''
-    model_input: (n_chans, n_trials, n_times)
-    model_target: (n_trials, n_times)
-    data_input: (n_chans, n_trials, n_times)
-    data_target: (n_trials, n_times)
+    Parameters:
+        model_input: (n_chans, n_trials, n_times)
+        model_target: (n_trials, n_times)
+        data_input: (n_chans, n_trials, n_times)
+        data_target: (n_trials, n_times)
+        regression: str | OLS, Ridge, Lasso or ElasticNet
+    Returns:
+        extract: (n_trials, n_times) | filtered data
     '''
     if model_input.ndim == 3:
         # estimate signal: (n_trials, n_times)
@@ -77,7 +81,11 @@ def mlr(model_input, model_target, data_input, data_target, regression):
 # compute time-domain snr
 def snr_time(data):
     '''
-    data:(n_trials, n_times)
+    Compute the mean of SSVEP's SNR in time domain
+    Parameters:
+        data: (n_trials, n_times)
+    Returns:
+        snr: float | the mean of SNR sequence
     '''
     snr = np.zeros((data.shape[1]))             # (n_times)
     ex = np.mat(np.mean(data, axis=0))          # one-channel data: (1, n_times)
@@ -88,11 +96,14 @@ def snr_time(data):
     snr = ex/var
     return snr
 
+# compute time-domain Pearson Correlation Coefficient
 def pearson_corr(data):
     '''
-    data | (n_trials, n_times): input 3-D data array
-    corr | pearson correlation coefficients sequence
-    mcorr | mean of sequence
+    Compute the mean of Pearson correlation coefficient in time domain
+    Parameters:
+        data: (n_trials, n_times)
+    Returns:
+        mcorr float | the mean of corr sequence
     '''
     template = np.mean(data, axis=0)
     n_trials = data.shape[0]
@@ -101,9 +112,14 @@ def pearson_corr(data):
         corr[i] = np.sum(np.tril(np.corrcoef(template, data[i,:]),-1))
     return corr
 
+# compute Fisher Score
 def fisher_score(data):
     '''
-    data: (n_events, n_trails, n_times)
+    Compute the mean of Fisher Score in time domain
+    Parameters:
+        data: (n_events, n_trails, n_times)
+    Returns:
+        fs: float | the mean of fisher score
     '''
     # initialization
     sampleNum = data.shape[1]    # n_trials
@@ -121,6 +137,22 @@ def fisher_score(data):
     # fisher score
     fs = (ite_d) / np.sum(sampleNum * itr_d, axis=0)
     return fs
+
+# apply SRCA model
+def applySRCA(data, tar_chans, model_chans, regression, sp=1140):
+    '''
+    Apply SRCA model in test dataset
+    Parameters:
+        data: (n_trials, n_chans, n_times) | test dataset
+        tar_chans: str list | names of target channels
+        model_chans: str list | names of SRCA channels for each target channel
+        regression: str | OLS, Ridge, Lasso or ElasticNet
+        sp: int | start point of mission state (default 1140)
+    Returns:
+        f_data: (n_trials, n_chans, n_times) | filtered data
+    '''
+    
+    pass
 
 #%% Backward MCEE
 def backward_MCEE(chans, msnr, w, w_target, signal_data, data_target):
@@ -751,6 +783,10 @@ def stepwise_SRCA_fs(chans, msnr, w, w_target, signal_data, data_target, regress
     remain_chans = remain_chans[:len(remain_chans)-1]
     return remain_chans, snr_change
 
+#%% Canonical Correlation Analysis
+def sCCA():
+    pass
+
 #%% Target identification: TRCA method
 def fbtrca(tr_fb_data, te_fb_data):
     '''
@@ -1109,10 +1145,8 @@ def e_trca(train_data, test_data):
     n_events = train_data.shape[0]
     n_trains = train_data.shape[1]
     n_chans = train_data.shape[2]
-    n_times = train_data.shape[-1]
-    
-    template = np.mean(train_data, axis=1)
-    
+    n_times = train_data.shape[-1]  
+    template = np.mean(train_data, axis=1)   
     q = np.zeros((n_events, n_chans, n_chans))
     for x in range(n_events):
         temp = np.zeros((n_chans, int(n_trains*n_times)))
@@ -1121,8 +1155,7 @@ def e_trca(train_data, test_data):
         del y
         q[x,:,:] = np.cov(temp)
         del temp
-    del x
-    
+    del x  
     s = np.zeros((n_events, n_chans, n_chans))
     for v in range(n_events):  # v for events
         for w in range(n_chans):  # w for channels (j1)
@@ -1143,8 +1176,7 @@ def e_trca(train_data, test_data):
                 del cov
             del x
         del w
-    del v
-    
+    del v  
     w = np.zeros((n_events, n_chans))
     for z in range(n_events):
         qs = np.mat(q[z,:,:]).I * np.mat(s[z,:,:])
@@ -1153,7 +1185,6 @@ def e_trca(train_data, test_data):
         w[z,:] = e_vector[:,w_index].T
         del w_index
     del z
-    
     r = np.zeros((n_events, test_data.shape[1], n_events))
     for x in range(n_events):
         for y in range(test_data.shape[1]):
@@ -1164,7 +1195,6 @@ def e_trca(train_data, test_data):
             del z, temp_test, temp_template
         del y
     del x
-    
     acc = []
     for x in range(r.shape[0]):
         for y in range(r.shape[1]):
@@ -1303,6 +1333,100 @@ def srca_trca(train_data, test_data, tar_chans, model_chans, chans,
             acc.append(1)
     del n_trials
     return acc
+
+#%% Target identification: DCPM
+def srca_dcpm(train_data, test_data, tar_chans, model_chans, chans, regression, sp):
+    '''
+    discriminative canonical pattern matching algorithm (DCPM)
+    Parameters:
+        train_data: (n_events, n_trials, n_chans, n_times) | training dataset
+        test_data: (n_events, n_trials, n_chans, n_times) | test dataset
+    Returns:
+        accuracy: int | the number of correct identifications
+    '''
+    # config correct SRCA process on training/test dataset
+    n_events = train_data.shape[0]
+    n_trains = train_data.shape[1]
+    n_tests = test_data.shape[1]
+    n_chans = len(tar_chans)
+    n_times = train_data.shape[-1] - sp
+    model_sig = np.zeros((n_events, n_trains, n_chans, n_times))
+    target_sig = np.zeros((n_events, n_tests, n_chans, n_times))
+    for ntc in range(len(tar_chans)):
+        target_channel = tar_chans[ntc]
+        for ne in range(n_events):
+            model_chan = model_chans[ntc]
+            w_i = np.zeros((n_trains, len(model_chan), 1000))
+            sig_i = np.zeros((n_trains, len(model_chan), n_times))
+            for nc in range(len(model_chan)):
+                w_i[:, nc, :] = train_data[ne, :, chans.index(model_chan[nc]), :1000]
+                sig_i[:, nc, :] = train_data[ne, :, chans.index(model_chan[nc]), sp:]
+            del nc
+            w_o = train_data[ne, :, chans.index(target_channel), :1000]
+            sig_o = train_data[ne, :, chans.index(target_channel), sp:]            
+            w_i = np.swapaxes(w_i, 0, 1)
+            sig_i = np.swapaxes(sig_i, 0, 1)
+            w_ex_s = mlr(model_input=w_i, model_target=w_o, data_input=sig_i,
+                         data_target=sig_o, regression=regression)
+            model_sig[ne, :, ntc, :] = w_ex_s
+        del ne
+    del ntc
+    # apply SRCA models on test data
+    for ntc in range(len(tar_chans)):
+        target_channel = tar_chans[ntc]
+        model_chan = model_chans[ntc]
+        for ne in range(n_events):
+            w_o = test_data[ne, :, chans.index(target_channel), :1000]
+            sig_o = test_data[ne, :, chans.index(target_channel), sp:]
+            w_i = np.zeros((n_tests, len(model_chan), 1000))
+            sig_i = np.zeros((n_tests, len(model_chan), n_times))
+            for nc in range(len(model_chan)):
+                w_i[:, nc, :] = test_data[ne, :, chans.index(model_chan[nc]), :1000]
+                sig_i[:, nc, :] = test_data[ne, :, chans.index(model_chan[nc]), sp:]
+            del nc
+            w_i = np.swapaxes(w_i, 0, 1)
+            sig_i = np.swapaxes(sig_i, 0, 1)
+            w_ex_s = mlr(model_input=w_i, model_target=w_o, data_input=sig_i,
+                         data_target=sig_o, regression=regression)
+            target_sig[ne, :, ntc, :] = w_ex_s
+        del ne
+    del ntc
+    del n_tests, n_events, n_chans, n_times
+    # pattern data preparation
+    x1 = np.swapaxes(model_sig[0, :, :, :], 0, 2)  # (n_times, n_chans, n_trials)
+    x1 = np.mat(np.swapaxes(x1, 0, 1))          # (n_chans, n_times, n_trials)
+    x2 = np.swapaxes(model_sig[1, :, :, :], 0, 2)  # (n_times, n_chans, n_trials)
+    x2 = np.mat(np.swapaxes(x2, 0, 1))          # (n_chans, n_times, n_trials)
+    pattern1 = np.mat(np.mean(model_sig[0, :, :, :], axis=0))  # (n_chans, n_times)
+    pattern2 = np.mat(np.mean(model_sig[1, :, :, :], axis=0))  # (n_chans, n_times)
+    # covariance matrices
+    sigma11 = pattern1 * pattern1.T  # (n_chans, n_chans)
+    sigma12 = pattern1 * pattern2.T  # (n_chans, n_chans)
+    sigma21 = pattern2 * pattern1.T  # (n_chans, n_chans)
+    sigma22 = pattern2 * pattern2.T  # (n_chans, n_chans)
+    # variance matrices
+    var1, var2 = np.zeros_like(sigma11), np.zeros_like(sigma22)
+    for i in range(n_trains):
+        var1 += (x1[:,:,i] - pattern1) * (x1[:,:,i] - pattern1).T
+        var2 += (x2[:,:,i] - pattern2) * (x2[:,:,i] - pattern2).T
+    var1 /= (n_trains - 1)
+    var2 /= (n_trains - 1)
+    # discriminative spatial pattern (DSP) % projection W
+    sb = sigma11 + sigma22 - sigma12 - sigma21    # (n_chans, n_chans)
+    sw = var1 + var2                              # (n_chans, n_chans)
+    e_value, e_vector = np.linalg.eig(sw.I * sb)  # (n_chans, n_chans)
+    w = e_vector  # maybe no need to contain all
+    # apply DSP projection
+    wx1 = w * pattern1  # (n_chans, n_times)
+    wx2 = w * pattern2  # (n_chans, n_times)
+    wy = np.zeros_like(test_data)
+    # standard CCA
+    
+    pass
+
+
+def dcpm():
+    pass
 
 #%% Correlation detect for single-channel data
 def corr_detect(test_data, template):
