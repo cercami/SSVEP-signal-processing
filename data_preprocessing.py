@@ -16,21 +16,20 @@ import numpy as np
 import mne
 import scipy.io as io
 from mne.io import concatenate_raws
-from mne import Epochs, pick_types, find_events
-from mne.baseline import rescale
+from mne import Epochs
 from mne.filter import filter_data
 import copy
 #import srca
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-import fp_growth as fpg
+#import fp_growth as fpg
 import mcee
-#import signal_processing_function as SPF
+import seaborn as sns
 
 #%% load data
-filepath = r'F:\SSVEP\dataset'
+filepath = r'F:\SSVEP\dataset\60&48'
 
-subjectlist = ['wuqiaoyi']
+subjectlist = ['mengqiangfan']
 
 filefolders = []
 for subindex in subjectlist:
@@ -45,20 +44,18 @@ for filefolder in filefolders:
 
 raw_cnts = []
 for file in filelist:
-    montage = mne.channels.read_montage('standard_1020')
-    raw_cnt = mne.io.read_raw_cnt(file, montage=montage,
-            eog=['HEO', 'VEO'], emg=['EMG'], ecg=['EKG'],
-            preload=True, verbose=False, stim_channel='True')
-    # misc=['CB1', 'CB2', 'M1', 'M2'],
+    montage = mne.channels.make_standard_montage('standard_1020')
+    raw_cnt = mne.io.read_raw_cnt(file, eog=['HEO', 'VEO'], emg=['EMG'], ecg=['EKG'],
+            preload=True, verbose=False)
     raw_cnts.append(raw_cnt)
 
 raw = concatenate_raws(raw_cnts)
 
 del raw_cnts, file, filefolder, filefolders, filefullpath, filelist
-del filepath, subindex, subjectlist
+del filepath, subindex, subjectlist, raw_cnt
 
 # preprocessing
-events = mne.find_events(raw, output='onset')
+events, events_id = mne.events_from_annotations(raw)
 
 # drop channels
 drop_chans = ['M1', 'M2']
@@ -68,53 +65,110 @@ picks = mne.pick_types(raw.info, emg=False, eeg=True, stim=False, eog=False,
 picks_ch_names = [raw.ch_names[i] for i in picks]  # layout picked chans' name
 
 # define labels
-event_id = dict(f60p0=1, f60p1=2, f40p0=3, f40p1=4)
+event_id = dict(f60p0=1, f60p1=2, f48p0=3, f48p1=4)
 
 #baseline = (-0.2, 0)    # define baseline
-tmin, tmax = -2., 2.5    # set the time range
+tmin, tmax = -1., 1.5     # set the time range
 sfreq = 1000
 
 # transform raw object into array
-n_stims = int(len(event_id))
-n_trials = int(events.shape[0] / n_stims)
-n_chans = int(64 - len(drop_chans))
+n_events = len(event_id)
+n_trials = int(events.shape[0] / n_events)
+n_chans = len(picks)
 n_times = int((tmax - tmin) * sfreq + 1)
-data = np.zeros((n_stims, n_trials, n_chans, n_times))
-for i in range(len(event_id)):
-    epochs = Epochs(raw, events=events, event_id=i+1, tmin=tmin, picks=picks,
-                    tmax=tmax, baseline=None, preload=True)
-    data[i,:,:,:] = epochs.get_data()  # (n_trials, n_chans, n_times)
-    del epochs
-    
-del raw, picks, i, n_stims, n_trials, n_chans, n_times
-del drop_chans, event_id, events, tmax, tmin
 
-# store raw data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\raw & filtered data\raw_data.mat'
-io.savemat(data_path, {'raw_data':data, 'chan_info':picks_ch_names})
+data = np.zeros((n_events, n_trials, n_chans, n_times))
 
-# filtering
-data = data[:2,:,:,:]
-n_events = data.shape[0]
-n_trials = data.shape[1]
-n_chans = data.shape[2]
-n_times = data.shape[3]
-f_data = np.zeros((n_events, n_trials, n_chans, n_times))
-for i in range(n_events):
-    f_data[i,:,:,:] = filter_data(data[i,:,:,:], sfreq=sfreq, l_freq=50,
-                      h_freq=70, n_jobs=4)
-del i, data
+f60p0 = Epochs(raw, events=events, event_id=1, tmin=tmin, picks=picks,
+               tmax=tmax, baseline=None, preload=True).get_data() * 1e6
+f60p1 = Epochs(raw, events=events, event_id=2, tmin=tmin, picks=picks,
+               tmax=tmax, baseline=None, preload=True).get_data() * 1e6
+f48p0 = Epochs(raw, events=events, event_id=3, tmin=tmin, picks=picks,
+               tmax=tmax, baseline=None, preload=True).get_data() * 1e6
+f48p1 = Epochs(raw, events=events, event_id=4, tmin=tmin, picks=picks,
+               tmax=tmax, baseline=None, preload=True).get_data() * 1e6
 
-#%% find & delete bad trials
-f_data = np.delete(f_data, [10,33,34,41,42], axis=1)
+#%% filter data
+ff48p1 = filter_data(f48p1, sfreq=sfreq, l_freq=40, h_freq=90, n_jobs=4)
+ff48p0 = filter_data(f48p0, sfreq=sfreq, l_freq=40, h_freq=90, n_jobs=4)
+#%%
+ff60p0 = filter_data(f60p0, sfreq=sfreq, l_freq=40, h_freq=90, n_jobs=4)
+ff60p1 = filter_data(f60p1, sfreq=sfreq, l_freq=40, h_freq=90, n_jobs=4)
 
-# store fitered dataw
-data_path = r'F:\SSVEP\dataset\preprocessed_data\brynhildr\50_70_bp.mat'
-io.savemat(data_path, {'f_data':f_data, 'chan_info':picks_ch_names})
+#%% find bad trials
+data = ff60p1[:,59,1140:1640]
+#plt.plot(data.T)
 
-# release RAM
-del data_path, f_data, n_chans, n_events, n_times, n_trials, picks_ch_names, sfreq
-    
+#%% delete bad trials
+bad = np.where(data > 12)
+
+#%% check abnormal waveform
+plt.plot(data[42,0:])
+
+#%% check abnormal FFT
+plt.psd(data[0,:], 512, 1000)
+
+#%% delete bad trials
+#f48p0 = np.delete(f48p0, [3,6,24,127])
+f48p1 = np.delete(f48p1, [133, 132], axis=0)
+f60p1 = np.delete(f60p1, [132], axis=0)
+
+#%%
+ff60p1 = np.delete(ff60p1, [132], axis=0)
+ff48p1 = np.delete(ff48p1, [132,133], axis=0)
+
+#%%
+fig = plt.figure(figsize=(16,9))
+gs = GridSpec(2,2,figure=fig)
+sns.set(style='whitegrid')
+
+ax1 = fig.add_subplot(gs[:1,:1])
+ax1.set_title('Photocell Measurement: 48Hz 0 phase', fontsize=24)
+ax1.tick_params(axis='both', labelsize=20)
+ax1.plot(f48p0[:, 34, 1000:2000].T)
+ax1.set_xlabel('Time/ms', fontsize=22)
+ax1.set_ylabel('Amplitude/uV', fontsize=22)
+#ax1.legend(loc='upper right', fontsize=18)
+
+ax2 = fig.add_subplot(gs[:1,1:])
+ax2.set_title('Photocell Measurement: 48Hz pi phase', fontsize=24)
+ax2.tick_params(axis='both', labelsize=20)
+ax2.plot(f48p1[:, 34, 1000:2000].T)
+ax2.set_xlabel('Time/ms', fontsize=22)
+ax2.set_ylabel('Amplitude/uV', fontsize=22)
+#ax2.legend(loc='upper right', fontsize=18)
+
+ax3 = fig.add_subplot(gs[1:,:1])
+ax3.set_title('Photocell Measurement: 60Hz 0 phase', fontsize=24)
+ax3.tick_params(axis='both', labelsize=20)
+ax3.plot(f60p0[:, 34, 1000:2000].T)
+ax3.set_xlabel('Time/ms', fontsize=22)
+ax3.set_ylabel('Amplitude/uV', fontsize=22)
+
+ax4 = fig.add_subplot(gs[1:,1:])
+ax4.set_title('Photocell Measurement: 60Hz pi phase', fontsize=24)
+ax4.tick_params(axis='both', labelsize=20)
+ax4.plot(f60p1[:, 34, 1000:2000].T)
+ax4.set_xlabel('Time/ms', fontsize=22)
+ax4.set_ylabel('Amplitude/uV', fontsize=22)
+
+fig.tight_layout()
+plt.show()
+plt.savefig(r'C:\Users\brynh\Desktop\photocell-split.png', dpi=600)
+
+#%%
+data = np.zeros((4, 144, 62, 2501))
+data[0,:,:,:] = ff60p0
+data[1,:,:,:] = ff60p1
+
+#%%
+data[2,:,:,:] = ff48p0
+data[3,:,:,:] = ff48p1
+
+#%% store raw data
+data_path = r'F:\SSVEP\dataset\preprocessed_data\mengqiangfan\40_90bp.mat'
+io.savemat(data_path, {'f_data':data, 'chan_info':picks_ch_names})
+
 #%% other test
 pz = []
 po5 = []
@@ -189,7 +243,7 @@ if __name__ == '__main__':
     result = sorted(result, key=lambda i: i[0])
     print('FP-Growth complete!')
 
-#%%
+#%% compressed fg-growth result
 compressed_result = []
 number = []
 for i in range(len(result)):
@@ -198,269 +252,17 @@ for i in range(len(result)):
         number.append(result[i][1])
 del i
 
-#%%
-delta = np.zeros((4,10,18))
-summ = np.zeros((4,10,18))
-for i in range(4):
-    for j in range(10):
-        eeg = io.loadmat(r'F:\SSVEP\ols\ols+snr\real1_%d\mcee_%d.mat' %(i+1,j))
-        parameter_ols = eeg['parameter'].flatten().tolist()
-        para_ols = []
-        for k in range(len(parameter_ols)):
-            para_ols.append(np.max(parameter_ols[k]))   
-        eeg = io.loadmat(r'F:\SSVEP\ridge\ridge+snr\real1_%d\mcee_%d.mat' %(i+1,j))
-        parameter_ri = eeg['parameter'].flatten().tolist()
-        para_ri = []
-        for l in range(len(parameter_ri)):
-            para_ri.append(np.max(parameter_ri[l]))
-        para_ols = np.array(para_ols)
-        para_ri = np.array(para_ri)
-        delta[i,j,:] = para_ri - para_ols
-        summ[i,j,:] = para_ri + para_ols
-ratio = (np.mean((delta+summ)/(summ-delta))-1)*100
-
-#%% real te tr (obsolete)
-# pick channels from parietal and occipital areas
-tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-regressionList = ['OLS', 'Ridge']  # choose multi-linear regression method
-methodList = ['FS']  # use fisher score as the output of target function
-trainNum = [55, 40, 30, 25]  # use different training trials
-
-n_events = 2
-n_trials = 115
-n_chans = len(tar_chans)
-n_test = 60  # number of test trails
-n_times = 2140 # 1000ms(rest state) + 140ms(latency) + 1000ms(mission state)
-
-for reg in range(len(regressionList)):
-    regression = regressionList[reg]
-    for met in range(len(methodList)):
-        method = methodList[met]
-        for nfile in range(len(trainNum)):
-            ns = trainNum[nfile]
-            for nt in range(5):  # 100ms-500ms
-                model_info = []  # SRCA channels
-                para_alteration = []  # parameters' alteration
-                for ntc in range(len(tar_chans)):
-                    target_channel = tar_chans[ntc]
-                    # load .mat data: (n_events, n_trials, n_chans, n_times)
-                    eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-                    f_data = eeg['f_data'][:,:,:,1000:3140] * 1e6  # filtered data
-                    w = f_data[:,:ns,:,:1000]  # 1s rest state data
-                    signal_data = f_data[:,:ns,:,1140:int(1240+nt*100)]
-                    # all channels' names, list | e.g: [..., 'O1 ', 'OZ', 'O2', ...]
-                    chans = eeg['chan_info'].tolist()  
-                    del eeg  # release RAM
-                    
-                    # w_o for model output (single-channel data)
-                    w_o = w[:,:,chans.index(target_channel),:]
-                    # w_i for model input (multi-channel data)
-                    w_temp = copy.deepcopy(w)
-                    w_i = np.delete(w_temp, chans.index(target_channel), axis=2)
-                    del w_temp
-                    
-                    # the same as before
-                    sig_o = signal_data[:,:,chans.index(target_channel),:]
-                    sig_temp = copy.deepcopy(signal_data)
-                    sig_i = np.delete(sig_temp, chans.index(target_channel), axis=2)
-                    del sig_temp, signal_data
-                    
-                    srca_chans = copy.deepcopy(chans)
-                    del srca_chans[chans.index(target_channel)]
-                    mpara = np.mean(mcee.fisher_score(sig_o))
-                    # main function
-                    model_chans, para_change = mcee.stepwise_SRCA_fs(srca_chans,
-                            mpara, w, w_o, sig_i, sig_o, regression)
-                    # refresh data
-                    para_alteration.append(para_change)
-                    model_info.append(model_chans)
-                # save data as .mat
-                data_path = r'F:\SSVEP\SRCA data\real_cv\%s\%s\%d_60\srca_%d.mat' %(regression, method, ns, nt)             
-                io.savemat(data_path, {'model_info': model_info, 'parameter': para_alteration})
-
-
-#%% TRCA/eTRCA for SRCA/origin data (Online Mode)
-tarChans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-trainNum = [10, 20, 30, 40]
-acc_srca_trca = np.zeros((len(trainNum), 5, 5))  # (trainNum, cv, n_length)
-acc_srca_etrca = np.zeros_like(acc_srca_trca)
-acc_ori_trca = np.zeros_like(acc_srca_trca)
-acc_ori_etrca = np.zeros_like(acc_srca_trca)
-
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-f_data = eeg['f_data'][:, :, [45,51,52,53,54,55,58,59,60], 1000:2640] * 1e6
-chans = eeg['chan_info'].tolist()
-nTargetChan = f_data.shape[2]
-del eeg
-
-for tn in range(len(trainNum)):
-    ns = trainNum[tn]
-    for cv in range(5):  # cross-validation in training
-        print('CV: %d turn...' %(cv+1))
-        for nt in range(5):
-            print('Data length: %d00ms' %(nt+1))
-            srcaModel = io.loadmat(r'F:\SSVEP\realCV\OLS\SNR\train_%d\loop_%d\srca_%d.mat' 
-                                   %(tn, cv, nt))
-            # extract model info used in SRCA
-            modelInfo = srcaModel['model_info'].flatten().tolist()
-            modelChans = []
-            for i in range(len(modelInfo)):
-                modelChans.append(modelInfo[i].tolist())
-            del modelInfo
-            # error shouldn't exist hhh
-            modelChans = modelChans[nt*nTargetChan*2:(nt+1)*nTargetChan*2]
-            # extract trials info used in Cross Validation
-            # another name error (trail) hhh
-            trainTrial = np.mean(srcaModel['trail_info'], axis=0).astype(int)
-            del srcaModel
-            # extract origin data with correct trials & correct length
-            trainData = f_data[:, trainTrial[:ns], :, :1240+nt*100]
-            testData = f_data[:, trainTrial[-60:], :, :1240+nt*100]
-            del trainTrial
-            # target identification main process
-            accTRCA = mcee.srca_trca(trainData, testData, tarChans, modelChans, chans,
-                                 'OLS', 1140)
-            acceTRCA = mcee.e_srca_trca(trainData, testData, tarChans, modelChans, chans,
-                                 'OLS', 1140)
-            accOriTRCA = mcee.pure_trca(trainData, testData)
-            accOrieTRCA = mcee.e_trca(trainData, testData)
-            # re-arrange accuracy data
-            accTRCA = np.sum(accTRCA)/(testData.shape[1]*2)
-            acceTRCA = np.sum(acceTRCA)/(testData.shape[1]*2)
-            accOriTRCA = np.sum(accOriTRCA)/(testData.shape[1]*2)
-            accOrieTRCA = np.sum(accOrieTRCA)/(testData.shape[1]*2)
-            # save accuracy data
-            acc_srca_trca[tn, cv, nt] = accTRCA
-            acc_srca_etrca[tn, cv, nt] = acceTRCA
-            acc_ori_trca[tn, cv, nt] = accOriTRCA
-            acc_ori_etrca[tn, cv, nt] = accOrieTRCA
-            del accTRCA, acceTRCA, accOriTRCA, accOrieTRCA
-        print(str(cv+1) + 'th cross-validation complete!\n')
-    print(str(ns) + ' training trials complete!\n')
-
-    
-#%% ensemble trca (obsolete)
-tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-regressionList = ['OLS']
-#regressionList = ['OLS', 'Ridge']
-#methodList = ['SNR', 'Corr']
-methodList = ['SNR']
-trainNum = [55]
-#trainNum = [55, 40, 30, 25]
-
-acc_srca_tr = np.zeros((len(regressionList), len(methodList), len(trainNum), 5))
-for reg in range(len(regressionList)):
-    regression = regressionList[reg]
-    for met in range(len(methodList)):
-        method = methodList[met]
-        for nfile in range(len(trainNum)):
-            ns = trainNum[nfile]
-            for nt in range(5):
-                # extract model info used in SRCA
-                eeg = io.loadmat(r'F:\SSVEP\SRCA data\begin：140ms-0.4pi\%s\%s\%d_60\srca_%d.mat'
-                                     %(regression, method, ns, nt))
-                model = eeg['model_info'].flatten().tolist()
-                model_chans = []
-                for i in range(18):
-                    model_chans.append(model[i].tolist())
-                print('Data length:' + str((nt+1)*100) + 'ms')
-                del model, eeg       
-                # extract origin data
-                eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-                temp_tr = eeg['f_data'][:, :ns, :, 1000:int(2240+nt*100)]*1e6
-                tr_data = np.zeros_like(temp_tr)
-                tr_data[0,:,:,:] = temp_tr[0,:,:,:]
-                tr_data[1,:,:,:] = eeg['f_data'][1, :ns, :, 1000:int(2240+nt*100)]*1e6
-                temp_te = eeg['f_data'][:, -60:, :, 1000:int(2240+nt*100)]*1e6
-                te_data = np.zeros_like(temp_te)
-                te_data[0,:,:,:] = temp_te[0,:,:,:]
-                te_data[1,:,:,:] = eeg['f_data'][1, -60:, :, 1000:int(2240+nt*100)]*1e6
-                chans = eeg['chan_info'].tolist()
-                del eeg, temp_tr, temp_te
-                # cross validation
-                acc = []
-                acc_temp = mcee.srca_trca(train_data=tr_data, test_data=te_data,
-                    tar_chans=tar_chans, model_chans=model_chans, chans=chans,
-                    regression=regression, sp=1140)
-                acc.append(np.sum(acc_temp))
-                del acc_temp
-                acc = np.array(acc)/(te_data.shape[1]*2)
-                acc_srca_tr[reg, met, nfile, nt] = acc
-                del acc
-                            
-#%%
-regressionList = ['OLS']
-trainNum = [55, 40, 30, 25]
-for reg in range(len(regressionList)):
-    for nfile in range(len(trainNum)):
-        for nt in range(10):
-            eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-            train_data = eeg['f_data'][:, -60:, :, 1000:2300+nt*100]*1e6
-            chans = eeg['chan_info'].tolist()
-            del eeg
-            tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-            eeg = io.loadmat(r'F:\SSVEP\SRCA data\begin：200ms\%s\FS\%d_60\srca_%d'
-                             %(regressionList[reg], trainNum[nfile], nt))
-            model = eeg['model_info'].flatten().tolist()
-            model_chans = []
-            for i in range(len(model)):
-                model_chans.append(model[i].tolist())
-            del eeg, i, model
-            n_events = train_data.shape[0]
-            n_trains = train_data.shape[1]
-            n_chans = len(tar_chans)
-            n_times = train_data.shape[-1] - 1200
-            model_sig = np.zeros((n_events, n_trains, n_chans, n_times))
-            for ntc in range(len(tar_chans)):
-                target_channel = tar_chans[ntc]
-                model_chan = model_chans[ntc]
-                w_i = np.zeros((n_events, n_trains, len(model_chan), 1000))
-                sig_i = np.zeros((n_events, n_trains, len(model_chan), n_times))
-                for nc in range(len(model_chan)):
-                    w_i[:, :, nc, :] = train_data[:, :, chans.index(model_chan[nc]), :1000]
-                    sig_i[:, :, nc, :] = train_data[:, :, chans.index(model_chan[nc]), 1200:]
-                del nc
-                w_o = train_data[:, :, chans.index(target_channel), :1000]
-                sig_o = train_data[:, :, chans.index(target_channel), 1200:]
-                w_i = np.swapaxes(w_i, 1, 2)
-                sig_i = np.swapaxes(sig_i, 1, 2)
-                for ne in range(n_events):
-                    w_ex_s = mcee.mlr(w_i[ne, :, :, :], w_o[ne, :, :],
-                          sig_i[ne, :, :, :], sig_o[ne, :, :], regressionList[reg])
-                    model_sig[ne, :, ntc, :] = w_ex_s
-                del ne
-            del ntc, model_chan, w_i, w_o, sig_i, sig_o, w_ex_s
-            data_label = [0 for i in range(60)]
-            data_label += [1 for i in range(60)]
-            srca_data = np.zeros((120, 9, n_times))
-            srca_data[:60, :, :] = model_sig[0,:,:,:]
-            srca_data[60:, :, :] = model_sig[1,:,:,:]
-            srca_data = np.swapaxes(srca_data, 0, -1)
-            del model_sig, train_data
-            data_path = r'F:\SSVEP\DCPM_Pre\begin：200ms\%s\%d_60\t%d.mat' %(regressionList[reg],
-                    trainNum[nfile], nt)
-            io.savemat(data_path, {'srca_data':srca_data, 'label':data_label})
-            print('Method:{}--Data length:{}ms--{} samples complete!'.format(regressionList[reg],
-                    100*(nt+1), trainNum[nfile]))
-
-
 #%% Real Cross Validation: Fisher Score
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-#regressionList = ['OLS', 'Ridge']
 regressionList = ['OLS']
 methodList = ['FS']
-#trainNum = [50, 40, 30, 20]
-trainNum = [30]
-
+trainNum = [40, 30, 20, 10]
 n_events = 2
-n_trials = 115
 n_chans = len(tar_chans)
-n_test = 60
-n_times = 2140
 
 # load in data
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-f_data = eeg['f_data'][:,:,:,1000:3140] * 1e6
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\guojiaming\60hz_50_70.mat')
+f_data = eeg['f_data']
 chans = eeg['chan_info'].tolist()
 del eeg
 
@@ -499,12 +301,12 @@ for loop in range(5):                                  # loop in cross validatio
                         mpara = np.mean(mcee.fisher_score(sig_o))
                         # main SRCA process
                         model_chans, para_change = mcee.stepwise_SRCA_fs(srca_chans,
-                            mpara, w, w_o, sig_i, sig_o, regression)
+                            mpara, w_i, w_o, sig_i, sig_o, regression)
                         # refresh data
                         para_alteration.append(para_change)
                         model_info.append(model_chans)
                     # save data as .mat file
-                    data_path = r'F:\SSVEP\realCV\%s\%s\train_%d\loop_%d\srca_%d.mat' %(regression,
+                    data_path = r'F:\SSVEP\realCV\guojiaming\%s\train_%d\loop_%d\srca_%d.mat' %(
                                         method, ns, loop+1, nt)             
                     io.savemat(data_path, {'modelInfo': model_info,
                                            'parameter': para_alteration,
@@ -512,20 +314,15 @@ for loop in range(5):                                  # loop in cross validatio
 
 #%% Real Cross Validation: SNR
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-regressionList = ['OLS', 'Ridge']
-#regressionList = ['OLS']
+regressionList = ['OLS']
 methodList = ['SNR']
-trainNum = [50, 40, 30, 20]
+trainNum = [40, 30, 20, 10]
 
 n_events = 2
-n_trials = 115
-n_chans = len(tar_chans)
-n_test = 60
-n_times = 2140
 
-# load in data
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-f_data = eeg['f_data'][:,:,:,1000:3140] * 1e6
+# load in data (n_events, n_trials, n_chans, n_times)
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\chengqian\60hz_50_70.mat')
+f_data = eeg['f_data']
 chans = eeg['chan_info'].tolist()
 del eeg
 
@@ -537,7 +334,7 @@ for loop in range(5):                                  # loop in cross validatio
             method = methodList[met]
             for nfile in range(len(trainNum)):         # loop in training trials
                 ns = trainNum[nfile]
-                for nt in range(5):                    # loop in data length
+                for nt in range(5):                    # loop in data length: 100-500ms
                     model_info = []
                     para_alteration = []
                     # randomly pick channels for training
@@ -565,77 +362,182 @@ for loop in range(5):                                  # loop in cross validatio
                             mpara = np.mean(mcee.snr_time(sig_o))
                             # main SRCA process
                             model_chans, para_change = mcee.stepwise_SRCA(srca_chans,
-                                mpara, w, w_o, sig_i, sig_o, method, regression)
+                                mpara, w_i, w_o, sig_i, sig_o, method, regression)
                             # refresh data
                             para_alteration.append(para_change)
                             model_info.append(model_chans)
                     # save data as .mat file
                     data_path = r'F:\SSVEP\realCV\%s\%s\train_%d\loop_%d\srca_%d.mat' %(regression,
-                                        method, ns, loop+1, nt)             
+                                        method, ns, loop, nt)             
                     io.savemat(data_path, {'modelInfo': model_info,
                                            'parameter': para_alteration,
                                            'trialInfo': randPick})
 
-
-#%%
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-for nt in range(10):
-    data = eeg['f_data'][:,-60:,[45,51,52,53,54,55,58,59,60],2140:2240+nt*100]*1e6
-    temp = data[:,:,:,:(nt+1)*100]
-    srca_data = np.zeros((120,9,(nt+1)*100))
-    data_path = r'F:\SSVEP\DCPM_Pre\origin：0.4pi\t%d.mat' %(nt)
-    srca_data[:60,:,:] = temp[0,:,:,:]
-    srca_data[60:,:,:] = data[1,:,:,:(nt+1)*100+10]
-    label = [0 for i in range(60)]
-    label += [1 for i in range(60)]
-    srca_data = np.swapaxes(srca_data, 0, -1)
-    io.savemat(data_path, {'srca_data':srca_data, 'label':label})
-    
-#%%
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-
-fig = plt.figure(figsize=(15,10))
-gs = GridSpec(2,2,figure=fig)
-
-ax1 = fig.add_subplot(gs[:,:])
-ax1.set_title('Origin Signal', fontsize=24)
-ax1.tick_params(axis='both', labelsize=20)
-ax1.plot(np.mean(data[0,:,7,:], axis=0), label='0 phase')
-ax1.plot(np.mean(data[1,:,7,:], axis=0), label='pi phase')
-ax1.set_xlabel('Time/ms', fontsize=22)
-ax1.set_ylabel('Amplitude/μV', fontsize=22)
-ax1.vlines(140, -1, 1, color='black', linestyle='dashed', label='140ms')
-ax1.legend(loc='upper left', fontsize=20)
-
-fig.tight_layout()
-plt.show()
-plt.savefig(r'C:\Users\brynh\Desktop\fuck.png', dpi=600)
-
-#%%
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+#%% make fs alteration chart
+tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\pangjun\60hz_50_70.mat')
+f_data = eeg['f_data']
+chans = eeg['chan_info'].tolist()
+trainNum = [10, 20, 30, 40]
+tarChanIndex = [45,51,52,53,54,55,58,59,60]
+del eeg
+fs_alter_tr = np.zeros((4,5,9,5))  # (n_trians, n_loops, n_chans, n_times)
+fs_alter_te = np.zeros_like(fs_alter_tr)
+fs_ori_tr = np.zeros_like(fs_alter_tr)
+fs_ori_te = np.zeros_like(fs_alter_tr)
+for ntr in range(4):
+    ns = trainNum[ntr]
+    print('training trials: ' + str(ns))
+    for nl in range(5):
+        for nti in range(5):
+            # load srca model & extract information
+            srca = io.loadmat(r'F:\SSVEP\realCV\pangjun\FS\train_%d\loop_%d\srca_%d.mat' %(
+                ns, nl, nti))
+            tempChans = srca['modelInfo'].flatten().tolist()
+            trainTrials = np.mean(srca['trialInfo'], axis=0).astype(int)
+            modelChans = []
+            for i in range(9):
+                modelChans.append(tempChans[i].tolist())
+            del tempChans, srca, i
+            # extract two dataset
+            trainData = f_data[:, trainTrials[:ns], :, :1240+100*nti]
+            testData = f_data[:, trainTrials[-80:], :, :1240+100*nti]
+            del trainTrials
+            # apply SRCA model
+            srca_trData = np.zeros((2, ns, 9, 100+nti*100))
+            srca_trData[0, :, :, :] = mcee.apply_SRCA(trainData[0, :, :, :],
+                tar_chans, modelChans, chans)
+            srca_trData[1, :, :, :] = mcee.apply_SRCA(trainData[1, :, :, :],
+                tar_chans, modelChans, chans)
+            srca_teData = np.zeros((2, 80, 9, 100+nti*100))
+            srca_teData[0, :, :, :] = mcee.apply_SRCA(testData[0, :, :, :],
+                tar_chans, modelChans, chans)
+            srca_teData[1, :, :, :] = mcee.apply_SRCA(testData[1, :, :, :],
+                tar_chans, modelChans, chans)
+            # compute each channels' fs alteration
+            for nc in range(9):
+                xtr = mcee.fisher_score(trainData[:, :, tarChanIndex[nc], 1140:])
+                ytr = mcee.fisher_score(srca_trData[:, :, nc, :])
+                ztr = (np.mean(ytr) - np.mean(xtr))/np.mean(xtr) * 100
+                
+                xte = mcee.fisher_score(testData[:, :, tarChanIndex[nc], 1140:])
+                yte = mcee.fisher_score(srca_teData[:, :, nc, :])
+                zte = (np.mean(yte) - np.mean(xte))/np.mean(xte) * 100
+                
+                fs_alter_tr[ntr, nl, nc, nti] = ztr
+                fs_alter_te[ntr, nl, nc, nti] = zte
+                fs_ori_tr[ntr, nl, nc, nti] = np.mean(xtr)
+                fs_ori_te[ntr, nl, nc, nti] = np.mean(xte)
+        print('loop ' + str(nl) + ' complete')
+      
+tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\chengqian\60hz_50_70.mat')
+f_data = eeg['f_data']
+chans = eeg['chan_info'].tolist()
+trainNum = [10, 20, 30, 40]
+tarChanIndex = [45,51,52,53,54,55,58,59,60]
+del eeg
+fs_alter_tr2 = np.zeros((4,5,9,5))  # (n_trians, n_loops, n_chans, n_times)
+fs_alter_te2 = np.zeros_like(fs_alter_tr2)
+fs_ori_tr2 = np.zeros_like(fs_alter_tr2)
+fs_ori_te2 = np.zeros_like(fs_alter_tr2)
+for ntr in range(4):
+    ns = trainNum[ntr]
+    print('training trials: ' + str(ns))
+    for nl in range(5):
+        for nti in range(5):
+            # load srca model & extract information
+            srca = io.loadmat(r'F:\SSVEP\realCV\chengqian\FS\train_%d\loop_%d\srca_%d.mat' %(
+                ns, nl, nti))
+            tempChans = srca['modelInfo'].flatten().tolist()
+            trainTrials = np.mean(srca['trialInfo'], axis=0).astype(int)
+            modelChans = []
+            for i in range(9):
+                modelChans.append(tempChans[i].tolist())
+            del tempChans, srca, i
+            # extract two dataset
+            trainData = f_data[:, trainTrials[:ns], :, :1240+100*nti]
+            testData = f_data[:, trainTrials[-80:], :, :1240+100*nti]
+            del trainTrials
+            # apply SRCA model
+            srca_trData = np.zeros((2, ns, 9, 100+nti*100))
+            srca_trData[0, :, :, :] = mcee.apply_SRCA(trainData[0, :, :, :],
+                tar_chans, modelChans, chans)
+            srca_trData[1, :, :, :] = mcee.apply_SRCA(trainData[1, :, :, :],
+                tar_chans, modelChans, chans)
+            srca_teData = np.zeros((2, 80, 9, 100+nti*100))
+            srca_teData[0, :, :, :] = mcee.apply_SRCA(testData[0, :, :, :],
+                tar_chans, modelChans, chans)
+            srca_teData[1, :, :, :] = mcee.apply_SRCA(testData[1, :, :, :],
+                tar_chans, modelChans, chans)
+            # compute each channels' fs alteration
+            for nc in range(9):
+                xtr = mcee.fisher_score(trainData[:, :, tarChanIndex[nc], 1140:])
+                ytr = mcee.fisher_score(srca_trData[:, :, nc, :])
+                ztr = (np.mean(ytr) - np.mean(xtr))/np.mean(xtr) * 100
+                
+                xte = mcee.fisher_score(testData[:, :, tarChanIndex[nc], 1140:])
+                yte = mcee.fisher_score(srca_teData[:, :, nc, :])
+                zte = (np.mean(yte) - np.mean(xte))/np.mean(xte) * 100
+                
+                fs_alter_tr2[ntr, nl, nc, nti] = ztr
+                fs_alter_te2[ntr, nl, nc, nti] = zte
+                fs_ori_tr2[ntr, nl, nc, nti] = np.mean(xtr)
+                fs_ori_te2[ntr, nl, nc, nti] = np.mean(xte)
+        print('loop ' + str(nl) + ' complete')
 
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-
-fig = plt.figure(figsize=(15,10))
-gs = GridSpec(2,2,figure=fig)
-sns.set(style='whitegrid')
-
-ax1 = fig.add_subplot(gs[:,:])
-ax1.set_title('Fisher Score Alteration', fontsize=24)
-ax1.tick_params(axis='both', labelsize=20)
-for i in range(len(tar_chans)):
-    exec('ax1.plot(parameter[i].T, label=tar_chans[i], linewidth=1.5)')
-ax1.set_xlabel('Number of channels', fontsize=22)
-ax1.set_ylabel('Fisher Score', fontsize=22)
-ax1.legend(loc='upper right', fontsize=20)
-
-fig.tight_layout()
-plt.show()
-
-#%%
-x = [int(100*(parameter[y].T[-2]-parameter[y].T[0])/parameter[y].T[0])
-     for y in range(len(parameter))]
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\liutuo\60hz_50_70.mat')
+f_data = eeg['f_data']
+chans = eeg['chan_info'].tolist()
+trainNum = [10, 20, 30, 40]
+tarChanIndex = [45,51,52,53,54,55,58,59,60]
+del eeg
+fs_alter_tr3 = np.zeros((4,5,9,5))  # (n_trians, n_loops, n_chans, n_times)
+fs_alter_te3 = np.zeros_like(fs_alter_tr3)
+fs_ori_tr3 = np.zeros_like(fs_alter_tr3)
+fs_ori_te3 = np.zeros_like(fs_alter_tr3)
+for ntr in range(4):
+    ns = trainNum[ntr]
+    print('training trials: ' + str(ns))
+    for nl in range(5):
+        for nti in range(5):
+            # load srca model & extract information
+            srca = io.loadmat(r'F:\SSVEP\realCV\liutuo\FS\train_%d\loop_%d\srca_%d.mat' %(
+                ns, nl, nti))
+            tempChans = srca['modelInfo'].flatten().tolist()
+            trainTrials = np.mean(srca['trialInfo'], axis=0).astype(int)
+            modelChans = []
+            for i in range(9):
+                modelChans.append(tempChans[i].tolist())
+            del tempChans, srca, i
+            # extract two dataset
+            trainData = f_data[:, trainTrials[:ns], :, :1240+100*nti]
+            testData = f_data[:, trainTrials[-80:], :, :1240+100*nti]
+            del trainTrials
+            # apply SRCA model
+            srca_trData = np.zeros((2, ns, 9, 100+nti*100))
+            srca_trData[0, :, :, :] = mcee.apply_SRCA(trainData[0, :, :, :],
+                tar_chans, modelChans, chans)
+            srca_trData[1, :, :, :] = mcee.apply_SRCA(trainData[1, :, :, :],
+                tar_chans, modelChans, chans)
+            srca_teData = np.zeros((2, 80, 9, 100+nti*100))
+            srca_teData[0, :, :, :] = mcee.apply_SRCA(testData[0, :, :, :],
+                tar_chans, modelChans, chans)
+            srca_teData[1, :, :, :] = mcee.apply_SRCA(testData[1, :, :, :],
+                tar_chans, modelChans, chans)
+            # compute each channels' fs alteration
+            for nc in range(9):
+                xtr = mcee.fisher_score(trainData[:, :, tarChanIndex[nc], 1140:])
+                ytr = mcee.fisher_score(srca_trData[:, :, nc, :])
+                ztr = (np.mean(ytr) - np.mean(xtr))/np.mean(xtr) * 100
+                
+                xte = mcee.fisher_score(testData[:, :, tarChanIndex[nc], 1140:])
+                yte = mcee.fisher_score(srca_teData[:, :, nc, :])
+                zte = (np.mean(yte) - np.mean(xte))/np.mean(xte) * 100
+                
+                fs_alter_tr3[ntr, nl, nc, nti] = ztr
+                fs_alter_te3[ntr, nl, nc, nti] = zte
+                fs_ori_tr3[ntr, nl, nc, nti] = np.mean(xtr)
+                fs_ori_te3[ntr, nl, nc, nti] = np.mean(xte)
+        print('loop ' + str(nl) + ' complete')
