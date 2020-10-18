@@ -17,7 +17,7 @@ from math import pi
 
 #%% Slice Analysis: SNR
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-srca = io.loadmat(r'F:\SSVEP\realCV\mengqiangfan\SNR\4C 40-70\train_30\loop_4\srca_2.mat')
+srca = io.loadmat(r'F:\SSVEP\realCV\pangjun\SNR\4C 40-70\train_40\loop_4\srca_2.mat')
 tempChans = srca['modelInfo'].flatten().tolist()
 trainTrials = np.mean(srca['trialInfo'], axis=0).astype(int)
 f60p0Chans, f60p1Chans, f48p0Chans, f48p1Chans = [], [], [], []
@@ -25,14 +25,14 @@ num = 5
 for i in range(9):
     f60p0Chans.append(tempChans[i*4].tolist())
     f60p1Chans.append(tempChans[i*4+1].tolist())
-    f48p0Chans.append(tempChans[i*4+2].tolist())
-    f48p1Chans.append(tempChans[i*4+3].tolist())
+    #f48p0Chans.append(tempChans[i*4+2].tolist())
+    #f48p1Chans.append(tempChans[i*4+3].tolist())
 modelChans = []
 for i in range(len(tempChans)):
-    if i % 4 == 0 or i % 4 == 1:
+    if i % 2 == 0 or i % 2 == 1:
         modelChans.append(tempChans[i].tolist())
 del tempChans, srca, i
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\mengqiangfan\40_70bp.mat')
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\pangjun\40_70bp.mat')
 f_data = eeg['f_data'][:2,:,:,:]
 chans = eeg['chan_info'].tolist()
 trainData = f_data[:, trainTrials[:40], :, :1440]
@@ -47,6 +47,14 @@ srcaTe[1,:,:,:] = mcee.apply_SRCA(testData[1,:,:,:], tar_chans, f60p1Chans, chan
 srcaTr = np.zeros((2,40,9,300))
 srcaTr[0,:,:,:] = mcee.apply_SRCA(trainData[0,:,:,:], tar_chans, f60p0Chans, chans)
 srcaTr[1,:,:,:] = mcee.apply_SRCA(trainData[1,:,:,:], tar_chans, f60p1Chans, chans)
+
+#%%
+plt.plot(np.mean(testData[0,:,59,1140:], axis=0))
+plt.plot(np.mean(testData[1,:,59,1140:], axis=0))
+#%%
+plt.plot(np.mean(srcaTe[0,:,7,:], axis=0))
+plt.plot(np.mean(srcaTe[1,:,7,:], axis=0))
+#%%
 
 #%% (2) check waveform: origin data
 ori_chan = [45,51,52,53,54,55,58,59,60]
@@ -310,14 +318,17 @@ result = io.loadmat(data_path)
 ori = result['ori']
 srca = result['srca']
 
-#%%
-x = np.linspace(0, 2, 200)
+#%% phase analysis
+time = 0.2
+sfreq = 1000
+n_points = int(time*sfreq)
+x = np.linspace(0, 2-2/100, 100)
 
-f60 = lambda x:np.sin(2*pi*60*np.linspace(0, 0.2, 200) + x*pi)
-f48 = lambda x:np.sin(2*pi*48*np.linspace(0, 0.2, 200) + x*pi)
+f60 = lambda x:np.sin(2*pi*60*np.linspace(0, (n_points-1)/sfreq, n_points) + x*pi)
+f48 = lambda x:np.sin(2*pi*48*np.linspace(0, (n_points-1)/sfreq, n_points) + x*pi)
 
-corr = np.zeros((200))
-for i in range(200):
+corr = np.zeros((100))
+for i in range(100):
     corr[i] = np.corrcoef(f60(0), f48(x[i]))[0,1]
 
 plt.plot(corr)
