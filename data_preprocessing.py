@@ -27,9 +27,9 @@ import mcee
 import seaborn as sns
 
 #%% load data
-filepath = r'F:\SSVEP\dataset\60&48'
+filepath = r'G:\岳金明\eeg\岳金明'
 
-subjectlist = ['mengqiangfan']
+subjectlist = ['yjm']
 
 filefolders = []
 for subindex in subjectlist:
@@ -64,11 +64,11 @@ picks = mne.pick_types(raw.info, emg=False, eeg=True, stim=False, eog=False,
                        exclude=drop_chans)
 picks_ch_names = [raw.ch_names[i] for i in picks]  # layout picked chans' name
 
-# define labels
-event_id = dict(f60p0=1, f60p1=2, f48p0=3, f48p1=4)
-
+#%% define labels
+event_id = dict(f60p0=2, f60p1=3, f80p0=4, f80p1=5)
+event_id = dict(f32=1)
 #baseline = (-0.2, 0)    # define baseline
-tmin, tmax = -1., 1.5     # set the time range
+tmin, tmax = -1., 10.5     # set the time range
 sfreq = 1000
 
 # transform raw object into array
@@ -80,26 +80,30 @@ n_times = int((tmax - tmin) * sfreq + 1)
 #%% pick up data
 data = np.zeros((n_events, n_trials, n_chans, n_times))
 
-f60p0 = Epochs(raw, events=events, event_id=1, tmin=tmin, picks=picks,
+f32 = Epochs(raw, events=events, event_id=1, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
+#%%
 f60p1 = Epochs(raw, events=events, event_id=2, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
-f48p0 = Epochs(raw, events=events, event_id=3, tmin=tmin, picks=picks,
+f80p0 = Epochs(raw, events=events, event_id=3, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
-f48p1 = Epochs(raw, events=events, event_id=4, tmin=tmin, picks=picks,
+f80p1 = Epochs(raw, events=events, event_id=4, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
 
 #%% filter data
-ff48p1 = filter_data(f48p1, sfreq=sfreq, l_freq=40, h_freq=90, n_jobs=4)
-ff48p0 = filter_data(f48p0, sfreq=sfreq, l_freq=40, h_freq=90, n_jobs=4)
+ff80p0 = filter_data(f80p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='iir')
+ff80p1 = filter_data(f80p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='iir')
+#
+ff60p0 = filter_data(f60p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='iir')
+ff60p1 = filter_data(f60p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='iir')
 #%%
-ff60p0 = filter_data(f60p0, sfreq=sfreq, l_freq=40, h_freq=90, n_jobs=4)
-ff60p1 = filter_data(f60p1, sfreq=sfreq, l_freq=40, h_freq=90, n_jobs=4)
-
+ff32 = filter_data(f32, sfreq=sfreq, l_freq=40, h_freq=80, n_jobs=4, method='iir')
 #%% find bad trials
-data = ff60p1[:,59,1140:1640]
-#plt.plot(data.T)
-
+data = ff80p0[:,54,1140:2140]
+plt.plot(np.mean(data, axis=0))
+#
+data = ff80p1[:,54,1140:2140]
+plt.plot(np.mean(data, axis=0))
 #%% delete bad trials
 bad = np.where(data > 12)
 
@@ -107,16 +111,14 @@ bad = np.where(data > 12)
 plt.plot(data[42,0:])
 
 #%% check abnormal FFT
-plt.psd(data[0,:], 512, 1000)
+data = np.mean(ff58, axis=0)
+plt.psd(data, 1024, 1000)
 
-#%% delete bad trials
-#f48p0 = np.delete(f48p0, [3,6,24,127])
-f48p1 = np.delete(f48p1, [133, 132], axis=0)
-f60p1 = np.delete(f60p1, [132], axis=0)
-
-#%%
-ff60p1 = np.delete(ff60p1, [132], axis=0)
-ff48p1 = np.delete(ff48p1, [132,133], axis=0)
+#%% new task
+eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
+data = eeg['raw_data']
+chans = eeg['chan_info'].tolist()
+del eeg
 
 #%%
 fig = plt.figure(figsize=(16,9))
@@ -162,12 +164,11 @@ data = np.zeros((4, 144, 62, 2501))
 data[0,:,:,:] = ff60p0
 data[1,:,:,:] = ff60p1
 
-#%%
-data[2,:,:,:] = ff48p0
-data[3,:,:,:] = ff48p1
+data[2,:,:,:] = ff80p0
+data[3,:,:,:] = ff80p1
 
 #%% store raw data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\mengqiangfan\40_90bp.mat'
+data_path = r'F:\SSVEP\dataset\preprocessed_data\60&80\xiongwentian\iir_50_90.mat'
 io.savemat(data_path, {'f_data':data, 'chan_info':picks_ch_names})
 
 #%% other test
@@ -349,7 +350,7 @@ for name in range(len(nameList)):                   # loop in testees
             np.random.shuffle(randPick)
             for nt in range(5):                    # loop in data length
                 model_info = []
-                para_alteration = []41052
+                para_alteration = []
                 for ntc in range(len(tar_chans)):  # loop in target channels
                     for ne in range(n_events):
                         # prepare model data

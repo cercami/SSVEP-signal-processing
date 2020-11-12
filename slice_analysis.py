@@ -319,13 +319,13 @@ ori = result['ori']
 srca = result['srca']
 
 #%% phase analysis
-time = 0.2
+time = 0.1
 sfreq = 1000
 n_points = int(time*sfreq)
 x = np.linspace(0, 2-2/100, 100)
 
-f60 = lambda x:np.sin(2*pi*60*np.linspace(0, (n_points-1)/sfreq, n_points) + x*pi)
-f48 = lambda x:np.sin(2*pi*48*np.linspace(0, (n_points-1)/sfreq, n_points) + x*pi)
+f60 = lambda x:np.sin(2*np.pi*60*np.linspace(0, (n_points-1)/sfreq, n_points) + x*np.pi)
+f48 = lambda x:np.sin(2*np.pi*48*np.linspace(0, (n_points-1)/sfreq, n_points) + x*np.pi)
 
 corr = np.zeros((100))
 for i in range(100):
@@ -333,9 +333,22 @@ for i in range(100):
 
 plt.plot(corr)
 index = np.max(np.where(corr == np.min(corr)))
-print(x[index])
+
+print('best phase for 48Hz: ' + str(x[index]))
+print('points need to shift: ' + str((x[index]/2) * (1000/48)))
+
 #%%
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\pangjun\40_70bp.mat')
+eeg = io.loadmat(r'F:\SSVEP\dataset\20-30\a.mat')
+mdata = np.swapaxes(eeg['a'], 0,2)
+mdata = np.swapaxes(mdata, 1,3)
+eeg = io.loadmat(r'F:\SSVEP\dataset\20-30\b.mat')
+rdata = np.swapaxes(eeg['b'], 0,2)
+rdata = np.swapaxes(rdata, 1,3)
+del eeg
+
+f_data = np.concatenate((rdata, mdata), axis=-1)[:,:,[48,54,55,56,57,58,61,62,63],:]
+
+#%%
 f_data = eeg['f_data'][:,:,:,:]
 f60p0 = f_data[0,:,:,1200:1700]
 f60p1 = f_data[1,:,:,1200:1700]

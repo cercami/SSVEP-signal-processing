@@ -1,0 +1,10 @@
+82.9542 	EXP 	Created window1 = Window(allowGUI=False, allowStencil=False, args=UNKNOWN, autoLog=True, bitsMode=UNKNOWN, blendMode='avg', bpc=(8, 8, 8), color=array([-1., -1., -1.]), colorSpace='rgb', depthBits=8, fullscr=<method-wrapper '__getattribute__' of attributeSetter object at 0x000001DBCE9DA048>, gamma=None, gammaErrorPolicy='raise', kwargs=UNKNOWN, lms=UNKNOWN, monitor=<psychopy.monitors.calibTools.Monitor object at 0x000001DBC59622C8>, multiSample=False, name='window1', numSamples=2, pos=[0.0, 0.0], screen=0, size=array([1920, 1080]), stencilBits=0, stereo=False, units='height', useFBO=True, useRetina=False, viewOri=0.0, viewPos=None, viewScale=None, waitBlanking=True, winType='pyglet')
+82.9545 	EXP 	window1: mouseVisible = True
+82.9545 	EXP 	window1: recordFrameIntervals = False
+83.1239 	EXP 	window1: recordFrameIntervals = True
+83.3112 	EXP 	window1: recordFrameIntervals = False
+83.3161 	EXP 	Created text = TextStim(__class__=<class 'psychopy.visual.text.TextStim'>, alignHoriz=method-wrapper(...), alignText='center', alignVert=method-wrapper(...), anchorHoriz='center', anchorVert='center', antialias=True, autoLog=True, bold=False, color='white', colorSpace='named', contrast=1.0, depth=0.0, flipHoriz=False, flipVert=False, font='Arial', fontFiles=[], height=0.1, italic=False, languageStyle='LTR', name='text', opacity=1.0, ori=0, pos=array([0., 0.]), rgb=array([255., 255., 255.]), text='there should be a label mark', units='height', win=Window(...), wrapWidth=1)
+83.3266 	EXP 	text: autoDraw = True
+83.8319 	EXP 	text: autoDraw = False
+83.8319 	EXP 	text: autoDraw = False
+83.8788 	EXP 	window1: mouseVisible = True
