@@ -16,20 +16,20 @@ from matplotlib.gridspec import GridSpec
 import seaborn as sns
 import copy
 
-#%% TRCA/eTRCA for SRCA/origin data: 60Hz/48Hz binary
+#%% TRCA/eTRCA for SRCA/origin data
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 #train_num = [10, 20, 30, 40]
 train_num = [80]
-nameList = ['pangjun', 'chengqian']
-nameList = ['xiongwentian']
+#nameList = ['pangjun', 'chengqian']
+nameList = ['zhaowei']
 
-acc_srca_trca = np.zeros((len(nameList), len(train_num), 5, 5))
-acc_srca_etrca = np.zeros((len(nameList), len(train_num), 5, 5))
-acc_ori_trca = np.zeros((len(nameList), len(train_num), 5, 5))
-acc_ori_etrca = np.zeros((len(nameList), len(train_num), 5, 5))
+acc_srca_trca = np.zeros((5, 10))
+acc_srca_etrca = np.zeros((5, 10))
+acc_ori_trca = np.zeros((5, 10))
+acc_ori_etrca = np.zeros((5, 10))
 for nPeo in range(len(nameList)):
     people = nameList[nPeo]
-    eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\%s\40_70bp.mat' %(people))
+    eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\60&80\%s\fir_50_90.mat' %(people))
     f_data = eeg['f_data'][[2,3],:,:,:]
     chans = eeg['chan_info'].tolist()
     n_events = f_data.shape[0]
@@ -40,16 +40,16 @@ for nPeo in range(len(nameList)):
         print('Training trials: ' + str(ns))
         for cv in range(5):  # cross-validation in training
             print('CV: %d turn...' %(cv+1))
-            for nt in range(5): 
+            for nt in range(10): 
                 print('Data length: %d00ms' %(nt+1))
-                srcaModel = io.loadmat(r'F:\SSVEP\realCV\%s\CCA\bp_40_70\train_%d\loop_%d\srca_%d.mat' 
+                srcaModel = io.loadmat(r'D:\SSVEP\realCV\%s\OLS\CCA\bp_50_90\train_%d\loop_%d\srca_%d.mat' 
                                    %(people, ns, cv, nt))
                 # extract model info used in SRCA
                 modelInfo = srcaModel['modelInfo'].flatten().tolist()
                 modelChans = []
                 for i in range(len(modelInfo)):
                     if i % 4 == 2 or i % 4 == 3:
-                        modelChans.append(modelInfo[i].tolist()[:5])
+                        modelChans.append(modelInfo[i].tolist())
                     else:
                         continue
                 del modelInfo
@@ -78,14 +78,15 @@ for nPeo in range(len(nameList)):
                 accOriTRCA = np.sum(accOriTRCA)/(n_events*test_data.shape[1])
                 accOrieTRCA = np.sum(accOrieTRCA)/(n_events*test_data.shape[1])
                 # save accuracy data
-                acc_srca_trca[nPeo, tn, cv, nt] = accTRCA
-                acc_srca_etrca[nPeo, tn, cv, nt] = acceTRCA
-                acc_ori_trca[nPeo, tn, cv, nt] = accOriTRCA
-                acc_ori_etrca[nPeo, tn, cv, nt] = accOrieTRCA
+                acc_srca_trca[cv, nt] = accTRCA
+                acc_srca_etrca[cv, nt] = acceTRCA
+                acc_ori_trca[cv, nt] = accOriTRCA
+                acc_ori_etrca[cv, nt] = accOrieTRCA
                 del accTRCA, accOriTRCA
                 del acceTRCA, accOrieTRCA
             print(str(cv+1) + 'th cross-validation complete!\n')
         print(str(ns) + ' training trials complete!\n')
+    
 #%%
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 acc_ori_trca = np.zeros((10, 10))

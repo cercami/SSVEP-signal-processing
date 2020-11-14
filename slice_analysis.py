@@ -288,7 +288,7 @@ y = mcee.fisher_score(srcaTe[:, :, i, :])
 plt.plot(x)
 plt.plot(y)
 plt.show()
-z = (np.mean(y) - np.mean(x))/np.mean(x)*100
+z = (y.mean() - x.mean())/x.mean()*100
 
 #%% (6) check fisher score alteration
 eeg = io.loadmat(r'F:\SSVEP\realCV\mengqiangfan\FS\60Hz 50-70\train_40\loop_4\srca_4.mat')
@@ -360,6 +360,48 @@ del eeg, f_data
 corr1 = mcee.template_corr(f60p0[:,59,:], 1000, 60, 0)
 corr2 = mcee.template_corr(f60p0[:,59,:], 1000, 60, 1)
 
-message = '60 Hz pi & 60 Hz 0: ' + str(np.mean(corr1)) + '\n'
-message += '60 Hz pi & 60 Hz pi: ' + str(np.mean(corr2)) + '\n'
+message = '60 Hz pi & 60 Hz 0: ' + str(corr1.mean()) + '\n'
+message += '60 Hz pi & 60 Hz pi: ' + str(corr2.mean()) + '\n'
 print(message)
+
+#%% new TRCA test
+data_path = r'D:\SSVEP\dataset\preprocessed_data\60&80\zhaowei\fir_50_90.mat'
+eeg = io.loadmat(data_path)
+chans = eeg['chan_info'].tolist()
+tar_data = eeg['f_data'][:2,:, [45,51,52,53,54,55,58,59,60], 1140:1540]
+del eeg, data_path
+
+
+from numpy import corrcoef as Corr
+import time
+from mcee import TRCA_off, TRCA_compute
+
+test_data = tar_data[:, -60:, ...]
+train_data = tar_data[:, :80, ...]
+template = train_data.mean(axis=1)
+n_events = tar_data.shape[0]
+
+start1 = time.perf_counter()
+w = mcee.TRCA_compute(tar_data[:, :80, ...])
+r = np.zeros((n_events,60,n_events))
+for nete in range(n_events):
+    for nte in range(60):
+        for netr in range(n_events):
+            tp_test = np.dot(w[netr,:], test_data[nete,nte,...]).T
+            tp_template = np.dot(w[netr,:], template[netr,...]).T
+            r[nete, nte, netr] = np.sum(np.tril(Corr(tp_test.T, tp_template.T),-1))
+acc1 = []
+for ne in range(n_events):
+    for nt in range(60):
+        if np.max(np.where(r[ne, nt, :] == np.max(r[ne, nt, :]))) == ne:
+            acc1.append(1)
+acc1 = np.sum(acc1)/(n_events*60)*100
+end1 = time.perf_counter()
+print('New TRCA Running Time: ' + str(end1-start1) + 's')
+
+start2 = time.perf_counter()
+acc2 = np.sum(mcee.TRCA_off(train_data, test_data))/(n_events*60)*100
+end2 = time.perf_counter()
+print('Old TRCA Running Time: ' + str(end2-start2) + 's')
+
+
