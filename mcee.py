@@ -18,7 +18,7 @@ Created on Wed Dec 18 12:07:56 2019
 
 3. Target identification
     (1) standard CCA
-    (2) TRCA: including standard TRCA, filter-bank TRCA and extended-TRCA
+    (2) TRCA: including standard TRCA and extended-TRCA
         for normal signal and SRCA signal
     (3) DCPM: 5 different descrimination indices for normal and SRCA signal
     (4) corr_detect: single channel detection
@@ -29,7 +29,7 @@ Created on Wed Dec 18 12:07:56 2019
 version 1.0
 """
 
-#%% Import third part module
+# %% Import third part module
 import numpy as np
 from numpy import linalg as LA
 from numpy import corrcoef as CORR
@@ -40,20 +40,20 @@ import copy
 import time
 from math import pi
 
-#%% Basic operating function
-# multi-linear regression
-def mlr(model_input, model_target, data_input, data_target, regression='OLS',
+# %% Basic operating function
+# spatial regression component analysis (main function)
+def srca(model_input, model_target, data_input, data_target, regression='OLS',
         alpha=1.0, l1_ratio=1.0):
     '''
     the main process of spatial regression component analysis (SRCA)
 
     Parameters
     ----------
-    model_input : (n_chans, n_trials, n_times) / (n_trials, n_times)
+    model_input : (n_trials, n_chans, n_times)
         rest-state data of regression channels.
     model_target : (n_trials, n_times)
         rest-state data of target channel.
-    data_input : (n_chans, n_trials, n_times)
+    data_input : (n_trials, n_chans, n_times)
         mission-state data of regression channels.
     data_target : (n_trials, n_times)
         mission-state data of target channel.
@@ -69,41 +69,22 @@ def mlr(model_input, model_target, data_input, data_target, regression='OLS',
     extract : (n_trials, n_times)
         SRCA filtered data.
     '''
-    if model_input.ndim == 3:
-        # estimate signal: (n_trials, n_times)
-        estimate = np.zeros((data_input.shape[1], data_input.shape[2]))
-        for i in range(model_input.shape[1]):    # i for trials
-            # basic operating unit: (n_chans, n_times).T, (1, n_times).T
-            if regression == 'OLS':
-                L = linear_model.LinearRegression().fit(model_input[:,i,:].T, model_target[i,:].T)
-            elif regression == 'Ridge':
-                L = linear_model.Ridge(alpha=alpha).fit(model_input[:,i,:].T, model_target[i,:].T)
-            elif regression == 'Lasso':
-                L = linear_model.Lasso(alpha=alpha).fit(model_input[:,i,:].T, model_target[i,:].T)
-            elif regression == 'ElasticNet':
-                L = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio).fit(
-                    model_input[:,i,:].T, model_target[i,:].T)
-            RI = L.intercept_
-            RC = L.coef_
-            estimate[i,:] = (np.mat(RC) * np.mat(data_input[:,i,:])).A + RI
-    elif model_input.ndim == 2:      # avoid reshape error
-        RI = np.zeros((model_input.shape[0]))
-        estimate = np.zeros((model_input.shape[0], data_input.shape[1]))
-        RC = np.zeros((model_input.shape[0]))
-        for i in range(model_input.shape[0]):
-            if regression == 'OLS':
-                L = linear_model.LinearRegression().fit(np.mat(model_input[i,:]).T, model_target[i,:].T)
-            elif regression == 'Ridge':
-                L = linear_model.Ridge(alpha=alpha).fit(np.mat(model_input[i,:]).T, model_target[i,:].T)
-            elif regression == 'Lasso':
-                L = linear_model.Lasso(alpha=alpha).fit(np.mat(model_input[i,:]).T, model_target[i,:].T)
-            elif regression == 'ElasticNet':
-                L = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio).fit(
-                    np.mat(model_input[i,:]).T, model_target[i,:].T)
-            RI = L.intercept_
-            RC = L.coef_
-            estimate[i,:] = RC * data_input[i,:] + RI
-    # extract SSVEP from raw data
+    n_trials = data_input.shape[0]
+    n_times = data_input.shape[-1]
+    estimate = np.zeros((n_trials, n_times))  # estimate signal
+    for i in range(n_trials):  # basic operating unit: (n_times, n_chans), (n_times, 1)
+        if regression == 'OLS':
+            L = linear_model.LinearRegression().fit(model_input[i, ...].T, model_target[i, :].T)
+        elif regression == 'Ridge':
+            L = linear_model.Ridge(alpha=alpha).fit(model_input[i, ...].T, model_target[i, :].T)
+        elif regression == 'Lasso':
+            L = linear_model.Lasso(alpha=alpha).fit(model_input[i, ...].T, model_target[i, :].T)
+        elif regression == 'ElasticNet':
+            L = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio).fit(model_input[i, ...].T,
+            model_target[i, :].T)
+        RI = L.intercept_
+        RC = L.coef_
+        estimate[i, :] = np.dot(RC, data_input[i, ...]) + RI
     extract = data_target - estimate
     return extract
 
@@ -307,14 +288,12 @@ def apply_SRCA(data, tar_chans, model_chans, chans, regression='OLS', sp=1140):
         del nc
         w_o = data[:, chans.index(target_channel), :1000]
         sig_o = data[:, chans.index(target_channel), sp:]
-        w_i = np.swapaxes(w_i, 0, 1)
-        sig_i = np.swapaxes(sig_i, 0, 1)
-        w_ex_s = mlr(model_input=w_i, model_target=w_o, data_input=sig_i,
-                     data_target=sig_o, regression=regression)
+        w_ex_s = srca(model_input=w_i, model_target=w_o, data_input=sig_i,
+                      data_target=sig_o, regression=regression)
         f_data[:, ntc, :] = w_ex_s
     return f_data
 
-# zero mean normalization (if neccessary)
+# zero mean normalization (if necessary)
 def zero_mean(data):
     '''
     
@@ -333,33 +312,59 @@ def zero_mean(data):
     data -= data.mean(axis=1, keepdims=True)
     return data
 
-#%% Stepwise SRCA
-def stepwise_SRCA(chans, mpara, w, w_target, signal_data, data_target, method,
-                  regression, freq=None, phase=None, sfreq=1000):
+# %% Stepwise SRCA
+def SRCA_train(chans, mpara, w, w_target, signal_data, data_target, method='SNR',
+                regression='OLS', alpha=1.0, l1_ratio=1.0, freq=None, phase=None, sfreq=1000):
     '''
-    Stepward recursive algorithm to achieve SRCA
+    Stepwise recursive algorithm to train SRCA model
     The combination of Forward and Backward process:
-        (1)this time form an empty set; 
-        (2)add one channel respectively and pick the best one; 
-        (3)add one channel respectively and delete one respectively (except the just-added one)
+        (1) form an empty set; 
+        (2) add one channel respectively and pick the best one; 
+        (3) add one channel respectively and delete one respectively (except the just-added one)
             keep the best choice;
-        (4)repeat those process until there will be no better choice
+        (4) repeat (3) until there will be no better choice
             i.e. the convergence point of the recursive algorithm
-    Parameters:
-        chans: list of channels; the list order corresponds to the data array's
-        mpara: float; the mean of original signal's parameters in time domain(0-500ms)
-        w: background part input data array (n_trials, n_chans, n_times)
-        w_target: background part target data array (n_trials, n_times)
-        signal_data: signal part input data array (n_trials, n_chans, n_times)
-        data_target: signal part target data array (n_trials, n_times)
-    Returns:
-        model_chans: list of channels which should be used in SRCA
-        para_change: list of parameter's alteration
+
+    Parameters
+    ----------
+    chans : list
+        the list order corresponds to the data array's.
+    mpara : float
+        the mean of original signal's parameters in time domain.
+    w : (n_trials, n_chans, n_times)
+        background part input data array.
+    w_target : (n_trials, n_times)
+        background part target data array.
+    signal_data : (n_trials, n_chans, n_times)
+        signal part input data array.
+    data_target : (n_trials, n_times)
+        signal part target data array.
+    method : str
+        SNR, Corr or CCA
+    regression : str, optional
+        OLS, Ridge, Lasso or ElasticNet. The default is 'OLS'.
+    alpha : float, optional
+        parameters used in Ridge, Lasso and EN regression. The default is 1.0.
+    l1_ratio : float, optional
+        parameters used in EN regression. The default is 1.0.
+    freq : int/float, optional
+        parameters used if method = 'CCA'. The default is None.
+    phase : int/float, optional
+        parameters used if method = 'CCA'. The default is None.
+    sfreq : int/float, optional
+        sampling frequency. The default is 1000
+    
+    Returns
+    -------
+    model_chans : list
+        list of channels which should be used in SRCA
+    para_change : list
+        list of parameter's alteration
     '''
     # initialize variables
-    print('Running Stepwise SRCA...')
+    print('Stepwise SRCA training...')
     start = time.perf_counter()   
-    j = 1   
+    j = 1
     compare_para = np.zeros((len(chans)))
     max_loop = len(chans)   
     remain_chans = []
@@ -387,10 +392,8 @@ def stepwise_SRCA(chans, mpara, w, w_target, signal_data, data_target, method,
                 temp_data[:j-1, :, :] = core_data
                 temp_data[j-1, :, :] = signal_data[:,i,:]
             # multi-linear regression & parameter computation
-            temp_extract = mlr(model_input=temp_w, model_target=w_target,
-                               data_input=temp_data, data_target=data_target,
-                               regression=regression)
-            del temp_w, temp_data
+            temp_extract = srca(temp_w, w_target, temp_data, data_target, regression)
+            del temp_w, temp_data 
             if method == 'SNR':
                 temp_para = snr_time(temp_extract)
             elif method == 'Corr':
@@ -803,11 +806,11 @@ def stepwise_SRCA_fs(chans, mfs, w, w_target, signal_data, data_target, regressi
     return remain_chans, snr_change
 
 
-#%% Canonical Correlation Analysis
+# %% Canonical Correlation Analysis
 def sCCA():
     pass
 
-#%% Target identification: TRCA method
+# %% Target identification: TRCA method
 def TRCA_compute(data):
     '''
     Task-related component analysis (TRCA)
@@ -851,132 +854,8 @@ def TRCA_compute(data):
     print('TRCA spatial filter complete!')
     return w
 
-# filter-bank TRCA
-def fb_TRCA(tr_fb_data, te_fb_data):
-    '''
-    TRCA is the method that extracts task-related components efficiently 
-        by maximizing the reproducibility during the task period
-    Parameters:
-        tr_fb_data: (n_events, n_bands, n_trials, n_chans, n_times) |
-            training dataset (after filter bank) 
-        te_fb_data: (n_events, n_bands, n_trials, n_chans, n_times) |
-            test dataset (after filter bank)
-    Returns:
-        accuracy: int | the number of correct identifications
-        
-    '''
-    # template data: (n_events, n_bands, n_chans, n_times)|basic element: (n_chans, n_times)
-    template = np.mean(tr_fb_data, axis=2)  
-    # basic parameters
-    n_events = tr_fb_data.shape[0]
-    n_bands = tr_fb_data.shape[1]
-    n_chans = tr_fb_data.shape[3]
-    n_times = tr_fb_data.shape[4]   
-    # Matrix Q: inter-channel covariance
-    q = np.zeros((n_events, n_bands, n_chans, n_chans))
-    # all events(n), all bands(m)
-    for x in range(n_events):  # x for events (n)
-        for y in range(n_bands):  # y for bands (m)
-            temp = np.zeros((n_chans, int(tr_fb_data.shape[2]*n_times)))
-            for z in range(n_chans):  # z for channels
-                # concatenated matrix of all trials in training dataset
-                temp[z,:] = tr_fb_data[x,y,:,z,:].flatten()
-            # compute matrix Q | (Toeplitz matrix): (n_chans, n_chans)
-            # for each event & band, there should be a unique Q
-            # so the total quantity of Q is n_bands*n_events (here is 30=x*y)
-            q[x,y,:,:] = np.cov(temp)
-            del temp, z
-        del y
-    del x
-    # Matrix S: inter-channels' inter-trial covariance
-    # all events(n), all bands(m), inter-channel(n_chans, n_chans)
-    s = np.zeros((n_events, n_bands, n_chans, n_chans))
-    for u in range(n_events):  # u for events
-        for v in range(n_bands):  # v for bands
-            # at the inter-channels' level, obviouly the square will also be a Toeplitz matrix
-            # i.e. (n_chans, n_chans), here the shape of each matrix should be (9,9)
-            for w in range(n_chans):  # w for channels (j1)
-                for x in range(n_chans):  # x for channels (j2)
-                    cov = []
-                    # for each event & band & channel, there should be (trials^2-trials) values
-                    # here trials = 10, so there should be 90 values in each loop
-                    for y in range(tr_fb_data.shape[2]):  # y for trials (h1)
-                        temp = np.zeros((2, n_times))
-                        temp[0,:] = tr_fb_data[u,v,y,w,:]
-                        for z in range(tr_fb_data.shape[2]):  # z for trials (h2)
-                            if z != y:  # h1 != h2, INTER-trial covariance
-                                temp[1,:] = tr_fb_data[u,v,z,x,:]
-                                cov.append(np.sum(np.tril(np.cov(temp), -1)))
-                            else:
-                                continue
-                        del z, temp
-                    del y
-                    # the basic element S(j1j2) of Matrix S
-                    # is the sum of inter-trial covariance (h1&h2) of 1 events & 1 band in 1 channel
-                    # then form a square (n_chans,n_chans) to describe inter-channels' information
-                    # then form a data cube containing various bands and events' information      
-                    # of course the 1st value should be the larger one (computed in 1 channel)
-                    # according to the spatial location of different channels
-                    # there should also be size differences
-                    # (e.g. PZ & POZ's values are significantly larger)
-                    s[u,v,w,x] = np.sum(cov)
-                    del cov
-                del x
-            del w
-        del v
-    del u   
-    # Spatial filter W
-    # all events(n), all bands(m)
-    w = np.zeros((n_events, n_bands, n_chans))
-    for y in range(n_events):
-        for z in range(n_bands):
-            # Square Q^-1 * S
-            qs = np.mat(q[y,z,:,:]).I * np.mat(s[y,z,:,:])
-            # Eigenvalues & eigenvectors
-            e_value, e_vector = np.linalg.eig(qs)
-            # choose the eigenvector which refers to the largest eigenvalue
-            w_index = np.max(np.where(e_value == np.max(e_value)))
-            # w will maximum the task-related componont from multi-channel's data
-            w[y,z,:] = e_vector[:,w_index].T
-            del w_index
-        del z
-    del y
-    # from now on, never use w as loop mark because we have variable named w
-    # Test dataset operating
-    # basic element of r is (n_bands, n_events)
-    r = np.zeros((n_events, te_fb_data.shape[2], n_bands, n_events))
-    for v in range(n_events): # events in test dataset
-        for x in range(te_fb_data.shape[2]):  # trials in test dataset (of one event)
-            for y in range(n_bands):  # bands are locked
-                # (vth event, zth band, xth trial) test data to (all events(n), zth band(m)) training data
-                for z in range(n_events):
-                    temp_test = np.mat(te_fb_data[v,y,x,:,:]).T * np.mat(w[z,y,:]).T
-                    temp_template = np.mat(template[z,y,:,:]).T * np.mat(w[z,y,:]).T
-                    r[v,x,y,z] = np.sum(np.tril(np.corrcoef(temp_test.T, temp_template.T),-1))
-                del z, temp_test, temp_template
-            del y
-        del x
-    del v
-    # Feature for target identification
-    r = r**2
-    # identification function a(m)
-    a = np.matrix([(m+1)**-1.25+0.25 for m in range(n_bands)])
-    rou = np.zeros((n_events, te_fb_data.shape[2], n_events))
-    for y in range(n_events):
-        for z in range(te_fb_data.shape[2]):  # trials in test dataset (of one event)
-            # (yth event, zth trial) test data | will have n_events' value, here is 3
-            # the location of the largest value refers to the class of this trial
-            rou[y,z,:] = a * np.mat(r[y,z,:,:])    
-    accuracy = []
-    # compute accuracy
-    for x in range(rou.shape[0]):  # ideal classification
-        for y in range(rou.shape[1]):
-            if np.max(np.where(rou[x,y,:] == np.max(rou[x,y,:]))) == x:  # correct
-                accuracy.append(1)   
-    return accuracy
-
 # TRCA for origin data
-def TRCA_off(train_data, test_data):
+def TRCA(train_data, test_data):
     '''
     TRCA with target identification process in offline situation
 
@@ -989,8 +868,7 @@ def TRCA_off(train_data, test_data):
 
     Returns
     -------
-    accuracy : int
-        the number of correct identifications.
+    accuracy : float, 0-1
 
     '''
     # template data: (n_events, n_chans, n_times)
@@ -1159,7 +1037,7 @@ def eTRCA(train_data, test_data):
     print('eTRCA identification complete!')
     return accuracy
 
-# ensembel TRCA for SRCA data
+# ensemble TRCA for SRCA data
 def SRCA_eTRCA(train_data, test_data, tar_chans, model_chans, chans,
                regression='OLS', alpha=1.0, l1_ratio=1.0, sp=1140):
     '''
@@ -1185,9 +1063,9 @@ def SRCA_eTRCA(train_data, test_data, tar_chans, model_chans, chans,
     model_sig = np.zeros((n_events, n_trains, n_chans, n_times))
     for ne in range(n_events):
         temp_model = model_chans[ne::n_events]  # length: len(tar_chans)
-        model_sig[ne, :, :, :] = apply_SRCA(train_data[ne, :, :, :], tar_chans,
-                                            temp_model, chans, regression, sp)
-    del ne, temp_model
+        model_sig[ne, :, :, :] = apply_SRCA(train_data[ne, ...], tar_chans,
+        temp_model, chans, regression, sp)
+    del temp_model
     # apply different srca models on one trial's data
     n_tests = test_data.shape[1]
     # (n_events srca, n_events test, n_tests, n_chans, n_times)
@@ -1195,43 +1073,33 @@ def SRCA_eTRCA(train_data, test_data, tar_chans, model_chans, chans,
     for nes in range(n_events):  # n_events in SRCA model
         temp_model = model_chans[nes::n_events]
         for ner in range(n_events):
-            target_sig[nes, ner, :, :, :] = apply_SRCA(test_data[ner, :, :, :],
-                                        tar_chans, temp_model, chans, regression, sp)
-        del ner
-    del nes, n_chans, n_times
+            target_sig[nes, ner, ...] = apply_SRCA(test_data[ner, ...],
+            tar_chans, temp_model, chans, regression, sp)
+    del n_chans, n_times
     # template data: (n_events, n_chans, n_times)
-    template = np.mean(model_sig, axis=1)
-    # Matrix Q: (n_events, n_chans, n_chans) | inter-channel covariance
-    q = matrix_Q(model_sig)
-    print('Matrix Q complete!')
-    # Matrix S: (n_events, n_chans, n_chans) | inter-channels' inter-trial covariance
-    s = matrix_S(model_sig)
-    print('Matrix S complete!')
+    template = model_sig.mean(axis=1)
     # Spatial filter W: (n_events, n_chans)
-    w = spatial_W(q, s)
-    print('Spatial filter complete!')
+    w = TRCA_compute(model_sig)
     # Ensemble target identification
     r = np.zeros((n_events, n_tests, n_events))  # (n_events srca, n_tests, n_events test)
-    for nes in range(n_events):  # n_events in srca model
-        for nte in range(n_tests):  # n_tests
-            for ner in range(n_events):  # n_events in test dataset
-                temp_test = np.mat(w) * np.mat(target_sig[nes, ner, nte, :, :])
-                temp_template = np.mat(w) * np.mat(template[nes, :, :])
+    for nes in range(n_events):                  # n_events in srca model
+        for nte in range(n_tests):               # n_tests
+            for ner in range(n_events):          # n_events in test dataset
+                temp_test = np.dot(w, target_sig[nes, ner, nte, ...])
+                temp_template = np.dot(w, template[nes, ...])
                 r[nes, nte, ner] = pearson_corr2(temp_test, temp_template)
-            del ner
-        del nte
-    del nes
     # Compute accuracy
     accuracy = []
     for nes in range(n_events):
         for nte in range(n_tests):
             if np.max(np.where(r[nes, nte, :] == np.max(r[nes, nte, :]))) == nes:
                 accuracy.append(1)
+    accuracy = np.sum(accuracy) / (n_events*n_tests)
     print('SRCA eTRCA identification complete!')
     return accuracy
 
 
-# Target identification: DCPM
+# %% Target identification: DCPM
 # discrimination index 1: 2D correlation
 def di1(dataA, dataB):
     '''
@@ -1465,7 +1333,7 @@ def SRCA_DCPM(train_data, test_data, tar_chans, model_chans, chans,
     return acc
 
 
-#%% Correlation detect for single-channel data
+# %% Correlation detect for single-channel data
 def corr_detect(test_data, template):
     '''
     Offline Target identification for single-channel data

@@ -19,11 +19,8 @@ from mne.io import concatenate_raws
 from mne import Epochs
 from mne.filter import filter_data
 import copy
-#import srca
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-#import fp_growth as fpg
-import mcee
 import seaborn as sns
 
 #%% load data
@@ -62,27 +59,26 @@ drop_chans = ['M1', 'M2']
 
 picks = mne.pick_types(raw.info, emg=False, eeg=True, stim=False, eog=False,
                        exclude=drop_chans)
-picks_ch_names = [raw.ch_names[i] for i in picks]  # layout picked chans' name
+picks_ch_names = [raw.ch_names[i] for i in picks]  # layout picked channels' name
 
-#%% define labels
-event_id = dict(f60p0=2, f60p1=3, f80p0=4, f80p1=5)
-event_id = dict(f32=1)
-#baseline = (-0.2, 0)    # define baseline
-tmin, tmax = -1., 10.5     # set the time range
+# define labels
+# event_id = dict(f60p0=2, f60p1=3, f80p0=4, f80p1=5)  # unnecessary 
+# baseline = (-0.2, 0)    # define baseline
+tmin, tmax = -1., 10.5    # set the time range
 sfreq = 1000
 
 # transform raw object into array
-n_events = len(event_id)
+n_events = 4  # remember to define the variable by yourself
 n_trials = int(events.shape[0] / n_events)
 n_chans = len(picks)
 n_times = int((tmax - tmin) * sfreq + 1)
 
-#%% pick up data
+# pick up data
 data = np.zeros((n_events, n_trials, n_chans, n_times))
 
-f32 = Epochs(raw, events=events, event_id=1, tmin=tmin, picks=picks,
+# change the input of the function yourself
+f60p0 = Epochs(raw, events=events, event_id=1, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
-#%%
 f60p1 = Epochs(raw, events=events, event_id=2, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
 f80p0 = Epochs(raw, events=events, event_id=3, tmin=tmin, picks=picks,
@@ -90,29 +86,23 @@ f80p0 = Epochs(raw, events=events, event_id=3, tmin=tmin, picks=picks,
 f80p1 = Epochs(raw, events=events, event_id=4, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
 
-#%% filter data
-ff80p0 = filter_data(f80p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='iir')
-ff80p1 = filter_data(f80p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='iir')
-#
-ff60p0 = filter_data(f60p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='iir')
-ff60p1 = filter_data(f60p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='iir')
-#%%
-ff32 = filter_data(f32, sfreq=sfreq, l_freq=40, h_freq=80, n_jobs=4, method='iir')
-#%% find bad trials
-data = ff80p0[:,54,1140:2140]
-plt.plot(np.mean(data, axis=0))
-#
-data = ff80p1[:,54,1140:2140]
-plt.plot(np.mean(data, axis=0))
-#%% delete bad trials
-bad = np.where(data > 12)
+# filter data
+ff80p0 = filter_data(f80p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='fir')
+ff80p1 = filter_data(f80p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='fir')
+ff60p0 = filter_data(f60p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='fir')
+ff60p1 = filter_data(f60p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='fir')
 
-#%% check abnormal waveform
-plt.plot(data[42,0:])
+# visualization
+plt.figure()
+plt.plot(f60p0[:,59,1140:1640].mean(axis=0))  # average by trial, plot Oz's data
 
-#%% check abnormal FFT
-data = np.mean(ff58, axis=0)
-plt.psd(data, 1024, 1000)
+# save data as .mat file
+data[0,...] = f60p0
+data[1,...] = f60p0
+data[2,...] = f60p0
+data[3,...] = f60p0
+data_path = r'D:\SSVEP\dataset\preprocessed_data\60&80\zhaowei\fir_50_90.mat'
+io.savemat(data_path, {'f_data':data, 'chan_info':picks_ch_names})
 
 #%% new task
 eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
