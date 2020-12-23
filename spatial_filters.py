@@ -196,5 +196,11 @@ class spatial_filter:
     The Unified Framework for constructing spatial filters used in SSVEP signal processing
 
     """
-    def __init__(self, )
-    pass
+    def __init__(self, train_data, subject=None, target_label=None):
+        pass
+
+    def framework():
+        pass
+
+    def framework_prepare(type='CCA'):
+        pass

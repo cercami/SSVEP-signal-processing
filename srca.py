@@ -335,14 +335,6 @@ def phase_cca():
     pass
 
 
-# %% Target identification functions (DSE)
-def sCCA():
-    pass
-
-def itCCA():
-    pass
-
-
 # %% return sorted list's label change
 # index_change = sorted(range(len(list)), key=lambda k: lis[k])
 # data = data[index_change[:], ...]

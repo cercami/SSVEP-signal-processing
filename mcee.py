@@ -33,6 +33,7 @@ version 1.0
 import numpy as np
 from numpy import linalg as LA
 from numpy import corrcoef as CORR
+from numpy import newaxis as NA
 
 from sklearn import linear_model
 
@@ -294,23 +295,58 @@ def apply_SRCA(data, tar_chans, model_chans, chans, regression='OLS', sp=1140):
     return f_data
 
 # zero mean normalization (if necessary)
-def zero_mean(data):
+def zero_mean(data, axis):
     '''
     
     Zero mean normalization
     Parameters
     ----------
-    data : (n_events, n_trials, n_chans, n_times)
-        input data array (z-scored)
+    data : ndarray
+        input data array
+    axis : int/None
+        if None, data is a sequence.
 
     Returns
     -------
-    data : (n_events, n_trials, n_chans, n_times)
+    data : ndarray
         data after z-scored
 
-    ''' 
-    data -= data.mean(axis=1, keepdims=True)
+    '''
+    if axis == None:
+        data -= data.mean()
+    else:
+        data -= data.mean(axis=axis, keepdims=True)
     return data
+
+def corr_coef(X, y):
+    """
+
+    Parameters
+    ----------
+    X : (..., n_points)
+        input data array. (could be sequence)
+    y : (1, n_points)
+        input data vector/sequence
+
+    Returns
+    -------
+    corrcoef : float
+        Pearson's Correlation Coefficient(mean of sequence or single number).
+    """
+    cov_yx = y @ X.T
+    # Note: 'int' object has no attribute 'ndim', but the dimension of 'float' object is 0
+    if cov_yx.ndim == 0:  
+        var_xx = np.sqrt(X @ X.T)
+    # try:
+    #     dim = cov_yx.ndim  
+    # except AttributeError:
+    #     var_xx = np.sqrt(X @ X.T)
+    else:
+        var_xx = np.sqrt(np.diagonal(X @ X.T)) 
+    var_yy = np.sqrt(float(y @ y.T))
+    corrcoef = cov_yx / (var_xx*var_yy)
+
+    return corrcoef.mean()
 
 # %% Stepwise SRCA
 def SRCA_train(chans, mpara, w, w_target, signal_data, data_target, method='SNR',
@@ -810,7 +846,8 @@ def stepwise_SRCA_fs(chans, mfs, w, w_target, signal_data, data_target, regressi
 def sCCA():
     pass
 
-# %% Target identification: TRCA method
+# %% Target identification: TRCA method (series)
+# pre-functions
 def TRCA_compute(data):
     '''
     Task-related component analysis (TRCA)
@@ -826,77 +863,35 @@ def TRCA_compute(data):
         eigenvector refering to the largest eigenvalue.
 
     '''
+    # basic information
     n_events = data.shape[0]
     n_trials= data.shape[1]
     n_chans = data.shape[2]
     n_times = data.shape[-1]
-    # spatial filter W initialization
+
+    # compute spatial filter W 
     w = np.zeros((n_events, n_chans))
     for ne in range(n_events):
         # matrix Q: inter-channel covariance
         q = np.zeros((n_chans, n_chans))
-        temp_Q = data[ne,...].swapaxes(0,1).reshape((n_chans,-1), order='C')
-        q = np.dot(temp_Q, temp_Q.T) / (n_trials*n_times)
+        temp_Q = data[ne, ...].swapaxes(0,1).reshape((n_chans,-1), order='C')
+        q = (temp_Q@temp_Q.T) / (n_trials*n_times)
         # matrix S: inter-channels' inter-trial covariance
         s = np.zeros_like(q)
         for nt_i in range(n_trials):
             for nt_j in range(n_trials):
                 if nt_i != nt_j:
-                    data_i = data[ne, nt_i,...]
-                    data_j = data[ne, nt_j,...]
-                    s += np.dot(data_i, data_j.T)/(n_times)
+                    data_i = data[ne, nt_i, ...]
+                    data_j = data[ne, nt_j, ...]
+                    s += (data_i@data_j.T) / n_times
         # generalized eigenvalue problem
-        e_va, e_vec = LA.eig(np.dot(LA.inv(q), s))
-        w_index = np.max(np.where(e_va == np.max(e_va)))
+        e_va, e_vec = LA.eig(LA.inv(q)@s)
+        w_index = np.argmax(e_va)
         #w[ne, :] = e_vec[:, e_va.argsort()[::-1]][:,0].T
         w[ne, :] = e_vec[:, w_index].T
         #e_value = np.array(sorted(e_va, reverse=True))
-    print('TRCA spatial filter complete!')
     return w
 
-# TRCA for origin data
-def TRCA(train_data, test_data):
-    '''
-    TRCA with target identification process in offline situation
-
-    Parameters
-    ----------
-    train_data : (n_events, n_trials, n_chans, n_times)
-        training dataset.
-    test_data : (n_events, n_trials, n_chans, n_times)
-        test dataset.
-
-    Returns
-    -------
-    accuracy : float, 0-1
-
-    '''
-    # template data: (n_events, n_chans, n_times)
-    template = train_data.mean(axis=1)
-    # basic parameters
-    n_events = train_data.shape[0]
-    n_tests = test_data.shape[1]
-    # spatial filter W: (n_events, n_chans)
-    w = TRCA_compute(train_data)
-    # target identification
-    r = np.zeros((n_events, n_tests, n_events))
-    for nete in range(n_events):  # n_events in test dataset
-        for nte in range(n_tests):
-            for netr in range(n_events):  # n_events in training dataset
-                temp_test = np.dot(w[netr, :], test_data[nete, nte, ...])
-                temp_template = np.dot(w[netr, :], template[netr, ...])
-                r[nete, nte, netr] = np.sum(np.tril(CORR(temp_test, temp_template),-1))
-    accuracy = []
-    # compute accuracy
-    for ne in range(n_events):
-        for nt in range(n_tests):
-            if np.max(np.where(r[ne, nt, :] == np.max(r[ne, nt, :]))) == ne:
-                accuracy.append(1)
-    accuracy = np.sum(accuracy) / (n_events*n_tests)
-    print('TRCA identification complete!')
-    return accuracy
-
-# correlation between 2-D matrices
 def pearson_corr2(dataA, dataB):
     '''
     Compute Pearson Correlation Coefficients between 2D matrices
@@ -914,6 +909,7 @@ def pearson_corr2(dataA, dataB):
     # basic information
     n_chans = dataA.shape[0]
     n_times = dataA.shape[-1]
+
     # 2D correlation
     numerator = 0
     denominatorA = 0
@@ -922,13 +918,253 @@ def pearson_corr2(dataA, dataB):
     meanB = dataB.mean()  # the same
     for nc in range(n_chans):
         for nt in range(n_times):
-            numerator += (dataA[nc, nt] - meanA) * (dataB[nc, nt] - meanB)
-            denominatorA += (dataA[nc, nt] - meanA)**2
-            denominatorB += (dataB[nc, nt] - meanB)**2
-    corr2 = numerator / np.sqrt(denominatorA * denominatorB)
+            numerator += (dataA[nc, nt]-meanA) * (dataB[nc, nt]-meanB)
+            denominatorA += (dataA[nc, nt]-meanA)**2
+            denominatorB += (dataB[nc, nt]-meanB)**2
+    corr2 = numerator / np.sqrt(denominatorA*denominatorB)
+
     return corr2
 
-# TRCA for SRCA data
+
+# For origin data
+def TRCA(train_data, test_data):
+    '''
+    TRCA with target identification process in offline situation
+
+    Parameters
+    ----------
+    train_data : (n_events, n_trials, n_chans, n_times)
+        training dataset.
+    test_data : (n_events, n_trials, n_chans, n_times)
+        test dataset.
+
+    Returns
+    -------
+    accuracy : float, 0-1
+
+    '''
+    # basic parameters
+    n_events, n_tests = test_data.shape[0], test_data.shape[1]
+    template = train_data.mean(axis=1)  # template data: (n_events, n_chans, n_times)
+    w = TRCA_compute(train_data)        # spatial filter W: (n_events, n_chans)
+
+    # target identification
+    r = np.zeros((n_events, n_tests, n_events))
+    for netr in range(n_events):  # n_events in training dataset
+        for nte in range(n_tests):
+            for nete in range(n_events):  # n_events in test dataset
+                temp_test = w[netr, :] @ test_data[nete, nte, ...]
+                temp_template = w[netr, :] @ template[netr, ...]
+                r[netr, nte, nete] = corr_coef(temp_test, temp_template)
+    
+    # compute accuracy
+    accuracy = []
+    for nete in range(n_events):  # n_events in training dataset
+        for nte in range(n_tests):
+            if np.argmax(r[:, nte, nete]) == nete:
+                accuracy.append(1)
+    accuracy = np.sum(accuracy) / (n_events*n_tests)
+
+    return accuracy
+
+def eTRCA(train_data, test_data):
+    '''
+    ensemble-TRCA without filter banks for original signal
+    Parameters:
+        train_data: (n_events, n_trials, n_chans, n_times) | training dataset
+        test_data: (n_events, n_trials, n_chans, n_times) | test dataset
+    Returns:
+        accuracy: int | the number of correct identification
+    '''
+    # basic parameters
+    n_events = train_data.shape[0]
+    n_tests = test_data.shape[1]
+
+    template = train_data.mean(axis=1)  # template data: (n_events, n_chans, n_times)
+    w = TRCA_compute(train_data)        # spatial filter W: (n_events, n_chans)
+
+    # target identification
+    r = np.zeros((n_events, n_tests, n_events))
+    for netr in range(n_events):  # n_events in training dataset
+        for nte in range(n_tests):
+            for nete in range(n_events):  # n_events in test dataset
+                temp_test = w @ test_data[nete, nte, ...]
+                temp_template = w @ template[netr, ...]
+                r[netr, nte, nete] = pearson_corr2(temp_test, temp_template)
+
+    # compute accuracy
+    accuracy = []
+    for nete in range(n_events):  # n_events in training dataset
+        for nte in range(n_tests):
+            if np.argmax(r[:, nte, nete]) == nete:
+                accuracy.append(1)
+    accuracy = np.sum(accuracy) / (n_events*n_tests)
+
+    return accuracy
+
+def TRCA_R():
+    pass
+
+def eTRCA_R():
+    pass
+
+def split_TRCA(stepwidth, train_data, test_data, mode='total'):
+    """
+
+    Parameters
+    ----------
+    train_data : (n_events, n_trials, n_chans, n_times)
+        training dataset.
+    test_data : (n_events, n_trials, n_chans, n_times)
+        test dataset.
+    stepwidth : int
+        step size of division operation based on the period of signals
+    mode : str
+        'partial' or 'total', the default is 'total'
+
+    Returns
+    -------
+    accuracy : float, 0-1
+
+    """
+    # basic parameters
+    n_events = test_data.shape[0]
+    n_tests = test_data.shape[1]
+    n_chans = test_data.shape[2]
+    n_times = test_data.shape[-1]
+    template = train_data.mean(axis=1)  # (n_events, n_chans, n_times)
+    seg_num = int(n_times/stepwidth)
+    
+    # split data
+    seg_test_data = np.zeros((1, n_events, n_tests, n_chans, stepwidth))
+    seg_template = np.zeros((1, n_events, n_chans, stepwidth))
+    for i in range(seg_num):
+        # seg_test_data: (seg_num, n_events, n_trials, n_chans, stepwidth)
+        seg_test_data = np.concatenate((seg_test_data,
+            test_data[NA, ..., i*stepwidth:(i+1)*stepwidth]), axis=0)
+        # seg_template: (seg_num, n_events, n_chans, stepwidth)
+        seg_template = np.concatenate((seg_template,
+            template[NA, ..., i*stepwidth:(i+1)*stepwidth]), axis=0)
+    seg_test_data = np.delete(seg_test_data, 0, axis=0)
+    seg_template = np.delete(seg_template, 0, axis=0)
+
+    if mode == 'partial':  # only divide the test dataset
+        # compute spatial filter w
+        w = TRCA_compute(train_data)
+
+        # split target identification
+        rou = np.zeros((seg_num, n_events, n_tests, n_events))
+        for seg in range(seg_num):
+            for netr in range(n_events):  # n_events in training dataset
+                for nte in range(n_tests):
+                    for nete in range(n_events):  # n_events in test dataset
+                        temp_test = w[netr, :] @ seg_test_data[seg, nete, nte, ...]
+                        temp_template = w[netr, :] @ seg_template[seg, netr, ...]
+                        rou[seg, netr, nte, nete] = corr_coef(temp_test, temp_template)
+
+    elif mode == 'total':  # divide both the training and test dataset
+        # compute spatial filter w
+        seg_w = np.zeros((1, n_events, n_chans))
+        for i in range(seg_num):
+            temp_w = TRCA_compute(train_data[..., i*stepwidth:(i+1)*stepwidth])
+            seg_w = np.concatenate((seg_w, temp_w[NA, ...]), axis=0)
+        seg_w = np.delete(seg_w, 0, axis=0)
+
+        # split target identification
+        rou = np.zeros((seg_num, n_events, n_tests, n_events))
+        for seg in range(seg_num):
+            for netr in range(n_events):  # n_events in training dataset
+                for nte in range(n_tests):
+                    for nete in range(n_events):  # n_events in test dataset
+                        temp_test = seg_w[seg, netr, :] @ seg_test_data[seg, nete, nte, ...]
+                        temp_template = seg_w[seg, netr, :] @ seg_template[seg, netr, ...]
+                        rou[seg, netr, nte, nete] = corr_coef(temp_test, temp_template)
+        
+    # compute accuracy
+    accuracy = []
+    r = np.sum(rou, axis=0)
+    for nete in range(n_events):  # n_events in training dataset
+        for nte in range(n_tests):
+            if np.argmax(r[:, nte, nete]) == nete:
+                accuracy.append(1)
+    accuracy = np.sum(accuracy) / (n_events*n_tests)
+
+    return rou, accuracy
+
+def split_eTRCA(stepwidth, train_data, test_data, mode='total'):
+
+    # basic parameters
+    n_events = test_data.shape[0]
+    n_tests = test_data.shape[1]
+    n_chans = test_data.shape[2]
+    n_times = test_data.shape[-1]
+    template = train_data.mean(axis=1)  # (n_events, n_chans, n_times)
+    seg_num = int(n_times/stepwidth)
+    
+    # split data
+    seg_test_data = np.zeros((1, n_events, n_tests, n_chans, stepwidth))
+    seg_template = np.zeros((1, n_events, n_chans, stepwidth))
+    for i in range(seg_num):
+        # seg_test_data: (seg_num, n_events, n_trials, n_chans, stepwidth)
+        seg_test_data = np.concatenate((seg_test_data,
+                        test_data[NA, ..., i*stepwidth:(i+1)*stepwidth]), axis=0)
+        # seg_template: (seg_num, n_events, n_chans, stepwidth)
+        seg_template = np.concatenate((seg_template,
+                        template[NA, ..., i*stepwidth:(i+1)*stepwidth]), axis=0)
+    seg_test_data = np.delete(seg_test_data, 0, axis=0)
+    seg_template = np.delete(seg_template, 0, axis=0)
+
+    if mode == 'partial':  # only divide the test dataset
+        # compute spatial filter w
+        w = TRCA_compute(train_data)
+
+        # split target identification
+        rou = np.zeros((seg_num, n_events, n_tests, n_events))
+        for seg in range(seg_num):
+            for netr in range(n_events):  # n_events in training dataset
+                for nte in range(n_tests):
+                    for nete in range(n_events):  # n_events in test dataset
+                        temp_test = w @ seg_test_data[seg, nete, nte, ...]
+                        temp_template = w @ seg_template[seg, netr, ...]
+                        rou[seg, netr, nte, nete] = pearson_corr2(temp_test, temp_template)
+
+    elif mode == 'total':  # divide both the training and test dataset
+        # compute spatial filter w
+        seg_w = np.zeros((1, n_events, n_chans))
+        for i in range(seg_num):
+            temp_w = TRCA_compute(train_data[..., i*stepwidth:(i+1)*stepwidth])
+            seg_w = np.concatenate((seg_w, temp_w[NA, ...]), axis=0)
+        seg_w = np.delete(seg_w, 0, axis=0)
+
+        # split target identification
+        rou = np.zeros((seg_num, n_events, n_tests, n_events))
+        for seg in range(seg_num):
+            for netr in range(n_events):  # n_events in training dataset
+                for nte in range(n_tests):
+                    for nete in range(n_events):  # n_events in test dataset
+                        temp_test = seg_w[seg, ...] @ seg_test_data[seg, nete, nte, ...]
+                        temp_template = seg_w[seg, ...] @ seg_template[seg, netr, ...]
+                        rou[seg, netr, nte, nete] = pearson_corr2(temp_test, temp_template)
+
+    # compute accuracy
+    accuracy = []
+    r = np.sum(rou, axis=0)
+    for nete in range(n_events):  # n_events in training dataset
+        for nte in range(n_tests):
+            if np.argmax(r[:, nte, nete]) == nete:
+                accuracy.append(1)
+    accuracy = np.sum(accuracy) / (n_events*n_tests)
+
+    return rou, accuracy
+
+def split_TRCA_R():
+    pass
+
+def split_eTRCA_R():
+    pass
+
+
+# For SRCA data
 def SRCA_TRCA(train_data, test_data, tar_chans, model_chans, chans,
               regression='OLS', alpha=1.0, l1_ratio=1.0, sp=1140):
     '''
@@ -961,83 +1197,52 @@ def SRCA_TRCA(train_data, test_data, tar_chans, model_chans, chans,
     accuracy : int
         the number of correct identifications.
     '''
-    # config correct srca process on training dataset
+    # basic parameters
     n_events = train_data.shape[0]
     n_trains = train_data.shape[1]
     n_chans = len(tar_chans)
     n_times = train_data.shape[-1] - sp
+
+    # config correct srca process on training dataset
     model_sig = np.zeros((n_events, n_trains, n_chans, n_times))
     for ne in range(n_events):
         temp_model = model_chans[ne::n_events]  # length: len(tar_chans)
-        model_sig[ne, ...] = apply_SRCA(train_data[ne, ...], tar_chans,
-        temp_model, chans, regression, sp)
+        model_sig[ne, ...] = apply_SRCA(train_data[ne, ...], tar_chans, temp_model, chans,
+                                        regression, sp)
     del ne, temp_model
+
     # apply different srca models on one trial's data
     n_tests = test_data.shape[1]
     target_sig = np.zeros((n_events, n_events, n_tests, n_chans, n_times))
-    for ne_tr in range(n_events):      # n_events in SRCA model
-        temp_model = model_chans[ne_tr::n_events]
-        for ne_re in range(n_events):  # n_events in real data
-            target_sig[ne_tr, ne_re, ...] = apply_SRCA(test_data[ne_re, ...],
-            tar_chans, temp_model, chans, regression, sp)
-    del ne_tr, ne_re, n_chans, n_times
-    # template data: (n_events, n_chans, n_times)
-    template = model_sig.mean(axis=1)
-    # Spatial filter W: (n_events, n_chans)
-    w = TRCA_compute(model_sig)
+    for nes in range(n_events):      # n_events in SRCA model
+        temp_model = model_chans[nes::n_events]
+        for ner in range(n_events):  # n_events in real data
+            target_sig[nes, ner, ...] = apply_SRCA(test_data[ner, ...], tar_chans, temp_model,
+                                                        chans, regression, sp)
+    del nes, ner
+
+    template = model_sig.mean(axis=1)  # template data: (n_events, n_chans, n_times)
+    w = TRCA_compute(model_sig)        # Spatial filter W: (n_events, n_chans)
+
     # target identification
     r = np.zeros((n_events, n_tests, n_events))  # (n_events srca, n_tests, n_events test)
     for nes in range(n_events):                  # n_events in srca model
         for nte in range(n_tests):               # n_tests
             for ner in range(n_events):          # n_events in real test dataset
-                temp_test = np.dot(w[nes, :], target_sig[nes, ner, nte,...])
-                temp_template = np.dot(w[nes, :], template[nes, ...])
-                r[nes, nte, ner] = np.sum(np.tril(CORR(temp_test, temp_template),-1))
+                temp_test = w[nes, :] @ target_sig[nes, ner, nte,...]
+                temp_template = w[nes, :] @ template[nes, ...]
+                r[nes, nte, ner] = corr_coef(temp_test, temp_template)
+
     # compute accuracy
     accuracy = []
-    for nes in range(n_events):
+    for ner in range(n_events):
         for nte in range(n_tests):
-            if np.max(np.where(r[nes, nte, :] == np.max(r[nes, nte, :]))) == nes:
+            if np.argmax(r[:, nte, ner]) == ner:
                 accuracy.append(1)
     accuracy = np.sum(accuracy) / (n_events*n_tests)
-    print('SRCA TRCA identification complete!')
+
     return accuracy
 
-# ensemble TRCA for origin data
-def eTRCA(train_data, test_data):
-    '''
-    ensemble-TRCA without filter banks for original signal
-    Parameters:
-        train_data: (n_events, n_trials, n_chans, n_times) | training dataset
-        test_data: (n_events, n_trials, n_chans, n_times) | test dataset
-    Returns:
-        accuracy: int | the number of correctt identification
-    '''
-    # template data: (n_events, n_chans, n_times)
-    template = train_data.mean(axis=1)
-    # basic parameters
-    n_events = train_data.shape[0]
-    n_tests = test_data.shape[1]
-    # spatial filter W: (n_events, n_chans)
-    w = TRCA_compute(train_data)
-    # target identification
-    r = np.zeros((n_events, n_tests, n_events))
-    for nete in range(n_events):
-        for nte in range(n_tests):
-            for netr in range(n_events):
-                temp_test = np.dot(w, test_data[nete, nte, ...])
-                temp_template = np.dot(w, template[netr, ...])
-                r[nete, nte, netr] = pearson_corr2(temp_test, temp_template)
-    accuracy = []
-    for x in range(n_events):
-        for y in range(n_tests):
-            if np.max(np.where(r[x,y,:] == np.max(r[x,y,:]))) == x:  # correct
-                accuracy.append(1)
-    accuracy = np.sum(accuracy) / (n_events*n_tests)
-    print('eTRCA identification complete!')
-    return accuracy
-
-# ensemble TRCA for SRCA data
 def SRCA_eTRCA(train_data, test_data, tar_chans, model_chans, chans,
                regression='OLS', alpha=1.0, l1_ratio=1.0, sp=1140):
     '''
@@ -1065,21 +1270,21 @@ def SRCA_eTRCA(train_data, test_data, tar_chans, model_chans, chans,
         temp_model = model_chans[ne::n_events]  # length: len(tar_chans)
         model_sig[ne, :, :, :] = apply_SRCA(train_data[ne, ...], tar_chans,
         temp_model, chans, regression, sp)
-    del temp_model
+    del ne, temp_model
+
     # apply different srca models on one trial's data
     n_tests = test_data.shape[1]
-    # (n_events srca, n_events test, n_tests, n_chans, n_times)
     target_sig = np.zeros((n_events, n_events, n_tests, n_chans, n_times))
     for nes in range(n_events):  # n_events in SRCA model
         temp_model = model_chans[nes::n_events]
         for ner in range(n_events):
             target_sig[nes, ner, ...] = apply_SRCA(test_data[ner, ...],
             tar_chans, temp_model, chans, regression, sp)
-    del n_chans, n_times
-    # template data: (n_events, n_chans, n_times)
+    del nes, ner
+
     template = model_sig.mean(axis=1)
-    # Spatial filter W: (n_events, n_chans)
     w = TRCA_compute(model_sig)
+
     # Ensemble target identification
     r = np.zeros((n_events, n_tests, n_events))  # (n_events srca, n_tests, n_events test)
     for nes in range(n_events):                  # n_events in srca model
@@ -1088,15 +1293,201 @@ def SRCA_eTRCA(train_data, test_data, tar_chans, model_chans, chans,
                 temp_test = np.dot(w, target_sig[nes, ner, nte, ...])
                 temp_template = np.dot(w, template[nes, ...])
                 r[nes, nte, ner] = pearson_corr2(temp_test, temp_template)
+    del nes, nte, ner
+
     # Compute accuracy
     accuracy = []
-    for nes in range(n_events):
+    for ner in range(n_events):
         for nte in range(n_tests):
-            if np.max(np.where(r[nes, nte, :] == np.max(r[nes, nte, :]))) == nes:
+            if np.argmax(r[:, nte, ner]) == ner:
                 accuracy.append(1)
     accuracy = np.sum(accuracy) / (n_events*n_tests)
-    print('SRCA eTRCA identification complete!')
+
     return accuracy
+
+def SRCA_TRCA_R():
+    pass
+
+def SRCA_eTRCA_R():
+    pass
+
+def split_SRCA_TRCA(stepwidth, train_data, test_data, tar_chans, model_chans, chans,
+                    regression='OLS', alpha=1.0, l1_ratio=1.0, sp=1140, mode='total'):
+    
+    # basic parameters
+    n_events = test_data.shape[0]
+    n_trains = train_data.shape[1]
+    n_tests = test_data.shape[1]
+    n_chans = len(tar_chans)
+    n_times = train_data.shape[-1] - sp
+    seg_num = int(n_times/stepwidth)
+
+    # config correct srca process on training dataset
+    model_sig = np.zeros((n_events, n_trains, n_chans, n_times))
+    for ne in range(n_events):
+        temp_model = model_chans[ne::n_events]  # length: len(tar_chans)
+        model_sig[ne, ...] = apply_SRCA(train_data[ne, ...], tar_chans, temp_model,
+            chans, regression, sp)
+    template = model_sig.mean(axis=1)  # template data: (n_events, n_chans, n_times)
+    del ne
+
+    # apply different srca models on one trial's data
+    n_tests = test_data.shape[1]
+    target_sig = np.zeros((n_events, n_events, n_tests, n_chans, n_times))
+    for ne_tr in range(n_events):      # n_events in SRCA model
+        temp_model = model_chans[ne_tr::n_events]
+        for ne_re in range(n_events):  # n_events in real data
+            target_sig[ne_tr, ne_re, ...] = apply_SRCA(test_data[ne_re, ...], tar_chans,
+                temp_model, chans, regression, sp)
+    del ne_tr, ne_re
+
+    # split data
+    seg_target_data = np.zeros((1, n_events, n_events, n_tests, n_chans, stepwidth))
+    seg_template = np.zeros((1, n_events, n_chans, stepwidth))
+    for i in range(seg_num):
+        # seg_target_data: (seg_num, n_events, n_events, n_trials, n_chans, stepwidth)
+        seg_target_data = np.concatenate((seg_target_data,
+            target_sig[NA, ..., i*stepwidth:(i+1)*stepwidth]), axis=0)
+        # seg_template: (seg_num, n_events, n_chans, stepwidth)
+        seg_template = np.concatenate((seg_template,
+            template[NA, ..., i*stepwidth:(i+1)*stepwidth]), axis=0)
+    seg_target_data = np.delete(seg_target_data, 0, axis=0)
+    seg_template = np.delete(seg_template, 0, axis=0)
+    
+    if mode == 'partial':  # only divide the test dataset
+        # compute spatial filter w
+        w = TRCA_compute(model_sig)
+
+        # split target identification
+        rou = np.zeros((seg_num, n_events, n_tests, n_events))
+        for seg in range(seg_num):
+            for nes in range(n_events):                  # n_events in srca model
+                for nte in range(n_tests):               # n_tests
+                    for ner in range(n_events):          # n_events in real test dataset
+                        temp_test = w[nes, :] @ seg_target_data[seg, nes, ner, nte, ...]
+                        temp_template = w[nes, :] @ seg_template[seg, nes, ...]
+                        rou[seg, nes, nte, ner] = corr_coef(temp_test, temp_template)
+    
+    elif mode == 'total':  # divide both the training and test dataset
+        # compute spatial filter w
+        seg_w = np.zeros((1, n_events, n_chans))
+        for i in range(seg_num):
+            temp_w = TRCA_compute(model_sig[..., i*stepwidth:(i+1)*stepwidth])
+            seg_w = np.concatenate((seg_w, temp_w[NA, ...]), axis=0)
+        seg_w = np.delete(seg_w, 0, axis=0)
+
+        # split target identification
+        rou = np.zeros((seg_num, n_events, n_tests, n_events))
+        for seg in range(seg_num):
+            for nes in range(n_events):                  # n_events in srca model
+                for nte in range(n_tests):               # n_tests
+                    for ner in range(n_events):          # n_events in real test dataset
+                        temp_test = seg_w[seg, nes, :] @ seg_target_data[seg, nes, ner, nte, ...]
+                        temp_template = seg_w[seg, nes, :] @ seg_template[seg, nes, ...]
+                        rou[seg, nes, nte, ner] = corr_coef(temp_test, temp_template)
+
+    # compute accuracy
+    accuracy = []
+    r = np.sum(rou, axis=0)
+    for ner in range(n_events):
+        for nte in range(n_tests):
+            if np.argmax(r[:, nte, ner]) == ner:
+                accuracy.append(1)
+    accuracy = np.sum(accuracy) / (n_events*n_tests)
+
+    return rou, accuracy
+
+def split_SRCA_eTRCA(stepwidth, train_data, test_data, tar_chans, model_chans, chans,
+                    regression='OLS', alpha=1.0, l1_ratio=1.0, sp=1140, mode='total'):
+
+    # basic parameters
+    n_events = test_data.shape[0]
+    n_trains = train_data.shape[1]
+    n_tests = test_data.shape[1]
+    n_chans = len(tar_chans)
+    n_times = train_data.shape[-1] - sp
+    seg_num = int(n_times/stepwidth)
+
+    # config correct srca process on training dataset
+    model_sig = np.zeros((n_events, n_trains, n_chans, n_times))
+    for ne in range(n_events):
+        temp_model = model_chans[ne::n_events]  # length: len(tar_chans)
+        model_sig[ne, ...] = apply_SRCA(train_data[ne, ...], tar_chans, temp_model,
+            chans, regression, sp)
+    template = model_sig.mean(axis=1)  # template data: (n_events, n_chans, n_times)
+    del ne
+
+    # apply different srca models on one trial's data
+    n_tests = test_data.shape[1]
+    target_sig = np.zeros((n_events, n_events, n_tests, n_chans, n_times))
+    for nes in range(n_events):      # n_events in SRCA model
+        temp_model = model_chans[nes::n_events]
+        for ner in range(n_events):  # n_events in real data
+            target_sig[nes, ner, ...] = apply_SRCA(test_data[ner, ...], tar_chans,
+                temp_model, chans, regression, sp)
+    del nes, ner
+
+    # split data
+    seg_target_data = np.zeros((1, n_events, n_events, n_tests, n_chans, stepwidth))
+    seg_template = np.zeros((1, n_events, n_chans, stepwidth))
+    for i in range(seg_num):
+        # seg_target_data: (seg_num, n_events, n_events, n_trials, n_chans, stepwidth)
+        seg_target_data = np.concatenate((seg_target_data,
+            target_sig[NA, ..., i*stepwidth:(i+1)*stepwidth]), axis=0)
+        # seg_template: (seg_num, n_events, n_chans, stepwidth)
+        seg_template = np.concatenate((seg_template,
+            template[NA, ..., i*stepwidth:(i+1)*stepwidth]), axis=0)
+    seg_target_data = np.delete(seg_target_data, 0, axis=0)
+    seg_template = np.delete(seg_template, 0, axis=0)
+    
+    if mode == 'partial':  # only divide the test dataset
+        # compute spatial filter w
+        w = TRCA_compute(model_sig)
+
+        # split target identification
+        rou = np.zeros((seg_num, n_events, n_tests, n_events))
+        for seg in range(seg_num):
+            for nes in range(n_events):                  # n_events in srca model
+                for nte in range(n_tests):               # n_tests
+                    for ner in range(n_events):          # n_events in real test dataset
+                        temp_test = w @ seg_target_data[seg, nes, ner, nte, ...]
+                        temp_template = w @ seg_template[seg, nes, ...]
+                        rou[seg, nes, nte, ner] = pearson_corr2(temp_test, temp_template)
+    
+    elif mode == 'total':  # divide both the training and test dataset
+        # compute spatial filter w
+        seg_w = np.zeros((1, n_events, n_chans))
+        for i in range(seg_num):
+            temp_w = TRCA_compute(model_sig[..., i*stepwidth:(i+1)*stepwidth])
+            seg_w = np.concatenate((seg_w, temp_w[NA, ...]), axis=0)
+        seg_w = np.delete(seg_w, 0, axis=0)
+
+        # split target identification
+        rou = np.zeros((seg_num, n_events, n_tests, n_events))
+        for seg in range(seg_num):
+            for nes in range(n_events):                  # n_events in srca model
+                for nte in range(n_tests):               # n_tests
+                    for ner in range(n_events):          # n_events in real test dataset
+                        temp_test = seg_w[seg, ...] @ seg_target_data[seg, nes, ner, nte, ...]
+                        temp_template = seg_w[seg, ...] @ seg_template[seg, nes, ...]
+                        rou[seg, nes, nte, ner] = pearson_corr2(temp_test, temp_template)
+
+    # compute accuracy
+    accuracy = []
+    r = np.sum(rou, axis=0)
+    for ner in range(n_events):
+        for nte in range(n_tests):
+            if np.argmax(r[:, nte, ner]) == ner:
+                accuracy.append(1)
+    accuracy = np.sum(accuracy) / (n_events*n_tests)
+
+    return rou, accuracy
+
+def split_SRCA_TRCA_R():
+    pass
+
+def split_SRCA_eTRCA_R():
+    pass
 
 
 # %% Target identification: DCPM
@@ -1182,12 +1573,12 @@ def DCPM(train_data, test_data, di=['1','2','3','4','5']):
     n_trains = train_data.shape[1]
     n_tests = test_data.shape[1]
     # pattern data preparation
-    x1 = np.swapaxes(train_data[0, :, :, :], 0, 2)  # (n_times, n_chans, n_trials)
+    x1 = np.swapaxes(train_data[0, ...], 0, 2)  # (n_times, n_chans, n_trials)
     x1 = np.swapaxes(x1, 0, 1)                     # (n_chans, n_times, n_trials)
-    x2 = np.swapaxes(train_data[1, :, :, :], 0, 2)  # (n_times, n_chans, n_trials)
+    x2 = np.swapaxes(train_data[1, ...], 0, 2)  # (n_times, n_chans, n_trials)
     x2 = np.swapaxes(x2, 0, 1)                     # (n_chans, n_times, n_trials)
-    pattern1 = np.mat(np.mean(train_data[0, :, :, :], axis=0))  # (n_chans, n_times)
-    pattern2 = np.mat(np.mean(train_data[1, :, :, :], axis=0))  # (n_chans, n_times)
+    pattern1 = np.mat(np.mean(train_data[0, ...], axis=0))  # (n_chans, n_times)
+    pattern2 = np.mat(np.mean(train_data[1, ...], axis=0))  # (n_chans, n_times)
     # covariance matrices
     sigma11 = pattern1 * pattern1.T  # (n_chans, n_chans)
     sigma12 = pattern1 * pattern2.T  # (n_chans, n_chans)
@@ -1196,8 +1587,8 @@ def DCPM(train_data, test_data, di=['1','2','3','4','5']):
     # variance matrices
     var1, var2 = np.zeros_like(sigma11), np.zeros_like(sigma22)
     for i in range(n_trains):
-        var1 += (x1[:,:,i] - pattern1) * (x1[:,:,i] - pattern1).T
-        var2 += (x2[:,:,i] - pattern2) * (x2[:,:,i] - pattern2).T
+        var1 += (x1[...,i] - pattern1) * (x1[...,i] - pattern1).T
+        var2 += (x2[...,i] - pattern2) * (x2[...,i] - pattern2).T
     var1 /= (n_trains - 1)
     var2 /= (n_trains - 1)
     # discriminative spatial pattern (DSP) % projection W
@@ -1240,6 +1631,7 @@ def DCPM(train_data, test_data, di=['1','2','3','4','5']):
         for nte in range(n_tests):
             if np.max(np.where(rou[nete, nte, :] == np.max(rou[nete, nte, :]))) == nete:
                 acc.append(1)
+    acc = np.sum(acc)/(n_tests*n_events)
     print('DCPM indentification complete!')
     return acc
 

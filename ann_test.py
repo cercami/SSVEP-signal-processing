@@ -13,7 +13,10 @@ update: 2020/12/12
 # %% load in modules
 import numpy as np
 from numpy.random import normal
+from numpy import newaxis as NA
+
 from scipy.special import expit
+
 
 # %% neural network class definition
 class neural_network:
@@ -51,5 +54,40 @@ class neural_network:
         # calculate the signals emerging from hidder layer
         hidden_outputs = self.act_func(hidden_inputs)
 
+        # calculate signals into final output layer
+        final_inputs = self.who @ hidden_outputs
+        # calculate the signals emerging from final output layer
+        final_outputs = self.act_func(final_inputs)
+        # output layer error: target - actual
+        output_errors = targets - final_outputs
+        # hidden layer error is the output errors, split by weights, recombined at hidden nodes
+        hidden_errors = self.who.T @ output_errors
 
+        # update the weights for the links between the hidden and output layers
+        self.who += self.lr * ((output_errors * final_outputs * (1.-final_outputs)) @ hidden_outputs[NA,:].T)
         
+        # update the weights for the links between the input and hidden layers
+        self.wih += self.lr * ((hidden_errors * hidden_outputs * (1.-hidden_outputs)) @ inputs.T)
+
+        pass
+
+
+    # query the neural network
+    def query(self, inputs_list):
+        # convert inputs list to 2D array
+        inputs = np.array(inputs_list, ndmin=2).T
+
+        # calculate signals into hidden layer
+        hidden_inputs = self.wih @ inputs
+
+        # calculate the signals emerging from hidden layer
+        hidden_outputs = self.act_func(hidden_inputs)
+
+        # calculate signals into final output layer
+        final_inputs = self.who @ hidden_outputs
+        # calculate the signals emerging from final output layer
+        final_outputs = self.act_func(final_inputs)
+
+        return final_outputs
+
+    pass

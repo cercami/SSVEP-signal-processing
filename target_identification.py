@@ -18,17 +18,17 @@ import copy
 
 # %% TRCA/eTRCA for SRCA/origin data
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
-tar_chans= ['O1 ', 'OZ ', 'O2 ']
-#train_num = [10, 20, 30, 40]
+# tar_chans= ['O1 ', 'OZ ', 'O2 ']
+# train_num = [10, 20, 30, 40]
 train_num = [80]
-#nameList = ['pangjun', 'chengqian']
-#nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
-nameList = ['wanghao']
+# nameList = ['pangjun', 'chengqian']
+nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
+# nameList = ['wujieyu']
 
-acc_srca_trca = np.zeros((len(nameList), 5, 5))
-acc_srca_etrca = np.zeros((len(nameList), 5, 5))
-acc_ori_trca = np.zeros((len(nameList), 5, 5))
-acc_ori_etrca = np.zeros((len(nameList), 5, 5))
+acc_srca_trca, acc_srca_etrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
+acc_srca_strca, acc_srca_setrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
+acc_ori_trca, acc_ori_etrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
+acc_ori_strca, acc_ori_setrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
 
 for nPeo in range(len(nameList)):
     people = nameList[nPeo]
@@ -41,12 +41,13 @@ for nPeo in range(len(nameList)):
     for tn in range(len(train_num)):
         ns = train_num[tn]
         print('Training trials: ' + str(ns))
-        for cv in range(1):  # cross-validation in training
+        for cv in range(5):  # cross-validation in training
             print('CV: %d turn...' %(cv+1))
             for nt in range(5): 
                 print('Data length: %d00ms' %(nt+1))
                 srcaModel = io.loadmat(r'D:\SSVEP\realCV\60 & 80\%s\OLS\CCA\bp_50_90\train_%d\loop_%d\srca_%d.mat' 
-                                   %(people, ns, cv, nt))            
+                                   %(people, ns, cv, nt))   
+
                 # extract model info used in SRCA
                 modelInfo = srcaModel['modelInfo'].flatten().tolist()
                 modelChans = []
@@ -56,77 +57,87 @@ for nPeo in range(len(nameList)):
                     else:
                         continue
                 del modelInfo
+
                 # extract trials info used in Cross Validation
                 trainTrial = np.mean(srcaModel['trialInfo'], axis=0).astype(int)
                 del srcaModel
+
                 # extract origin data with correct trials & correct length
                 train_data = f_data[:, trainTrial[:ns], :, :1240+nt*100]
                 test_data = f_data[:, trainTrial[-60:], :, :1240+nt*100]
-                # re-pick start point56
-                del trainTrial
+
                 # target identification main process
                 accTRCA = mcee.SRCA_TRCA(train_data=train_data, test_data=test_data,
-                    tar_chans=tar_chans, model_chans=modelChans, chans=chans,
-                    regression='OLS', sp=1140)
+                            tar_chans=tar_chans, model_chans=modelChans, chans=chans)
                 acceTRCA = mcee.SRCA_eTRCA(train_data=train_data, test_data=test_data,
-                    tar_chans=tar_chans, model_chans=modelChans, chans=chans,
-                    regression='OLS', sp=1140)
+                            tar_chans=tar_chans, model_chans=modelChans, chans=chans)
+                _, split_accTRCA = mcee.split_SRCA_TRCA(stepwidth=100, train_data=train_data,
+                    test_data=test_data, tar_chans=tar_chans, model_chans=modelChans, chans=chans)
+                _, split_acceTRCA = mcee.split_SRCA_eTRCA(stepwidth=100, train_data=train_data,
+                    test_data=test_data, tar_chans=tar_chans, model_chans=modelChans, chans=chans)
+                
                 tr = train_data[:,:,[45,51,52,53,54,55,58,59,60],:]
                 te = test_data[:,:,[45,51,52,53,54,55,58,59,60],:]
                 accOriTRCA = mcee.TRCA(tr[...,1140:], te[...,1140:])
                 accOrieTRCA = mcee.eTRCA(tr[...,1140:], te[...,1140:])
+                _, split_accOriTRCA = mcee.split_TRCA(stepwidth=100, train_data=tr[...,1140:],
+                                                        test_data=te[...,1140:])
+                _, split_accOrieTRCA = mcee.split_eTRCA(stepwidth=100, train_data=tr[...,1140:],
+                                                        test_data=te[...,1140:])
+
                 # save accuracy data
-                acc_srca_trca[nPeo, cv, nt] = accTRCA
-                acc_srca_etrca[nPeo, cv, nt] = acceTRCA
-                acc_ori_trca[nPeo, cv, nt] = accOriTRCA
-                acc_ori_etrca[nPeo, cv, nt] = accOrieTRCA
+                acc_srca_trca[nPeo, cv, nt], acc_srca_etrca[nPeo, cv, nt] = accTRCA, acceTRCA
+                acc_srca_strca[nPeo, cv, nt], acc_srca_setrca[nPeo, cv, nt] = split_accTRCA, split_acceTRCA
+                acc_ori_trca[nPeo, cv, nt], acc_ori_etrca[nPeo, cv, nt] = accOriTRCA, accOrieTRCA
+                acc_ori_strca[nPeo, cv, nt], acc_ori_setrca[nPeo, cv, nt] = split_accOriTRCA, split_accOrieTRCA
                 del accTRCA, acceTRCA
+                del split_accTRCA, split_acceTRCA
                 del accOriTRCA, accOrieTRCA
+                del split_accOriTRCA, split_accOrieTRCA
             print(str(cv+1) + 'th cross-validation complete!\n')
         print(str(ns) + ' training trials complete!\n')
 
-data_path = r'C:\Users\Administrator\Desktop\wanghao-60.mat'
-io.savemat(data_path, {'ori_trca':acc_ori_trca,
-                       'ori_etrca':acc_ori_etrca,
-                       'srca_trca':acc_srca_trca,
-                       'srca_etrca':acc_srca_etrca})
+data_path = r'C:\Users\Administrator\Desktop\dec_22.mat'
+io.savemat(data_path, {'ori_trca':acc_ori_trca, 'ori_etrca':acc_ori_etrca,
+                       'ori_strca':acc_ori_strca, 'ori_setrca':acc_ori_setrca,
+                       'srca_trca':acc_srca_trca, 'srca_etrca':acc_srca_etrca,
+                       'srca_strca':acc_srca_strca, 'srca_setrca':acc_srca_setrca})
 
 
 
-#%% only origin data
+# %% only origin data (multi-cross-validation)
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 
-nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
-#nameList = ['zhaowei']
+#nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
+nameList = ['zhaowei']
 
-acc_ori_trca = np.zeros((len(nameList), 10, 10))
-acc_ori_etrca = np.zeros((len(nameList), 10, 10))
+acc_ori_trca = np.zeros((len(nameList), 5, 5))
+acc_ori_etrca = np.zeros((len(nameList), 5, 5))
 
 for nPeo in range(len(nameList)):
     people = nameList[nPeo]
     print('Running ' + people + "'s data...")
     eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\60&80\%s\fir_50_90.mat' %(people))
-    f_data = eeg['f_data'][[2,3],:,:,:]
+    #f_data = eeg['f_data'][[2,3],:,:,:]
+    f_data = eeg['f_data']
     chans = eeg['chan_info'].tolist()
-    n_events = 2
+    n_events = 4
     del eeg
     ns = 80
     print('Training trials: ' + str(ns))
-    for cv in range(10):  # cross-validation in training
+    for cv in range(5):  # cross-validation in training
         print('CV: %d turn...' %(cv+1))
         # randomly pick channels for identification
         randPick = np.arange(f_data.shape[1])
         np.random.shuffle(randPick)
-        for nt in range(10): 
+        for nt in range(5): 
             print('Data length: %d00ms' %(nt+1))
-            # extract origin data with correct trials & correct length
-            train_data = f_data[:, randPick[:ns], :, :1240+nt*100]
-            test_data = f_data[:, randPick[-60:], :, :1240+nt*100]
+            # extract origin data with correct trials & correct length [45,51,52,53,54,55,58,59,60]
+            train_data = f_data[:,randPick[:ns],:,1140:1240+nt*100][:,:,[45,51,52,53,54,55,58,59,60],:]
+            test_data = f_data[:,randPick[-60:],:,1140:1240+nt*100][:,:,[45,51,52,53,54,55,58,59,60],:]
             # target identification main process
-            accOriTRCA = mcee.TRCA(train_data[:, :, [45,51,52,53,54,55,58,59,60], 1140:],
-                               test_data[:, :, [45,51,52,53,54,55,58,59,60], 1140:])
-            accOrieTRCA = mcee.eTRCA(train_data[:, :, [45,51,52,53,54,55,58,59,60], 1140:],
-                                test_data[:, :, [45,51,52,53,54,55,58,59,60], 1140:])
+            accOriTRCA = mcee.TRCA(train_data, test_data)
+            accOrieTRCA = mcee.eTRCA(train_data, test_data)
             # save accuracy data
             acc_ori_trca[nPeo, cv, nt] = accOriTRCA
             acc_ori_etrca[nPeo, cv, nt] = accOrieTRCA
@@ -135,9 +146,9 @@ for nPeo in range(len(nameList)):
         print(str(cv+1) + 'th cross-validation complete!\n')
     print(str(ns) + ' training trials complete!\n')
 
-data_path = r'C:\Users\Administrator\Desktop\origin-80.mat'
-io.savemat(data_path, {'ori_trca':acc_ori_trca,
-                       'ori_etrca':acc_ori_etrca,})
+#data_path = r'C:\Users\Administrator\Desktop\origin-80.mat'
+#io.savemat(data_path, {'ori_trca':acc_ori_trca,
+                       #'ori_etrca':acc_ori_etrca,})
                        #'srca_trca':acc_srca_trca,
                        #'srca_etrca':acc_srca_etrca})
 
