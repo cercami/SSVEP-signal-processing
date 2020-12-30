@@ -10,7 +10,7 @@ Continuously updating...
 @author: Brynhildr
 """
 
-#%% load 3rd-part module
+# %% load 3rd-part module
 import os
 import numpy as np
 import mne
@@ -23,10 +23,12 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 
-#%% load data
-filepath = r'G:\岳金明\eeg\岳金明'
+%matplotlib auto
 
-subjectlist = ['yjm']
+# %% load data
+filepath = r'D:\SSVEP\dataset\code_VEP\wuqiaoyi'
+
+subjectlist = ['8 code']
 
 filefolders = []
 for subindex in subjectlist:
@@ -64,11 +66,11 @@ picks_ch_names = [raw.ch_names[i] for i in picks]  # layout picked channels' nam
 # define labels
 # event_id = dict(f60p0=2, f60p1=3, f80p0=4, f80p1=5)  # unnecessary 
 # baseline = (-0.2, 0)    # define baseline
-tmin, tmax = -1., 10.5    # set the time range
+tmin, tmax = -1, 2    # set the time range
 sfreq = 1000
 
 # transform raw object into array
-n_events = 4  # remember to define the variable by yourself
+n_events = 8
 n_trials = int(events.shape[0] / n_events)
 n_chans = len(picks)
 n_times = int((tmax - tmin) * sfreq + 1)
@@ -77,38 +79,28 @@ n_times = int((tmax - tmin) * sfreq + 1)
 data = np.zeros((n_events, n_trials, n_chans, n_times))
 
 # change the input of the function yourself
-f60p0 = Epochs(raw, events=events, event_id=1, tmin=tmin, picks=picks,
+for i in range(n_events):
+    data[i, ...] = Epochs(raw, events=events, event_id=i+1, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
-f60p1 = Epochs(raw, events=events, event_id=2, tmin=tmin, picks=picks,
-               tmax=tmax, baseline=None, preload=True).get_data() * 1e6
-f80p0 = Epochs(raw, events=events, event_id=3, tmin=tmin, picks=picks,
-               tmax=tmax, baseline=None, preload=True).get_data() * 1e6
-f80p1 = Epochs(raw, events=events, event_id=4, tmin=tmin, picks=picks,
-               tmax=tmax, baseline=None, preload=True).get_data() * 1e6
+    data[i, ...] = filter_data(data[i, ...], sfreq=sfreq, l_freq=50, h_freq=70, n_jobs=8, method='iir')
 
-# filter data
-ff80p0 = filter_data(f80p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='fir')
-ff80p1 = filter_data(f80p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='fir')
-ff60p0 = filter_data(f60p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='fir')
-ff60p1 = filter_data(f60p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=4, method='fir')
 
-# visualization
+# %% filter data
+ff60p0 = filter_data(f60p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=8, method='iir')
+ff60p1 = filter_data(f60p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=8, method='iir')
+
+# %% visualization
 plt.figure()
 plt.plot(f60p0[:,59,1140:1640].mean(axis=0))  # average by trial, plot Oz's data
 
+# %%
 # save data as .mat file
-data[0,...] = f60p0
-data[1,...] = f60p0
-data[2,...] = f60p0
-data[3,...] = f60p0
-data_path = r'D:\SSVEP\dataset\preprocessed_data\60&80\zhaowei\fir_50_90.mat'
-io.savemat(data_path, {'f_data':data, 'chan_info':picks_ch_names})
+data[0,...] = ff60p0
+data[1,...] = -1*ff60p1
 
-#%% new task
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\weisiwen\raw_data.mat')
-data = eeg['raw_data']
-chans = eeg['chan_info'].tolist()
-del eeg
+# %%
+data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_8\wuqiaoyi\iir_50_90.mat'
+io.savemat(data_path, {'f_data':data, 'chan_info':picks_ch_names})
 
 #%%
 fig = plt.figure(figsize=(16,9))

@@ -22,6 +22,14 @@ Prefunctions:
     compute best initial phase for training dataset
 5. time_shift:
     cyclic rotate time sequence to destroy the time correlation of noise
+6. Imn:
+    concatenate multiple unit matrices vertically
+7. diag_splice:
+    the operator for diagonal concatenation
+
+Special design:
+1. TRCA_compute:
+    special design for TRCA algorithm
 
 The Unified Framework:
 1. spatial_filter (W): class
@@ -29,25 +37,21 @@ The Unified Framework:
     framework 2: (Z.T)*D*P*(P.T)*(D.T)*Z*W = W*Lamda
 
 Target identification functions
-1. sCCA: (CCA_compute & sCCA)
-    standard Canonical Correlation Analysis
-2. itCCA:
-    Individual template CCA
-3. eCCA:
-    extended CCA
-4. TRCA: (TRCA_compute & TRCA)
-    Task-Related Component Analysis
-5. eTRCA:
-    ensemble-TRCA
-6. TRCA_R:
-7. eTRCA_R
-8. msCCA
-9. stw_TRCA:
-    sliding time window TRCA
-10. corr_detect:
-    correlation detect for single-channel data
+1. CCA series (Canonical Correlation Analysis):
+    sCCA, itCCA, ttCCA, extended-CCA, fbCCA, MsetCCA, msCCA
+2. TRCA series (Task-Related Component Analysis):
+    origin: TRCA, eTRCA
+    (add sin-cos reference): TRCA-R, eTRCA-R
+    (split in time-domain): split-...
+    (add filter banks): fb-...
+(Not included in unified framework)
+3. DCPM series:
+    DSP, DCPM, PCA-DCPM
+4. LDA series:
+    LDA, stepwise-LDA, SKLDA, BLDA, STDA
     
 update: 2020/12/12
+updating...
 
 """
 
@@ -55,6 +59,7 @@ update: 2020/12/12
 import numpy as np
 from numpy import newaxis as NA
 from numpy import linalg as LA
+from sympy import diag
 from math import pi
 from sklearn import linear_model
 
@@ -69,32 +74,34 @@ def zero_mean(data):
 
     Parameters
     ----------
-    data : (n_trials, n_channels, n_times)
+    data : ndarray, (n_trials, n_channels, n_times)
         input data array.
 
     Returns
     -------
-    data : (n_trials, n_channels, n_times)
+    data : ndarray, (n_trials, n_channels, n_times)
         data after zero-mean normalization.
     """
     data -= data.mean(axis=-1, keepdims=True)
 
     return data
 
+
 def corr_coef(X, y):
     """
 
     Parameters
     ----------
-    X : (..., n_points)
+    X : ndarray, (..., n_points)
         input data array. (could be sequence)
-    y : (1, n_points)
+    y : ndarray, (1, n_points)
         input data vector/sequence
 
     Returns
     -------
     corrcoef : float
-        Pearson's Correlation Coefficient(mean of sequence or single number).
+        Pearson's Correlation Coefficient. (mean of sequence or single number)
+
     """
     X, y = zero_mean(X), zero_mean(y)
     cov_yx = y @ X.T
@@ -102,6 +109,7 @@ def corr_coef(X, y):
     corrcoef = cov_yx / (var_xx*var_yy)
 
     return corrcoef.mean()
+
 
 def sinw(freq, time, phase, sfreq=1000):
     """
@@ -119,8 +127,9 @@ def sinw(freq, time, phase, sfreq=1000):
 
     Returns
     -------
-    wave : (time*sfreq,)
+    wave : ndarray, (time*sfreq,)
         sinusoidal sequence.
+
     """
     n_point = int(time*sfreq)
     time_point = np.linspace(0, (n_point-1)/sfreq, n_point)
@@ -128,12 +137,13 @@ def sinw(freq, time, phase, sfreq=1000):
 
     return wave
 
+
 def real_phase(data, freq, step=100, sfreq=1000):
     """
 
     Parameters
     ----------
-    data : (n_trials, n_points)
+    data : ndarray, (n_trials, n_points)
     freq : float
         frequency of template.
     step : int, optional
@@ -145,6 +155,7 @@ def real_phase(data, freq, step=100, sfreq=1000):
     -------
     best_phase : float
         0-2.
+
     """
     time = data.shape[-1] / sfreq
     step = [2*x/step for x in range(step)]
@@ -161,12 +172,13 @@ def real_phase(data, freq, step=100, sfreq=1000):
 
     return best_phase
 
+
 def time_shift(data, step, axis=None):
     """
 
     Parameters
     ----------
-    data : (n_channels, n_points)
+    data : ndarray, (n_channels, n_points)
         Input data array.
     step : int/float
         The length of the scroll. 
@@ -177,30 +189,304 @@ def time_shift(data, step, axis=None):
 
     Returns
     -------
-    tf_data : (n_channels, n_points)
+    tf_data : ndarray, (n_channels, n_points)
         Data containing background EEG with corrupted temporal and spatial correlation.
 
     """
     n_chans = data.shape[0]
     tf_data = np.zeros_like(data)
-    tf_data[0,:] = data[0,:]
+    tf_data[0, :] = data[0, :]
     for i in range(n_chans-1):
-        tf_data[i+1,:] = np.roll(data[i+1,:], shift=round(step*(i+1)), axis=axis)
+        tf_data[i+1, :] = np.roll(data[i+1, :], shift=round(step*(i+1)), axis=axis)
 
     return tf_data
 
 
+def pearson_corr2(data_A, data_B):
+    """
+
+    Parameters
+    ----------
+    data_A : ndarray, (n_chans, n_times)
+    data_B : ndarray, (n_chans, n_times)
+
+    Returns
+    -------
+    corr2 : float
+        2-D correlation coefficient.
+    """
+    mean_A = data_A.mean()
+    mean_B = data_B.mean()
+    numerator = np.sum((data_A-mean_A) * (data_B-mean_B))
+    denominator_A = np.sum((data_A-mean_A)**2)
+    denominator_B = np.sum((data_B-mean_B)**2)
+    corr2 = numerator / np.sqrt(denominator_A*denominator_B)
+
+    return corr2
+
+
+def Imn(m,n):
+    """
+
+    Parameters
+    ----------
+    m : int
+        Total number of identity matrix.
+    n : int
+        Dimensions of the identity matrix.
+            
+    Returns
+    -------
+    target : ndarray, (m*n, n)
+
+    """
+    target, unit = np.eye(n), np.eye(n)
+    i = 0
+    for i in range(m-1):
+        target = np.vstack((target, unit))
+        i += 1
+        
+    return target
+
+
+def diag_splice(*arg):
+    """
+
+    Parameters
+    ----------
+    arg : 2-D ndarray, (dimension_x, n_times)
+        Various data matrices, total number(assumed M) is unlimited.
+        n_times should be equal.
+
+    Returns
+    -------
+    target : ndarray, (sum(dimension_x), M*n_times)
+        Diagonal mosaic matrix.
+
+    """
+    target = 0
+    for data in arg:
+        target = diag(target, data)
+    target.col_del(0).row_del(0)
+    target = np.array(target, dtype=float)
+
+    return target   
+
+    
 # %% The Unified Framework
 class spatial_filter:
     """
-    The Unified Framework for constructing spatial filters used in SSVEP signal processing
+    The Unified Framework for constructing spatial filters used in SSVEP signal processing:
+        Type I : (Z.T)*D*P*(P.T)*(D.T)*Z*W = (Z.T)*D*(D.T)*Z*W*Lambda
+        Type II : (Z.T)*D*P*(P.T)*(D.T)*Z*W = W*Lambda
+    The data matrix has been preprocessed by time-domain filtering by default, so D = E, i.e.
+        Type I : (Z.T)*P*P.T*Z*W = (Z.T)*Z*W*Lambda
+        Type II : (Z.T)*P*P.T*Z*W = W*Lambda
 
     """
-    def __init__(self, train_data, subject=None, target_label=None):
-        pass
+    def __init__(self, train_data, subject=None):
+        """
 
-    def framework():
-        pass
+        Parameters
+        ----------
+        train_data : ndarray, (n_events, n_trials, n_chans, n_times)
+            input data array (default z-scored after bandpass filtering).
+        subject : dict, {'name':[num1,num2], ...}
+            Dictation to describe the trial subscript of each participant.
+            If None, i.e. single subject's data. The default is None.
+        """
+        # basic information
+        self.ori_data = train_data
 
-    def framework_prepare(type='CCA'):
-        pass
+        self.n_events = train_data.shape[0]
+        self.n_trains = train_data.shape[1]
+        self.n_chans = train_data.shape[2]
+        self.n_times = train_data.shape[-1]
+
+        if subject is not None:
+            for sub in subject:
+                start_point, end_point = subject[sub][0], subject[sub][1]
+                sub_data = train_data[..., start_point:end_point]
+                exec("self.train_data_%s = sub_data" %sub)
+
+        # check if some attribute exist
+        # if hasattr(self, 'attribute'):
+
+
+    def framework(self, filter_series=None, filter_type=None, **kwargs):
+        """
+        Choose different frameworks for different spatial filter schemes.
+        Determine the form of the data matrix and projection matrix.
+        Parameters
+        ----------
+        filter_series : str
+            Filter series. Now supported: TRCA, CCA, LDA, DCPM
+        filter_type : list of str
+            Specific filter model. e.g. ['origin','split']
+            TRCA : origin, ensemble | reference | split, filter bank
+            CCA : origin, individual template, transform template | extended, multi-set |
+                    split, filter bank, 
+            LDA : origin, stepwise, bayesian, shrinkage, spatial-time
+            DCPM : origin, PCA, 
+        *args : list of str
+            Additional parameters according to specific needs
+
+        """
+        # initialise
+        self.train_data = train_data
+        self.matrix_A = np.zeros((self.n_events, self.n_chans, self.n_chans))
+        self.matrix_B = np.zeros_like(self.matrix_A)
+        self.template = np.zeros((self.n_events, self.n_chans, self.n_times))
+
+        self.split = False
+        self.special_design = False  # for TRCA(s)
+        self.ensemble = False        # for eTRCA(s)
+        self.frame_type = '1'
+
+        if filter_series == 'TRCA':
+            # detection order: 
+            # (1) whether time domain segmentation is required
+            # (2) whether to include a filter bank
+            # (3) which type: origin, ensemble or reference
+            self.special_design = True
+            if 'reference' in filter_type:
+                pass
+
+            if 'origin' or 'ensemble' in filter_type:
+                # same in filter constructing, different in target identification
+                for ne in range(self.n_events):
+                    temp = self.train_data[ne, ...].swapaxes(0,1).reshape((self.n_chans,-1), order='C')
+                    self.matrix_A[ne, ...] = (temp@temp.T) / (self.n_trains*self.n_times)
+                    for i in range(self.n_trains):
+                        for j in range(self.n_trains):
+                            if i != j:
+                                data_i = self.train_data[ne, i, ...]
+                                data_j = self.train_data[ne, j, ...]
+                                self.matrix_B[ne, ...] += (data_i@data_j.T) / self.n_times
+                self.template = self.train_data.mean(axis=1)
+                if 'ensemble' in filter_type:
+                    self.ensemble = True
+
+
+        elif filter_series == 'CCA':
+            # detection order: 
+            # (1) whether time domain segmentation is required
+            # (2) whether to include a filter bank
+            # (3) which specific type
+
+            pass
+
+
+        elif filter_series == None:
+            pass
+        
+        # deal with unknown options or errors
+        if self.matrix_A == self.matrix_B:  # nothing happened or something wrong
+            raise Exception('Unknown Error while constructing framework, maybe not supported combination?')
+
+
+    def build_filter(self):
+        """
+        Solve Generalized Eigenvalue Problems(GEPS): A*W = B*W*Lambda
+        Parameters
+        ----------
+        data : ndarray, basic units: (n_chans, n_times)
+            matrix Z, 
+        projection : ndarray, basic units: (n_times, n_times)
+            matrix P, orthogonal projector, Hermite matrix.
+        frame_type : int
+            1 or 2. For details, please refer to the corresponding literature.
+
+        """
+        # initialization
+        self.w = np.zeros((self.n_events, self.n_chans))
+        # unified framework
+        if self.special_design:
+            matrix_A = self.matrix_A
+            matrix_B = self.matrix_B
+        else:
+            if self.split = True:
+            for ne in range(self.n_events):
+                data = self.combine_data[ne, ...]
+                projection = self.projection[ne, ...]
+                matrix_A[ne, ...] = data.T @ projection @ projection.T @ data
+                if self.frame_type == '1':
+                    matrix_B[ne, ...] = data.T @ data
+                elif self.frame_type == '2':  # B = E
+                    matrix_B[ne, ...] = np.eye(matrix_A.shape[0])
+        # solve Generalized Eigenvalue Problems(GEPS)
+        for ne in range(self.n_events):
+            e_va, e_vec = LA.eig(LA.inv(matrix_A[ne, ...]) @ matrix_B[ne, ...])
+            w_index = np.argmax(e_va)
+            self.w[ne, :] = e_vec[:, w_index].T
+
+
+# special requirements: ensemble, split, filter bank
+def target_identification(spatial_filter, test_data, mode='offline',*arg):
+    """
+    Use the designed spatial filter for target identification
+    Parameters
+    ----------
+    spatial_filter : object
+        spatial_filter class object.
+    test_data : ndarray, (n_events, n_trials, n_chans, n_times)
+        or single trial's data : (n_chans, n_times)
+    mode : str
+        'offline' or 'online'. The default is 'offline'.
+        
+    Returns
+    -------
+    accuracy : float, 0-100 (%)
+    pattern : int.
+        The number indicates the subscript of the category. Only exist if mode == 'online'
+
+    """
+    n_events = spatial_filter.n_events
+    w = spatial_filter.w
+    template = spatial_filter.template
+    
+    if mode == 'offline':
+        n_tests = test_data.shape[1]
+        r = np.zeros((n_events, n_tests, test_data.shape[0]))
+        # 'ensemble' defaults that the spatial filters possessed by different types of signals
+        # should have similar structures
+        if self.ensemble:
+            for netr in range(n_tests):
+                for nte in range(n_tests):
+                    for nete in range(test_data.shape[0]):
+                        temp_test = w @ test_data[nete, nte, ...]     # (n_chans, n_times)
+                        temp_template = w @ template[netr, ...]  # (n_chans, n_times)
+                        r[netr, nte, nete] = pearson_corr2(temp_test, temp_template)
+        else:
+            for netr in range(self.n_events):
+                for nte in range(n_tests):
+                    for nete in range(test_data.shape[0]):
+                        temp_test = self.w[netr, :] @ test_data[nete, nte, ...]     # (n_times,)
+                        temp_template = self.w[netr, :] @ self.template[netr, ...]  # (n_times,)
+                        r[netr, nte, nete] = corr_coef(temp_test, temp_template)
+        # compute accuracy
+        accuracy = 0
+        for nete in range(self.n_events):
+            for nte in range(n_tests):
+                if np.argmax(r[:, nte, nete]) == nete:  # test trials(fixed), template(variable)
+                    accuracy += 1
+        accuracy /= (test_data.shape[0] * n_tests)
+
+        return accuracy
+
+    elif mode == 'online':  # single trial data: (n_chans, n_times)
+        r = np.zeros((self.n_events))
+        if self.ensemble:
+            for netr in range(self.n_events):
+                temp_test = self.w @ test_data                     # (n_chans, n_times)
+                temp_template = self.w @ self.template[netr, ...]  # (n_chans, n_times)
+                r[netr] = pearson_corr2(temp_test, temp_template)
+        else:
+            for netr in range(self.n_events):
+                temp_test = self.w[netr, :] @ test_data                     # (n_times,)
+                temp_template = self.w[netr, :] @ self.template[netr, ...]  # (n_times,)
+                r[netr] = corr_coef(temp_test, temp_template)
+        # pattern recognition
+        target_label = np.argmax(r)
+
+        return target_label

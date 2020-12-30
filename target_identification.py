@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 import copy
-
+%matplotlib auto
 # %% TRCA/eTRCA for SRCA/origin data
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 # tar_chans= ['O1 ', 'OZ ', 'O2 ']
@@ -72,18 +72,20 @@ for nPeo in range(len(nameList)):
                 acceTRCA = mcee.SRCA_eTRCA(train_data=train_data, test_data=test_data,
                             tar_chans=tar_chans, model_chans=modelChans, chans=chans)
                 _, split_accTRCA = mcee.split_SRCA_TRCA(stepwidth=100, train_data=train_data,
-                    test_data=test_data, tar_chans=tar_chans, model_chans=modelChans, chans=chans)
+                                test_data=test_data, tar_chans=tar_chans,
+                                model_chans=modelChans, chans=chans, mode='partial')
                 _, split_acceTRCA = mcee.split_SRCA_eTRCA(stepwidth=100, train_data=train_data,
-                    test_data=test_data, tar_chans=tar_chans, model_chans=modelChans, chans=chans)
+                                test_data=test_data, tar_chans=tar_chans,
+                                model_chans=modelChans, chans=chans, mode='partial')
                 
                 tr = train_data[:,:,[45,51,52,53,54,55,58,59,60],:]
                 te = test_data[:,:,[45,51,52,53,54,55,58,59,60],:]
                 accOriTRCA = mcee.TRCA(tr[...,1140:], te[...,1140:])
                 accOrieTRCA = mcee.eTRCA(tr[...,1140:], te[...,1140:])
                 _, split_accOriTRCA = mcee.split_TRCA(stepwidth=100, train_data=tr[...,1140:],
-                                                        test_data=te[...,1140:])
+                                                test_data=te[...,1140:], mode='partial')
                 _, split_accOrieTRCA = mcee.split_eTRCA(stepwidth=100, train_data=tr[...,1140:],
-                                                        test_data=te[...,1140:])
+                                                test_data=te[...,1140:], mode='partial')
 
                 # save accuracy data
                 acc_srca_trca[nPeo, cv, nt], acc_srca_etrca[nPeo, cv, nt] = accTRCA, acceTRCA
@@ -97,7 +99,7 @@ for nPeo in range(len(nameList)):
             print(str(cv+1) + 'th cross-validation complete!\n')
         print(str(ns) + ' training trials complete!\n')
 
-data_path = r'C:\Users\Administrator\Desktop\dec_22.mat'
+data_path = r'C:\Users\Administrator\Desktop\dec_26.mat'
 io.savemat(data_path, {'ori_trca':acc_ori_trca, 'ori_etrca':acc_ori_etrca,
                        'ori_strca':acc_ori_strca, 'ori_setrca':acc_ori_setrca,
                        'srca_trca':acc_srca_trca, 'srca_etrca':acc_srca_etrca,
@@ -109,32 +111,32 @@ io.savemat(data_path, {'ori_trca':acc_ori_trca, 'ori_etrca':acc_ori_etrca,
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 
 #nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
-nameList = ['zhaowei']
+nameList = ['wuqiaoyi']
 
-acc_ori_trca = np.zeros((len(nameList), 5, 5))
-acc_ori_etrca = np.zeros((len(nameList), 5, 5))
+acc_ori_trca = np.zeros((len(nameList), 10, 10))
+acc_ori_etrca = np.zeros((len(nameList), 10, 10))
 
 for nPeo in range(len(nameList)):
     people = nameList[nPeo]
     print('Running ' + people + "'s data...")
-    eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\60&80\%s\fir_50_90.mat' %(people))
+    eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\cvep_8\%s\train_iir_50_90.mat' %(people))
     #f_data = eeg['f_data'][[2,3],:,:,:]
     f_data = eeg['f_data']
     chans = eeg['chan_info'].tolist()
-    n_events = 4
+    n_events = 2
     del eeg
-    ns = 80
+    ns = 60
     print('Training trials: ' + str(ns))
-    for cv in range(5):  # cross-validation in training
+    for cv in range(10):  # cross-validation in training
         print('CV: %d turn...' %(cv+1))
         # randomly pick channels for identification
         randPick = np.arange(f_data.shape[1])
         np.random.shuffle(randPick)
-        for nt in range(5): 
+        for nt in range(10): 
             print('Data length: %d00ms' %(nt+1))
             # extract origin data with correct trials & correct length [45,51,52,53,54,55,58,59,60]
             train_data = f_data[:,randPick[:ns],:,1140:1240+nt*100][:,:,[45,51,52,53,54,55,58,59,60],:]
-            test_data = f_data[:,randPick[-60:],:,1140:1240+nt*100][:,:,[45,51,52,53,54,55,58,59,60],:]
+            test_data = f_data[:,randPick[-40:],:,1140:1240+nt*100][:,:,[45,51,52,53,54,55,58,59,60],:]
             # target identification main process
             accOriTRCA = mcee.TRCA(train_data, test_data)
             accOrieTRCA = mcee.eTRCA(train_data, test_data)
@@ -510,8 +512,8 @@ def trim_axs(axs, N):
     return axs[:N]
 
 channels = ['Pz', 'PO5', 'PO3', 'POz', 'PO4', 'PO6', 'O1', 'Oz', 'O2']
-figsize = (16, 12)
-cols, rows = 3, 3
+figsize = (32, 18)
+cols, rows = 4, 8
 data = np.swapaxes(testData[1,:,[45,51,52,53,54,55,58,59,60],1140:1640], 0,1)
 snr_data = np.mean(np.zeros_like(data), axis=0)
 for i in range(9):
@@ -910,3 +912,64 @@ for i in range(groupNum):
         itr_d[i,j] = np.sum((data[i,:,j] - miu[i,j])**2)
 # fisher score
 fs = (ite_d) / np.sum(sampleNum * itr_d, axis=0)
+
+# %% code_VEP
+from mcee import (TRCA_compute, corr_coef)
+tar_chan_index = [45,51,52,53,54,55,58,59,60]
+n_events = 32
+code_num = 5
+code_length = 300
+gap_length = 100
+n_chans = 9
+sp = 1140
+
+data_path = r'D:\SSVEP\program\code_1bits.mat'
+code_data = io.loadmat(data_path)
+code_series = code_data['VEPSeries_1bits']  # (n_codes, n_elements)
+del data_path, code_data
+
+data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_32\yangman\train_fir_50_90.mat'
+eeg = io.loadmat(data_path)
+train_data = eeg['f_data'][:, :, tar_chan_index, 1140:1440]
+del data_path, eeg
+
+data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_32\yangman\fir_50_90.mat'
+eeg = io.loadmat(data_path)
+test_data = eeg['f_data'][:, :, tar_chan_index, :]
+del data_path, eeg
+
+n_trials = test_data.shape[1]
+code_data = np.zeros((n_trials, code_num, n_chans, code_length))
+
+acc = 0
+# %%
+for i in range(32):
+    for j in range(code_num):
+        if j == 0:  # code start
+            cs = sp
+        else:
+            cs = ce + gap_length
+        ce = cs + code_length
+        code_data[:, j, ...] = test_data[i, ..., cs:ce]
+    del j, cs, ce
+
+    target_label = list(code_series[:,i])
+    label = [[] for x in range(n_trials)]
+
+    w = TRCA_compute(train_data)
+    template = train_data.mean(axis=1)
+    for ntr in range(n_trials):
+        for nc in range(code_num):
+            r = np.zeros((2))
+            for netr in range(2):
+                temp_test = w[netr, :] @ code_data[ntr, nc, ...]
+                temp_template = w[netr, :] @ template[netr, ...]
+                r[netr] = corr_coef(temp_test, temp_template)
+            label[ntr].append(np.argmax(r))
+        if label[ntr] == target_label:
+            acc += 1
+    print(str(i+1) + 'th code complete')
+
+acc = acc / (n_events*n_trials) * 100
+
+# %%

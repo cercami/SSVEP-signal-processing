@@ -969,11 +969,15 @@ def TRCA(train_data, test_data):
 
 def eTRCA(train_data, test_data):
     '''
-    ensemble-TRCA without filter banks for original signal
-    Parameters:
+    ensemble-TRCA for original signal
+
+    Parameters
+    ----------
         train_data: (n_events, n_trials, n_chans, n_times) | training dataset
         test_data: (n_events, n_trials, n_chans, n_times) | test dataset
-    Returns:
+    
+    Returns
+    -------
         accuracy: int | the number of correct identification
     '''
     # basic parameters
@@ -1003,6 +1007,20 @@ def eTRCA(train_data, test_data):
     return accuracy
 
 def TRCA_R():
+    '''
+    reference-TRCA without filter banks for original signal
+
+    Parameters
+    ----------
+        train_data: (n_events, n_trials, n_chans, n_times) | training dataset
+        test_data: (n_events, n_trials, n_chans, n_times) | test dataset
+    
+    Returns
+    -------
+        accuracy: int | the number of correct identification
+    '''
+    
+
     pass
 
 def eTRCA_R():
@@ -1489,6 +1507,15 @@ def split_SRCA_TRCA_R():
 def split_SRCA_eTRCA_R():
     pass
 
+def cvep_TI(code_num, code_length, gap_length, train_data, test_data):
+    """
+    """
+    # if test_data.shape[-1] != (code_num-1)*(code_length+gap_length) + code_length:
+    #     raise Exception('Please check the length of input data!')
+    # # split data according to different codes
+    # code_data = 1
+
+    pass
 
 # %% Target identification: DCPM
 # discrimination index 1: 2D correlation
