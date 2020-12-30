@@ -84,15 +84,6 @@ for i in range(n_events):
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
     data[i, ...] = filter_data(data[i, ...], sfreq=sfreq, l_freq=50, h_freq=70, n_jobs=8, method='iir')
 
-
-# %% filter data
-ff60p0 = filter_data(f60p0, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=8, method='iir')
-ff60p1 = filter_data(f60p1, sfreq=sfreq, l_freq=50, h_freq=90, n_jobs=8, method='iir')
-
-# %% visualization
-plt.figure()
-plt.plot(f60p0[:,59,1140:1640].mean(axis=0))  # average by trial, plot Oz's data
-
 # %%
 # save data as .mat file
 data[0,...] = ff60p0
