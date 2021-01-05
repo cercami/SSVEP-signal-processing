@@ -843,8 +843,23 @@ def stepwise_SRCA_fs(chans, mfs, w, w_target, signal_data, data_target, regressi
 
 
 # %% Canonical Correlation Analysis
-def sCCA():
+def CCA_compute(data, model):
+    
     pass
+
+def sCCA(data, base_freq, n_bands):
+    pass
+
+def itCCA(data, ):
+    pass
+
+def single_ti(train_data, test_data):
+    pass
+
+def ensemble_ti():
+    pass
+
+
 
 # %% Target identification: TRCA method (series)
 # pre-functions
@@ -892,39 +907,27 @@ def TRCA_compute(data):
         #e_value = np.array(sorted(e_va, reverse=True))
     return w
 
-def pearson_corr2(dataA, dataB):
-    '''
-    Compute Pearson Correlation Coefficients between 2D matrices
+def pearson_corr2(data_A, data_B):
+    """
 
     Parameters
     ----------
-    dataA : (n_chans, n_times)
-    dataB : (n_chans, n_times)
+    data_A : ndarray, (n_chans, n_times)
+    data_B : ndarray, (n_chans, n_times)
 
     Returns
     -------
     corr2 : float
         2-D correlation coefficient.
-    '''
-    # basic information
-    n_chans = dataA.shape[0]
-    n_times = dataA.shape[-1]
-
-    # 2D correlation
-    numerator = 0
-    denominatorA = 0
-    denominatorB = 0
-    meanA = dataA.mean()  # the mean of all values in matrix A
-    meanB = dataB.mean()  # the same
-    for nc in range(n_chans):
-        for nt in range(n_times):
-            numerator += (dataA[nc, nt]-meanA) * (dataB[nc, nt]-meanB)
-            denominatorA += (dataA[nc, nt]-meanA)**2
-            denominatorB += (dataB[nc, nt]-meanB)**2
-    corr2 = numerator / np.sqrt(denominatorA*denominatorB)
+    """
+    mean_A = data_A.mean()
+    mean_B = data_B.mean()
+    numerator = np.sum((data_A-mean_A) * (data_B-mean_B))
+    denominator_A = np.sum((data_A-mean_A)**2)
+    denominator_B = np.sum((data_B-mean_B)**2)
+    corr2 = numerator / np.sqrt(denominator_A*denominator_B)
 
     return corr2
-
 
 # For origin data
 def TRCA(train_data, test_data):

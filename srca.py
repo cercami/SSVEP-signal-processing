@@ -223,7 +223,7 @@ def time_shift(data, step, axis=None):
 
 
 # %% Target functions
-def snr_time(data):
+def snr_time(data, mean=True):
     """
 
     Parameters
@@ -244,7 +244,10 @@ def snr_time(data):
 
     snr = signal_power / noise_power                 # (n_points,)
 
-    return snr
+    if mean:
+        return snr.mean()
+    elif not mean:
+        return snr
 
 def pearson_corr(data):
     """

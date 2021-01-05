@@ -27,8 +27,8 @@ import string
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
-
-# %%
+%matplotlib auto
+# %% D:\SSVEP\photocell_no_interval
 tmin, tmax = -0.1, 2
 sfreq = 1000
 
@@ -41,7 +41,7 @@ data = np.zeros((1, n_trials, n_times))
 symbols = ''.join([string.ascii_uppercase, '_12345'])
 for text in symbols:
     filename = text + '.cnt'
-    filepath = 'D:\SSVEP\photocell_interval=0.1s\\' + filename
+    filepath = 'D:\SSVEP\photocell_no_interval\\' + filename
     montage = mne.channels.make_standard_montage('standard_1020')
     raw_cnt = mne.io.read_raw_cnt(filepath, eog=['HEO', 'VEO'], emg=['EMG'], ecg=['EKG'],
             preload=True, verbose=False)
@@ -54,7 +54,7 @@ for text in symbols:
 
     seg_data = Epochs(raw_cnt, events=events, event_id=1, tmin=tmin, picks=picks, tmax=tmax,
                 baseline=None, preload=True).get_data()
-    data = np.concatenate((data, seg_data[NA,:,25,:]), axis=0)
+    data = np.concatenate((data, seg_data[NA,:,26,:]), axis=0)
 
 del seg_data, raw_cnt, drop_chans, events, events_id, filename, filepath
 del montage, picks, text
@@ -179,115 +179,110 @@ k = m*4
 ax1 = fig.add_subplot(gs[:1,:])
 ax1.set_title(title[k], fontsize=24)
 ax1.tick_params(axis='both', labelsize=20)
-ax1.plot(data[k,:,:].T)
 for i in range(5):
     if code_series[i,k] == 0:
-        ax1.plot(np.arange(301)+112+i*400, mean_data[k, 112+i*400:413+i*400],
-                 color='tab:blue', linewidth=3)
+        ax1.plot(np.arange(301)+i*300, mean_data[k, 112+i*300:413+i*300],
+                 color='tab:blue')
     elif code_series[i,k] == 1:
-        ax1.plot(np.arange(301)+112+i*400, mean_data[k, 112+i*400:413+i*400],
-                 color='tab:orange', linewidth=3)
-ax1.plot(np.arange(112), mean_data[k, :112], color='black')
-ax1.plot(np.arange(89)+2012, mean_data[k, -89:], color='black')
-for i in range(4):
-    ax1.plot(np.arange(100)+412+i*400, mean_data[k, 412+i*400:512+i*400], color='black')
-ax1.vlines(112, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax1.vlines(412, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax1.vlines(512, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax1.vlines(812, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax1.vlines(912, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax1.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax1.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax1.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax1.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax1.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+        ax1.plot(np.arange(301)+i*300, mean_data[k, 112+i*300:413+i*300],
+                 color='tab:orange')
+# ax1.plot(np.arange(112), mean_data[k, :112], color='black')
+# ax1.plot(np.arange(89)+2012, mean_data[k, -89:], color='black')
+# for i in range(4):
+#     ax1.plot(np.arange(100)+412+i*400, mean_data[k, 412+i*400:512+i*400], color='black')
+ax1.vlines(0, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax1.vlines(300, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax1.vlines(600, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax1.vlines(900, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax1.vlines(1200, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax1.vlines(512, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax1.vlines(812, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax1.vlines(912, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax1.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax1.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax1.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax1.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax1.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax1.set_xlabel('Time/ms', fontsize=24)
 ax1.set_ylabel('Amplitude/V', fontsize=24)
 
 ax2 = fig.add_subplot(gs[1:2,:])
 ax2.set_title(title[k+1], fontsize=24)
 ax2.tick_params(axis='both', labelsize=20)
-ax2.plot(data[k+1,:,:].T)
 for i in range(5):
     if code_series[i,k+1] == 0:
-        ax2.plot(np.arange(301)+112+i*400, mean_data[k+1, 112+i*400:413+i*400],
-                 color='tab:blue', linewidth=3)
+        ax2.plot(np.arange(301)+i*300, mean_data[k+1, 112+i*300:413+i*300], color='tab:blue')
     elif code_series[i,k+1] == 1:
-        ax2.plot(np.arange(301)+112+i*400, mean_data[k+1, 112+i*400:413+i*400],
-                 color='tab:orange', linewidth=3)
-ax2.plot(np.arange(112), mean_data[k+1, :112], color='black')
-ax2.plot(np.arange(89)+2012, mean_data[k+1, -89:], color='black')
-for i in range(4):
-    ax2.plot(np.arange(100)+412+i*400, mean_data[k+1, 412+i*400:512+i*400], color='black')
-ax2.vlines(112, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax2.vlines(412, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax2.vlines(512, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax2.vlines(812, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax2.vlines(912, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax2.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax2.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax2.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax2.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax2.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+        ax2.plot(np.arange(301)+i*300, mean_data[k+1, 112+i*300:413+i*300], color='tab:orange')
+# ax2.plot(np.arange(112), mean_data[k+1, :112], color='black')
+# ax2.plot(np.arange(89)+2012, mean_data[k+1, -89:], color='black')
+# for i in range(4):
+#     ax2.plot(np.arange(100)+412+i*400, mean_data[k+1, 412+i*400:512+i*400], color='black')
+ax2.vlines(0, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax2.vlines(300, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax2.vlines(600, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax2.vlines(900, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax2.vlines(1200, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax2.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax2.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax2.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax2.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax2.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax2.set_xlabel('Time/ms', fontsize=24)
 ax2.set_ylabel('Amplitude/V', fontsize=24)
 
 ax3 = fig.add_subplot(gs[2:3,:])
 ax3.set_title(title[k+2], fontsize=24)
 ax3.tick_params(axis='both', labelsize=20)
-ax3.plot(data[k+2,:,:].T)
 for i in range(5):
     if code_series[i,k+2] == 0:
-        ax3.plot(np.arange(301)+112+i*400, mean_data[k+2, 112+i*400:413+i*400],
-                 color='tab:blue', linewidth=3)
+        ax3.plot(np.arange(301)+i*300, mean_data[k+2, 112+i*300:413+i*300], color='tab:blue')
     elif code_series[i,k+2] == 1:
-        ax3.plot(np.arange(301)+112+i*400, mean_data[k+2, 112+i*400:413+i*400],
-                 color='tab:orange', linewidth=3)
-ax3.plot(np.arange(112), mean_data[k+2, :112], color='black')
-ax3.plot(np.arange(89)+2012, mean_data[k+2, -89:], color='black')
-for i in range(4):
-    ax3.plot(np.arange(100)+412+i*400, mean_data[k+2, 412+i*400:512+i*400], color='black')
-ax3.vlines(112, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax3.vlines(412, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax3.vlines(512, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax3.vlines(812, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax3.vlines(912, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax3.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax3.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax3.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax3.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax3.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+        ax3.plot(np.arange(301)+i*300, mean_data[k+2, 112+i*300:413+i*300], color='tab:orange')
+# ax3.plot(np.arange(112), mean_data[k+2, :112], color='black')
+# ax3.plot(np.arange(89)+2012, mean_data[k+2, -89:], color='black')
+# for i in range(4):
+#     ax3.plot(np.arange(100)+412+i*400, mean_data[k+2, 412+i*400:512+i*400], color='black')
+ax3.vlines(0, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax3.vlines(300, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax3.vlines(600, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax3.vlines(900, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax3.vlines(1200, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax3.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax3.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax3.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax3.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax3.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax3.set_xlabel('Time/ms', fontsize=24)
 ax3.set_ylabel('Amplitude/V', fontsize=24)
 
 ax4 = fig.add_subplot(gs[3:,:])
 ax4.set_title(title[k+3], fontsize=24)
 ax4.tick_params(axis='both', labelsize=20)
-ax4.plot(data[k+3,:,:].T)
 for i in range(5):
     if code_series[i,k+3] == 0:
-        ax4.plot(np.arange(301)+112+i*400, mean_data[k+3, 112+i*400:413+i*400],
-                 color='tab:blue', linewidth=3)
+        ax4.plot(np.arange(301)+i*300, mean_data[k+3, 112+i*300:413+i*300], color='tab:blue')
     elif code_series[i,k+3] == 1:
-        ax4.plot(np.arange(301)+112+i*400, mean_data[k+3, 112+i*400:413+i*400],
-                 color='tab:orange', linewidth=3)
-ax4.plot(np.arange(112), mean_data[k+3, :112], color='black', linewidth=3)
-ax4.plot(np.arange(89)+2012, mean_data[k+3, -89:], color='black', linewidth=3)
-for i in range(4):
-    ax4.plot(np.arange(100)+412+i*400, mean_data[k+3, 412+i*400:512+i*400], color='black')
-ax4.vlines(112, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax4.vlines(412, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax4.vlines(512, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax4.vlines(812, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax4.vlines(912, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax4.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax4.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax4.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax4.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-ax4.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+        ax4.plot(np.arange(301)+i*300, mean_data[k+3, 112+i*300:413+i*300], color='tab:orange')
+# ax4.plot(np.arange(112), mean_data[k+3, :112], color='black', linewidth=3)
+# ax4.plot(np.arange(89)+2012, mean_data[k+3, -89:], color='black', linewidth=3)
+# for i in range(4):
+#     ax4.plot(np.arange(100)+412+i*400, mean_data[k+3, 412+i*400:512+i*400], color='black')
+ax4.vlines(0, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax4.vlines(300, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax4.vlines(600, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax4.vlines(900, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+ax4.vlines(1200, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax4.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax4.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax4.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax4.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
+# ax4.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax4.set_xlabel('Time/ms', fontsize=24)
 ax4.set_ylabel('Amplitude/V', fontsize=24)
 
 plt.tight_layout()
 plt.show()
-plt.savefig(r'C:\Users\Administrator\Desktop\photocell_all_29-32', dpi=600)
+plt.savefig(r'C:\Users\Administrator\Desktop\photocell_noInterval_7', dpi=600)
+
+# %%

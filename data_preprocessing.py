@@ -28,7 +28,7 @@ import seaborn as sns
 # %% load data
 filepath = r'D:\SSVEP\dataset\code_VEP\wuqiaoyi'
 
-subjectlist = ['8 code']
+subjectlist = ['srca train-12-31']
 
 filefolders = []
 for subindex in subjectlist:
@@ -66,11 +66,11 @@ picks_ch_names = [raw.ch_names[i] for i in picks]  # layout picked channels' nam
 # define labels
 # event_id = dict(f60p0=2, f60p1=3, f80p0=4, f80p1=5)  # unnecessary 
 # baseline = (-0.2, 0)    # define baseline
-tmin, tmax = -1, 2    # set the time range
+tmin, tmax = -1, 1    # set the time range
 sfreq = 1000
 
 # transform raw object into array
-n_events = 8
+n_events = len(events_id)
 n_trials = int(events.shape[0] / n_events)
 n_chans = len(picks)
 n_times = int((tmax - tmin) * sfreq + 1)
@@ -82,16 +82,14 @@ data = np.zeros((n_events, n_trials, n_chans, n_times))
 for i in range(n_events):
     data[i, ...] = Epochs(raw, events=events, event_id=i+1, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
-    data[i, ...] = filter_data(data[i, ...], sfreq=sfreq, l_freq=50, h_freq=70, n_jobs=8, method='iir')
+    data[i, ...] = filter_data(data[i, ...], sfreq=sfreq, l_freq=50, h_freq=70, n_jobs=8, method='fir')
 
-# %%
-# save data as .mat file
-data[0,...] = ff60p0
-data[1,...] = -1*ff60p1
+# data[0,...] = ff60p0
+# data[1,...] = -1*ff60p1
 
-# %%
-data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_8\wuqiaoyi\iir_50_90.mat'
+data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_32\wuqiaoyi\train_fir_50_70.mat'
 io.savemat(data_path, {'f_data':data, 'chan_info':picks_ch_names})
+print('Preprocessing done.')
 
 #%%
 fig = plt.figure(figsize=(16,9))
@@ -132,18 +130,6 @@ fig.tight_layout()
 plt.show()
 plt.savefig(r'C:\Users\brynh\Desktop\photocell-split.png', dpi=600)
 
-#%%
-data = np.zeros((4, 144, 62, 2501))
-data[0,:,:,:] = ff60p0
-data[1,:,:,:] = ff60p1
-
-data[2,:,:,:] = ff80p0
-data[3,:,:,:] = ff80p1
-
-#%% store raw data
-data_path = r'F:\SSVEP\dataset\preprocessed_data\60&80\xiongwentian\iir_50_90.mat'
-io.savemat(data_path, {'f_data':data, 'chan_info':picks_ch_names})
-
 #%% other test
 pz = []
 po5 = []
@@ -172,35 +158,6 @@ for i in range(10):
     exec("oz.append(model_%d[7+j].tolist())" %(i))
     exec("o2.append(model_%d[8+j].tolist())" %(i))
 del model_0, model_1, model_2, model_3, model_4, model_5, model_6, model_7, model_8, model_9
-
-#%%
-eeg = io.loadmat(r'F:\SSVEP\dataset\preprocessed_data\wuqiaoyi\50_70_bp.mat')
-ori_data = eeg['f_data'][:,-60:,[45,51,52,53,54,55,58,59,60],2140:2340]*1e6
-chan_info = eeg['chan_info'].tolist()
-
-#%%
-fig = plt.figure(figsize=(16,12))
-gs = GridSpec(4,4, figure=fig)
-
-ax1 = fig.add_subplot(gs[:2,:])
-ax1.tick_params(axis='both', labelsize=20)
-ax1.set_title('Original signal waveform (OZ)', fontsize=24)
-ax1.set_xlabel('Time/ms', fontsize=20)
-ax1.set_ylabel('Amplitude/uV', fontsize=20)
-ax1.plot(np.mean(ori_data[0,:,7,:], axis=0), label='0 phase')
-ax1.plot(np.mean(ori_data[1,:,7,:], axis=0), label='pi phase')
-ax1.legend(loc='upper left', fontsize=16)
-
-ax2 = fig.add_subplot(gs[2:,:])
-ax2.tick_params(axis='both', labelsize=20)
-ax2.set_title('Fisher score optimized signal waveform (OZ)', fontsize=24)
-ax2.set_xlabel('Time/ms', fontsize=20)
-ax2.set_ylabel('Amplitude/uV', fontsize=20)
-ax2.plot(np.mean(srca_data[0,:,7,:], axis=0), label='0 phase')
-ax2.plot(np.mean(srca_data[1,:,7,:], axis=0), label='pi phase')
-ax2.legend(loc='upper left', fontsize=16)
-
-plt.show()
 
 #%% FP-Growth
 if __name__ == '__main__':

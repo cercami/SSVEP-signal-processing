@@ -15,25 +15,25 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 import copy
-%matplotlib auto
+
 # %% TRCA/eTRCA for SRCA/origin data
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 # tar_chans= ['O1 ', 'OZ ', 'O2 ']
 # train_num = [10, 20, 30, 40]
-train_num = [80]
+# train_num = [80]
 # nameList = ['pangjun', 'chengqian']
 nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
-# nameList = ['wujieyu']
+# nameList = ['yangman','gaorunyuan']
 
-acc_srca_trca, acc_srca_etrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
-acc_srca_strca, acc_srca_setrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
-acc_ori_trca, acc_ori_etrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
-acc_ori_strca, acc_ori_setrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
+# acc_srca_trca, acc_srca_etrca = np.zeros((len(nameList), 10)), np.zeros((len(nameList), 10))
+# acc_srca_strca, acc_srca_setrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
+acc_ori_trca, acc_ori_etrca = np.zeros((len(nameList), 10, 5)), np.zeros((len(nameList), 10, 5))
+# acc_ori_strca, acc_ori_setrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))
 
 for nPeo in range(len(nameList)):
     people = nameList[nPeo]
     eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\60&80\%s\fir_50_90.mat' %(people))
-    f_data = eeg['f_data'][[0,1],...]
+    f_data = eeg['f_data']
     chans = eeg['chan_info'].tolist()
     n_events = f_data.shape[0]
     print("Now running " + people + "'s data...")
@@ -41,12 +41,12 @@ for nPeo in range(len(nameList)):
     for tn in range(len(train_num)):
         ns = train_num[tn]
         print('Training trials: ' + str(ns))
-        for cv in range(5):  # cross-validation in training
+        for cv in range(10):  # cross-validation in training
             print('CV: %d turn...' %(cv+1))
             for nt in range(5): 
                 print('Data length: %d00ms' %(nt+1))
-                srcaModel = io.loadmat(r'D:\SSVEP\realCV\60 & 80\%s\OLS\CCA\bp_50_90\train_%d\loop_%d\srca_%d.mat' 
-                                   %(people, ns, cv, nt))   
+                # srcaModel = io.loadmat(r'D:\SSVEP\realCV\60 & 80\%s\OLS\CCA\bp_50_90\train_%d\loop_%d\srca_%d.mat' 
+                #                    %(people, ns, cv, nt))   
 
                 # extract model info used in SRCA
                 modelInfo = srcaModel['modelInfo'].flatten().tolist()
@@ -107,58 +107,89 @@ io.savemat(data_path, {'ori_trca':acc_ori_trca, 'ori_etrca':acc_ori_etrca,
 
 
 
-# %% only origin data (multi-cross-validation)
+# %% only origin data
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
+tar_list = [45,51,52,53,54,55,58,59,60]
 
-#nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
-nameList = ['wuqiaoyi']
+nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
 
-acc_ori_trca = np.zeros((len(nameList), 10, 10))
-acc_ori_etrca = np.zeros((len(nameList), 10, 10))
+# nameList = ['wuqiaoyi','gaorunyuan', 'yangman']
+# nameList = ['wuqiaoyi', 'gaorunyuan']
+
+acc_ori_trca = np.zeros((6, len(nameList), 10, 5))
+acc_ori_etrca = np.zeros((6, len(nameList), 10, 5))
+# acc_srca_trca = np.zeros_like(acc_ori_trca)
+# acc_srca_etrca = np.zeros_like(acc_ori_etrca)
 
 for nPeo in range(len(nameList)):
     people = nameList[nPeo]
     print('Running ' + people + "'s data...")
-    eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\cvep_8\%s\train_iir_50_90.mat' %(people))
-    #f_data = eeg['f_data'][[2,3],:,:,:]
-    f_data = eeg['f_data']
-    chans = eeg['chan_info'].tolist()
-    n_events = 2
-    del eeg
-    ns = 60
-    print('Training trials: ' + str(ns))
-    for cv in range(10):  # cross-validation in training
-        print('CV: %d turn...' %(cv+1))
-        # randomly pick channels for identification
-        randPick = np.arange(f_data.shape[1])
-        np.random.shuffle(randPick)
-        for nt in range(10): 
-            print('Data length: %d00ms' %(nt+1))
-            # extract origin data with correct trials & correct length [45,51,52,53,54,55,58,59,60]
-            train_data = f_data[:,randPick[:ns],:,1140:1240+nt*100][:,:,[45,51,52,53,54,55,58,59,60],:]
-            test_data = f_data[:,randPick[-40:],:,1140:1240+nt*100][:,:,[45,51,52,53,54,55,58,59,60],:]
-            # target identification main process
-            accOriTRCA = mcee.TRCA(train_data, test_data)
-            accOrieTRCA = mcee.eTRCA(train_data, test_data)
-            # save accuracy data
-            acc_ori_trca[nPeo, cv, nt] = accOriTRCA
-            acc_ori_etrca[nPeo, cv, nt] = accOrieTRCA
-            del accOriTRCA
-            del accOrieTRCA
-        print(str(cv+1) + 'th cross-validation complete!\n')
-    print(str(ns) + ' training trials complete!\n')
+    eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\60&80\%s\fir_50_90.mat' %(people))
+    for nloop in range(6):
+        if nloop == 0:
+            f_data = eeg['f_data'][[0,1],...]
+        elif nloop == 1:
+            f_data = eeg['f_data'][[0,2],...]
+        elif nloop == 2:
+            f_data == eeg['f_data'][[0,3],...]
+        elif nloop == 3:
+            f_data == eeg['f_data'][[1,2],...]
+        elif nloop == 4:
+            f_data == eeg['f_data'][[1,3],...]
+        elif nloop == 5:
+            f_data == eeg['f_data'][[2,3],...]
+        chans = eeg['chan_info'].tolist()
+        n_events = 2  
+        ns = 80
+    
+    # srca_model = io.loadmat(r'D:\SSVEP\realCV\code_VEP\%s\eSNR_0.mat' %(people))
+    # model_info = srca_model['modelInfo'].flatten().tolist()
+    # model_chans = []
+    # for i in range(len(model_info)):
+    #     model_chans.append(model_info[i].tolist())
+    # del model_info, i
+    
+        print('Training trials: ' + str(ns))
+        for cv in range(10):  # cross-validation in training
+            print('CV: %d turn...' %(cv+1))
+            # randomly pick channels for identification
+            randPick = np.arange(f_data.shape[1])
+            np.random.shuffle(randPick)
+            for nt in range(5): 
+                print('Data length: %d00ms' %(nt+1))
+                # extract origin data with correct trials & correct length [45,51,52,53,54,55,58,59,60]
+                train_data = f_data[:,randPick[:ns],:,1140:1240+nt*100][...,tar_list,:]
+                test_data = f_data[:,randPick[ns:],:,1140:1240+nt*100][...,tar_list,:]
+            
+            # srca_train_data = np.zeros((2,60,9,100+nt*100))
+            # srca_test_data = np.zeros((2,40,9,100+nt*100))
+            # for i in range(n_events):
+            #     srca_train_data[i,...] = mcee.apply_SRCA(train_data[i,...], tar_chans, model_chans, chans)
+            #     srca_test_data[i,...] = mcee.apply_SRCA(test_data[i,...], tar_chans, model_chans, chans)
+            
+            # train_data = train_data[...,1140:][...,[45,51,52,53,54,55,58,59,60],:]
+            # test_data = test_data[...,1140:][...,[45,51,52,53,54,55,58,59,60],:]
+            
+                # target identification main process
+                otrca = mcee.TRCA(train_data, test_data)
+                oetrca = mcee.eTRCA(train_data, test_data)
+                # strca = mcee.TRCA(srca_train_data, srca_test_data)
+                # setrca = mcee.eTRCA(srca_train_data, srca_test_data)
+                
+                # save accuracy data
+                acc_ori_trca[nloop, nPeo, cv, nt] = otrca
+                acc_ori_etrca[nloop, nPeo, cv, nt] = oetrca
+                # acc_srca_trca[nPeo, cv, nt] = strca
+                # acc_srca_etrca[nPeo, cv, nt] = setrca
+                # del otrca, oetrca, strca, setrca
+            print(str(cv+1) + 'th cross-validation complete!\n')
+        print(str(ns) + ' training trials complete!\n')
+    print('Mission' + str(nloop) + ' complete!\n')
 
-#data_path = r'C:\Users\Administrator\Desktop\origin-80.mat'
-#io.savemat(data_path, {'ori_trca':acc_ori_trca,
-                       #'ori_etrca':acc_ori_etrca,})
-                       #'srca_trca':acc_srca_trca,
-                       #'srca_etrca':acc_srca_etrca})
+data_path = r'C:\Users\Administrator\Desktop\acc.mat'
+io.savemat(data_path, {'ori_trca':acc_ori_trca,
+                       'ori_etrca':acc_ori_etrca,})
 
-#%%
-show = np.mean(show, axis=0)
-show2 = np.mean(show2, axis=0)
-show3 = np.mean(show3, axis=0)
-show4 = np.mean(show4, axis=0)
 #%%
 result = io.loadmat(r'F:\SSVEP\realCV\mengqiangfan\FS\Long CI\Cross 23\dcpm_result.mat')
 ori = result['ori'][0,:,:]
@@ -666,36 +697,34 @@ plt.savefig(r'C:\Users\brynh\Desktop\9-5组会\wfsrca5-cq-split-te.png', dpi=600
 
 #%% DataFrame Preparation
 # load accuracy data from excel file
-#excel_path = r'F:\SSVEP\results\RealCV\Fisher Score\Long CI\fs+dcpm.xlsx'
-excel_path = r'D:\SSVEP\results\RealCV\CCA\60&80Hz.xlsx'
+excel_path = r'D:\SSVEP\results\code-VEP\8 code with interval.xlsx'
 excel_file = xlrd.open_workbook(excel_path, encoding_override='utf-8')
 all_sheet = excel_file.sheets()
 
-zhaowei = []
+yangman = []
 for each_row in range(all_sheet[0].nrows):
-    zhaowei.append(all_sheet[0].row_values(each_row))
+    yangman.append(all_sheet[0].row_values(each_row))
 
-wangruiyan = []
+gaorunyuan = []
 for each_row in range(all_sheet[1].nrows):
-    wangruiyan.append(all_sheet[1].row_values(each_row))
+    gaorunyuan.append(all_sheet[1].row_values(each_row))
 
-xiongwentian = []
+wuqiaoyi = []
 for each_row in range(all_sheet[2].nrows):
-    xiongwentian.append(all_sheet[2].row_values(each_row))
+    wuqiaoyi.append(all_sheet[2].row_values(each_row))
 
-wanghao = []
-for each_row in range(all_sheet[3].nrows):
-    wanghao.append(all_sheet[3].row_values(each_row))
+# wanghao = []
+# for each_row in range(all_sheet[3].nrows):
+#     wanghao.append(all_sheet[3].row_values(each_row))
 
-wujieyu = []
-for each_row in range(all_sheet[4].nrows):
-    wujieyu.append(all_sheet[4].row_values(each_row))
+# wujieyu = []
+# for each_row in range(all_sheet[4].nrows):
+#     wujieyu.append(all_sheet[4].row_values(each_row))
 
 del excel_path, excel_file, all_sheet, each_row
 
 #%% strings' preparation
-people = wangruiyan
-k = 1
+people = wuqiaoyi
 
 length = []
 for i in range(5):
@@ -703,155 +732,137 @@ for i in range(5):
 total_length = length*4
 del i, length
 
-# group hue
-group_list = ['Origin-TRCA', 'Origin-eTRCA', 'SRCA-TRCA', 'SRCA-eTRCA']
-total_group = []
-for i in range(len(group_list)):
-    total_group += [group_list[i] for j in range(25)]
-del i, group_list
-
-# data extraction 
-ori_data = []
-ori_edata = []
-srca_data = []
-srca_edata = []
-
-for i in range(5):      # rows
-    for j in range(5):  # columns
-        ori_data.append(people[j+3+k*8][i+1])
-        ori_edata.append(people[j+3+k*8][i+7])
-        srca_data.append(people[j+20+k*8][i+1])
-        srca_edata.append(people[j+20+k*8][i+7])
-del i, j
-
-# dataframe
-data606p = np.hstack((ori_data, ori_edata, srca_data, srca_edata))*1e2
-wangruiyan80 = pd.DataFrame({'acc':data606p, 'length':total_length, 'group':total_group})
-del data606p
-
-#%% strings' preparation for origin only
-people = xiongwentian
-k = 0
-
-length = []
-for i in range(10):
-    length += [(str(100*(i+1))+'ms') for j in range(10)]
-total_length = length*4
-del i, length
+name = []
+# name += ['yangman' for i in range(36)]
+name += ['gaorunyuan' for i in range(36)]
+name += ['wuqiaoyi' for i in range(36)]
 
 # group hue
-group_list = ['60Hz-TRCA', '60Hz-eTRCA', '80Hz-TRCA', '80Hz-eTRCA']
+group_list = ['Origin+TRCA', 'Origin+eTRCA',
+              'SRCA(eSNR)+TRCA','SRCA(eSNR)+eTRCA',
+              'SRCA(epCORR)+TRCA','SRCA(epCORR)+eTRCA']
 total_group = []
 for i in range(len(group_list)):
-    total_group += [group_list[i] for j in range(100)]
+    total_group += [group_list[i] for j in range(6)]
 del i, group_list
+total_group *= 2
 
-# data extraction 
-data60 = []
-edata60 = []
-data80 = []
-edata80 = []
+# %% data extraction 
+trca = []
+etrca = []
 
-for i in range(10):      # rows
-    for j in range(10):  # columns
-        data60.append(people[j+3+k*8][i+13])
-        edata60.append(people[j+15+k*8][i+13])
-        data80.append(people[j+27+k*8][i+13])
-        edata80.append(people[j+39+k*8][i+13])
-del i, j
+stesnr = []
+setesnr = []
 
-# dataframe
-data606p = np.hstack((data60, edata60, data80, edata80))*1e2
-xiongwentian_ori = pd.DataFrame({'acc':data606p, 'length':total_length, 'group':total_group})
-del data606p
+stepcorr = []
+setepcorr = []
 
-#%% dataframe
-data6040 = np.hstack((ori_data, ori_edata, srca_data, srca_edata))*1e2
-train6040 = pd.DataFrame({'acc':data6040, 'length':total_length, 'group':total_group})
-del data6040
-#%% dataframe
-data604p = np.hstack((ori_data, ori_edata, srca_data, srca_edata))*1e2
-train604p = pd.DataFrame({'acc':data604p, 'length':total_length, 'group':total_group})
-del data604p
-#%% dataframe
-data6p40 = np.hstack((ori_data, ori_edata, srca_data, srca_edata))*1e2
-train6p40 = pd.DataFrame({'acc':data6p40, 'length':total_length, 'group':total_group})
-del data6p40
-#%% dataframe
-data6p4p = np.hstack((ori_data, ori_edata, srca_data, srca_edata))*1e2
-train6p4p = pd.DataFrame({'acc':data6p4p, 'length':total_length, 'group':total_group})
-del data6p4p
-#%% dataframe
-data404p = np.hstack((ori_data, ori_edata, srca_data, srca_edata))*1e2
-train404p = pd.DataFrame({'acc':data404p, 'length':total_length, 'group':total_group})
-del data404p
+for i in range(6):
+    trca.append(people[28][i+1])
+    etrca.append(people[31][i+1])
+    
+    stesnr.append(people[29][i+1])
+    setesnr.append(people[32][i+1])
+    
+    stepcorr.append(people[30][i+1])
+    setepcorr.append(people[33][i+1])
 
+people1_data = np.hstack((trca,etrca,stesnr,setesnr,stepcorr,setepcorr))*1e2
+# %%
+temp1 = np.hstack((ori, sesnr, sepcorr))*1e2
+# %%
+temp2 = np.hstack((ori, sesnr, sepcorr))*1e2
+# %%
+temp3 = np.hstack((ori, sesnr, sepcorr))*1e2
+# %%
+data = np.hstack((people_data, people1_data))
+del people_data, people1_data
+# %% dataframe
+acc_ym = np.hstack((otrca, oetrca, strca, setrca))*1e2
+data_ym = pd.DataFrame({'acc':acc_ym, 'length':total_length, 'group':total_group})
+del acc_ym
 
+# %% dataframe
+acc_gry = np.hstack((otrca, oetrca, strca, setrca))*1e2
+data_gry = pd.DataFrame({'acc':acc_gry, 'length':total_length, 'group':total_group})
+del acc_gry
+
+# %% dataframe
+acc_wqy = np.hstack((otrca, oetrca, strca, setrca))*1e2
+data_wqy = pd.DataFrame({'acc':acc_wqy, 'length':total_length, 'group':total_group})
+del acc_wqy
+
+# %%
+data_tra = pd.DataFrame({'acc':data, 'name':name, 'group':total_group})
+del data
+# %%
+data_split = pd.DataFrame({'acc':data, 'name':name, 'group':total_group})
+del data
 #%% plotting
-%matplotlib auto
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 
 #color = ['#E31A1C', '#FB9A99', '#FF7F00', '#FDBF6F', '#1F78B4', '#A6CEE3', '#33A02C', '#B2DF8A']
-color = ['#A6CEE3', '#1F78B4', '#FDBF6F', '#FF7F00']
+color = ['#A6CEE3', '#1F78B4', '#FDBF6F', '#FF7F00','#B2DF8A', '#33A02C']
+# color = ['#1F78B4','#FF7F00','#33A02C']
 #, '#B2DF8A', '#33A02C', '#A6CEE3',
  #        '#1F78B4', '#CAB2D6', '#6A3D9A']
 #color = ['#E31A1C', '#FDBF6F', '#FF7F00', '#B2DF8A', '#33A02C', '#A6CEE3',
 #         '#1F78B4', '#CAB2D6', '#6A3D9A']
 brynhildr = sns.color_palette(color)
 
-fig = plt.figure(figsize=(16,9))
-gs = GridSpec(2, 2, figure=fig)
+fig = plt.figure(figsize=(12,10))
+gs = GridSpec(2, 1, figure=fig)
 sns.set(style='whitegrid')
 
-ax1 = fig.add_subplot(gs[:1,:1])
-ax1.set_title('sub1 - zhaowei', fontsize=16)
-ax1.tick_params(axis='both', labelsize=14)
-ax1 = sns.barplot(x='length', y='acc', hue='group', data=zhaowei_ori, ci=None,
+ax1 = fig.add_subplot(gs[:1,:])
+ax1.set_title('Traditional (e)TRCA : total length=1700ms', fontsize=20)
+ax1.tick_params(axis='both', labelsize=16)
+ax1 = sns.barplot(x='name', y='acc', hue='group', data=data_tra, ci='sd',
                   palette=brynhildr, saturation=.75)
-ax1.set_xlabel('Time/ms', fontsize=14)
-ax1.set_ylabel('Accuracy/%', fontsize=14)
-ax1.set_ylim([40, 105])
-ax1.set_yticks(range(40,110,10))
-ax1.legend(loc='lower right', fontsize=14)
+ax1.set_xlabel('Name', fontsize=18)
+ax1.set_ylabel('Accuracy/%', fontsize=18)
+ax1.set_ylim([0, 105])
+ax1.set_yticks(range(0,105,20))
+ax1.legend(loc='lower right', fontsize=16)
 
-ax2 = fig.add_subplot(gs[:1,1:])
-ax2.set_title('sub2 - xiongwentian', fontsize=16)
-ax2.tick_params(axis='both', labelsize=14)
-ax2 = sns.barplot(x='length', y='acc', hue='group', data=xiongwentian_ori, ci=None,
+ax2 = fig.add_subplot(gs[1:,:])
+ax2.set_title('Split-(e)TRCA : stepwidth=600ms, total length=1800ms', fontsize=20)
+ax2.tick_params(axis='both', labelsize=16)
+ax2 = sns.barplot(x='name', y='acc', hue='group', data=data_split, ci='sd',
                   palette=brynhildr, saturation=.75)
-ax2.set_xlabel('Time/ms', fontsize=14)
-ax2.set_ylabel('Accuracy/%', fontsize=14)
-ax2.set_ylim([40, 105])
-ax2.set_yticks(range(40,110,10))
-ax2.legend(loc='upper right', fontsize=14)
+ax2.set_xlabel('Name', fontsize=18)
+ax2.set_ylabel('Accuracy/%', fontsize=18)
+ax2.set_ylim([0, 105])
+ax2.set_yticks(range(0,105,20))
+ax2.legend(loc='lower right', fontsize=16)
 
-ax3 = fig.add_subplot(gs[1:,:1])
-ax3.set_title('sub3 - wangruiyan', fontsize=16)
-ax3.tick_params(axis='both', labelsize=14)
-ax3 = sns.barplot(x='length', y='acc', hue='group', data=wangruiyan_ori, ci=None,
-                  palette=brynhildr, saturation=.75)
-ax3.set_xlabel('Time/ms', fontsize=14)
-ax3.set_ylabel('Accuracy/%', fontsize=14)
-ax3.set_ylim([40, 105])
-ax3.set_yticks(range(40,110,10))
-ax3.legend(loc='upper right', fontsize=14)
+#ax3 = fig.add_subplot(gs[1:,:1])
+#ax3.set_title('Sub3 - wuqiaoyi', fontsize=20)
+#ax3.tick_params(axis='both', labelsize=16)
+#ax3 = sns.barplot(x='length', y='acc', hue='group', data=data_wqy, ci='sd',
+#                  palette=brynhildr, saturation=.75)
+#ax3.set_xlabel('Time/ms', fontsize=16)
+#ax3.set_ylabel('Accuracy/%', fontsize=16)
+#ax3.set_ylim([50, 105])
+#ax3.set_yticks(range(50,110,10))
+#ax3.legend(loc='lower right', fontsize=16)
 
-ax4 = fig.add_subplot(gs[1:,1:])
-ax4.set_title('sub4 - wanghao', fontsize=16)
-ax4.tick_params(axis='both', labelsize=14)
-ax4 = sns.barplot(x='length', y='acc', hue='group', data=wanghao_ori, ci=None,
-                  palette=brynhildr, saturation=.75)
-ax4.set_xlabel('Time/ms', fontsize=14)
-ax4.set_ylabel('Accuracy/%', fontsize=14)
-ax4.set_ylim([40, 105])
-ax4.set_yticks(range(40,110,10))
-ax4.legend(loc='upper right', fontsize=14)
+# ax4 = fig.add_subplot(gs[1:,1:])
+# ax4.set_title('sub4 - wanghao', fontsize=16)
+# ax4.tick_params(axis='both', labelsize=14)
+# ax4 = sns.barplot(x='length', y='acc', hue='group', data=wanghao_ori, ci=None,
+#                   palette=brynhildr, saturation=.75)
+# ax4.set_xlabel('Time/ms', fontsize=14)
+# ax4.set_ylabel('Accuracy/%', fontsize=14)
+# ax4.set_ylim([40, 105])
+# ax4.set_yticks(range(40,110,10))
+# ax4.legend(loc='upper right', fontsize=14)
 
 fig.tight_layout()
 plt.show()
-plt.savefig(r'C:\Users\Administrator\Desktop\11-26-3.png', dpi=600)
+plt.savefig(r'C:\Users\Administrator\Desktop\1-2-3.png', dpi=600)
 
 #%%
 data1 = d_ori_re
@@ -914,34 +925,41 @@ for i in range(groupNum):
 fs = (ite_d) / np.sum(sampleNum * itr_d, axis=0)
 
 # %% code_VEP
-from mcee import (TRCA_compute, corr_coef)
+#from mcee import (TRCA_compute, corr_coef)
 tar_chan_index = [45,51,52,53,54,55,58,59,60]
-n_events = 32
-code_num = 5
-code_length = 300
-gap_length = 100
-n_chans = 9
-sp = 1140
+#n_events = 8
+#code_num = 5
+#code_length = 300
+#gap_length = 100
+#n_chans = 9
+#sp = 1140
+code_series = np.array(([0,1,1],
+                        [1,0,1],
+                        [0,0,0],
+                        [1,1,0],
+                        [0,0,1],
+                        [0,1,0],
+                        [1,0,0],
+                        [1,1,1]))
+#data_path = r'D:\SSVEP\program\code_1bits.mat'
+#code_data = io.loadmat(data_path)
+#code_series = code_data['VEPSeries_1bits']  # (n_codes, n_elements)
+#del data_path, code_data
 
-data_path = r'D:\SSVEP\program\code_1bits.mat'
-code_data = io.loadmat(data_path)
-code_series = code_data['VEPSeries_1bits']  # (n_codes, n_elements)
-del data_path, code_data
+#data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_8\yangman\train_fir_50_70.mat'
+#eeg = io.loadmat(data_path)
+#train_data = eeg['f_data'][:, :, tar_chan_index, 1140:1440]
+#del data_path, eeg
 
-data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_32\yangman\train_fir_50_90.mat'
+data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_8\wuqiaoyi\fir_50_70.mat'
 eeg = io.loadmat(data_path)
-train_data = eeg['f_data'][:, :, tar_chan_index, 1140:1440]
+data = eeg['f_data'][:, :, tar_chan_index, 1140:2840]
 del data_path, eeg
 
-data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_32\yangman\fir_50_90.mat'
-eeg = io.loadmat(data_path)
-test_data = eeg['f_data'][:, :, tar_chan_index, :]
-del data_path, eeg
+#n_trials = test_data.shape[1]
+#code_data = np.zeros((n_trials, code_num, n_chans, code_length))
 
-n_trials = test_data.shape[1]
-code_data = np.zeros((n_trials, code_num, n_chans, code_length))
-
-acc = 0
+#acc = 0
 # %%
 for i in range(32):
     for j in range(code_num):
