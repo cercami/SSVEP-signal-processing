@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 import copy
+# %matplotlib auto
 
 # %% TRCA/eTRCA for SRCA/origin data
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
@@ -23,7 +24,7 @@ tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 # train_num = [80]
 # nameList = ['pangjun', 'chengqian']
 nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
-# nameList = ['yangman','gaorunyuan']
+nameList = ['wanghao']
 
 # acc_srca_trca, acc_srca_etrca = np.zeros((len(nameList), 10)), np.zeros((len(nameList), 10))
 # acc_srca_strca, acc_srca_setrca = np.zeros((len(nameList), 5, 5)), np.zeros((len(nameList), 5, 5))

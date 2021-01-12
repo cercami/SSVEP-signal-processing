@@ -43,7 +43,7 @@ for filefolder in filefolders:
 
 raw_cnts = []
 for file in filelist:
-    montage = mne.channels.make_standard_montage('standard_1020')
+    # montage = mne.channels.make_standard_montage('standard_1020')
     raw_cnt = mne.io.read_raw_cnt(file, eog=['HEO', 'VEO'], emg=['EMG'], ecg=['EKG'],
             preload=True, verbose=False)
     raw_cnts.append(raw_cnt)
@@ -83,9 +83,6 @@ for i in range(n_events):
     data[i, ...] = Epochs(raw, events=events, event_id=i+1, tmin=tmin, picks=picks,
                tmax=tmax, baseline=None, preload=True).get_data() * 1e6
     data[i, ...] = filter_data(data[i, ...], sfreq=sfreq, l_freq=50, h_freq=70, n_jobs=8, method='fir')
-
-# data[0,...] = ff60p0
-# data[1,...] = -1*ff60p1
 
 data_path = r'D:\SSVEP\dataset\preprocessed_data\cvep_32\wuqiaoyi\train_fir_50_70.mat'
 io.savemat(data_path, {'f_data':data, 'chan_info':picks_ch_names})

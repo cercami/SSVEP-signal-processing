@@ -7,6 +7,7 @@ author: Brynhildr W
 """
 # %% Import third part module
 import numpy as np
+from numpy import (sin, cos, pi)
 from numpy import newaxis as NA
 import scipy.io as io
 import mcee
@@ -94,3 +95,31 @@ for n_peo in range(len(nameList)):
 
 
 # %%
+n_elements = 2
+flash_time = 1.0
+refresh_rate = 120
+flash_frames = int(flash_time*refresh_rate)
+stim_colors = np.zeros((flash_frames, n_elements, 3))  # use 3 value to control color in RGB space
+freq, phase = 15, 0
+time_point = np.linspace(0, (flash_frames-1)/refresh_rate, flash_frames)
+sinw = sin(2*pi*freq*time_point + pi*phase)
+
+stim_colors = np.vstack((sinw, sinw, sinw)).T[:, NA, :]
+unit = stim_colors
+
+for i in range(n_elements):  # config multi-stimuli
+    stim_colors = np.concatenate((stim_colors, unit), axis=1)
+
+# %%
+rest = io.loadmat(r'D:\SSVEP\rest.mat')
+rest = rest['rest']
+rest = np.swapaxes(rest, 0,2)
+rest = np.swapaxes(rest, 1,-1)
+
+task = io.loadmat(r'D:\SSVEP\task.mat')
+task = task['task']
+task = np.swapaxes(task, 0,2)
+task = np.swapaxes(task, 1,-1)
+
+
+

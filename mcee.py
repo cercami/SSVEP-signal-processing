@@ -34,6 +34,7 @@ import numpy as np
 from numpy import linalg as LA
 from numpy import corrcoef as CORR
 from numpy import newaxis as NA
+from numpy import (sin, cos)
 
 from sklearn import linear_model
 
@@ -175,7 +176,7 @@ def sinw(freq, time, phase, sfreq=1000):
     freq : float
         frequency / Hz.
     time : float
-        time lenght / s.
+        time length / s.
     phase : float
         0-2.
     sfreq : float/int, optional
@@ -188,7 +189,7 @@ def sinw(freq, time, phase, sfreq=1000):
     '''
     n_point = int(time*sfreq)
     time_point = np.linspace(0, (n_point-1)/sfreq, n_point)
-    wave = np.sin(2*pi*freq*time_point + pi*phase)
+    wave = sin(2*pi*freq*time_point + pi*phase)
     return wave
 
 # choose best template phase
@@ -843,22 +844,164 @@ def stepwise_SRCA_fs(chans, mfs, w, w_target, signal_data, data_target, regressi
 
 
 # %% Canonical Correlation Analysis
-def CCA_compute(data, model):
+def sin_model(base_freq, n_bands, time, phase=0, sfreq=1000):
+    """
+
+    Parameters
+    ----------
+    base_freq : int/float
+        frequency / Hz
+    n_bands : int
+    time : float
+        time length / s
+    phase : float, optional
+        0-2. The default is 0.
+    sfreq : float/int, optional
+        sampling frequency. The default is 1000.
+
+    Returns
+    -------
+    model : ndarray, (2*n_bands, time*sfreq)
+        sine/cosine wave model.
+    """
+    n_point = int(time*sfreq)
+    model = np.zeros((int(2*n_bands), n_point))
+    time_point = np.linspace(0, (n_point-1)/sfreq, n_point)
     
-    pass
+    for i in range(n_bands):
+        model[i*2, :] = sin(2*pi*(i+1)*base_freq*time_point + pi*phase)
+        model[i*2+1, :] = cos(2*pi*(i+1)*base_freq*time_point + pi*phase)
+    
+    return model
 
-def sCCA(data, base_freq, n_bands):
-    pass
+def CCA_compute(data, model, mode='data'):
+    """
 
-def itCCA(data, ):
-    pass
+    Parameters
+    ----------
+    data : ndarray, (n_chans, n_times)
+    model : ndarray, (2*n_bands, n_times)
+    mode : str
+        'data' or 'model'. The default is 'data'.
 
-def single_ti(train_data, test_data):
-    pass
+    Returns
+    -------
+    w : (n_chans or n_bands,)
+        spatial filters for eeg data (or model)
 
-def ensemble_ti():
-    pass
+    """
+    if mode == 'data':
+        Z = data.T
+        projection = model.T @ LA.inv(model @ model.T) @ model
+    elif mode == 'model':
+        Z = model.T
+        projection = data.T @ LA.inv(data @ data.T) @ data
 
+    # unified framework: type I
+    matrix_A = Z.T @ projection @ projection.T @ Z
+    matrix_B = Z.T @ Z
+
+    # solve generalized eigenvalue problem
+    e_va, e_vec = LA.eig(LA.inv(matrix_A) @ matrix_B)
+    w_index = np.argmax(e_va)
+    w = e_vec[:, w_index].T
+
+    return w
+
+def sCCA(data, base_freq, n_bands, sfreq=1000):
+    """
+
+    Parameters
+    ----------
+    data : ndarray, (n_events, n_trials, n_chans, n_points)
+        test dataset
+    base_sfreq : list of float/int
+    n_bands : int
+
+    Returns
+    -------
+    accuracy : float, 0-1
+    """
+    n_events = data.shape[0]
+    n_tests = data.shape[1]
+    n_points = data.shape[-1]
+    signal_time = n_points/sfreq
+    r = np.zeros((n_events, n_tests, n_events))
+    filtered_data = np.zeros((n_events, n_events, n_tests, data.shape[2], n_points))
+
+    for nete in range(n_events):
+        for nte in range(n_tests):
+            # preparation
+            test = data[nete, nte, ...]
+            for netr in range(n_events):
+                model = sin_model(base_freq[netr], n_bands, signal_time)
+                # compute spatial filters 
+                w_X = CCA_compute(test, model, mode='data')
+                w_Y = CCA_compute(test, model, mode='model')
+
+                # dimensionality reduction
+                trans_X, trans_Y = w_X @ test, w_Y @ model
+                filtered_data[nete, netr, nte, ...] = trans_X
+
+                # compute correlation
+                r[nete, nte, netr] = corr_coef(trans_X, trans_Y)
+    
+    # compute accuracy
+    accuracy = 0
+    for nete in range(n_events):
+        for nte in range(n_tests):
+            if np.argmax(r[nete, nte, :]) == nete:
+                accuracy += 1
+    accuracy /= (n_events*n_tests)
+
+    return accuracy, filtered_data
+
+def itCCA(train_data, test_data):
+    """
+
+    Parameters
+    ----------
+    train_data : ndarray, (n_events, n_trains, n_chans, n_points)
+        training dataset
+    test_data : ndarray, (n_events, n_tests, n_chans, n_points)
+        test dataset
+    
+    Returns
+    -------
+    accuracy : float, 0-1
+    """
+    n_events = train_data.shape[0]
+    n_tests = test_data.shape[1]
+    template = train_data.mean(axis=1)  # (n_events, n_chans, n_points)
+    r = np.zeros((n_events, n_tests, n_events))
+    filtered_data = np.zeros((n_events, n_events, n_tests, test_data.shape[2], test_data.shape[-1]))
+
+    for nete in range(n_events):
+        for nte in range(n_tests):
+            # preparation
+            test = test_data[nete, nte, ...]
+            for netr in range(n_events):
+                model = template[netr, ...]
+                # compute spatial filters
+                w_X = CCA_compute(test, model, mode='data')
+                w_Y = CCA_compute(test, model, mode='model')
+                
+                # dimensionality reduction
+                trans_X, trans_Y = w_X @ test, w_Y @ model
+                filtered_data[nete, netr, nte, ...] = trans_X
+
+                # compute correlation
+                r[nete, nte, netr] = corr_coef(trans_X, trans_Y)
+    
+    # compute accuracy
+    accuracy = 0
+    for nete in range(n_events):
+        for nte in range(n_tests):
+            if np.argmax(r[nete, nte, :]) == nete:
+                accuracy += 1
+    accuracy /= (n_events*n_tests)
+
+    return accuracy, filtered_data
 
 
 # %% Target identification: TRCA method (series)
@@ -950,6 +1093,7 @@ def TRCA(train_data, test_data):
     n_events, n_tests = test_data.shape[0], test_data.shape[1]
     template = train_data.mean(axis=1)  # template data: (n_events, n_chans, n_times)
     w = TRCA_compute(train_data)        # spatial filter W: (n_events, n_chans)
+    filtered_data = np.zeros((n_events, n_events, n_tests, test_data.shape[-2], test_data.shape[-1]))
 
     # target identification
     r = np.zeros((n_events, n_tests, n_events))
@@ -959,7 +1103,7 @@ def TRCA(train_data, test_data):
                 temp_test = w[netr, :] @ test_data[nete, nte, ...]
                 temp_template = w[netr, :] @ template[netr, ...]
                 r[netr, nte, nete] = corr_coef(temp_test, temp_template)
-    
+                filtered_data[nete, netr, nte, ...] = temp_test
     # compute accuracy
     accuracy = []
     for nete in range(n_events):  # n_events in training dataset
@@ -968,7 +1112,7 @@ def TRCA(train_data, test_data):
                 accuracy.append(1)
     accuracy = np.sum(accuracy) / (n_events*n_tests)
 
-    return accuracy
+    return accuracy, filtered_data
 
 def eTRCA(train_data, test_data):
     '''
