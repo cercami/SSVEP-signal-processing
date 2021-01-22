@@ -27,42 +27,75 @@ import string
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
-%matplotlib auto
+
+from mne.time_frequency import psd_array_welch
 # %% D:\SSVEP\photocell_no_interval
-tmin, tmax = -0.1, 2
-sfreq = 1000
+# tar_list = [('bi_'+str(i+1)) for i in range(5)]
+# tar_list = [('left_'+str(i+1)) for i in range(5)]
+tar_list = [('right_'+str(i+1)) for i in range(5)]
 
-n_events = 32
-n_trials = 32
+data = np.zeros((95, 64, 3001))
 
-n_times = int((tmax-tmin)*sfreq + 1)
-
-data = np.zeros((1, n_trials, n_times))
-symbols = ''.join([string.ascii_uppercase, '_12345'])
-for text in symbols:
+for lp in range(5):
+    text = tar_list[lp]
     filename = text + '.cnt'
-    filepath = 'D:\SSVEP\photocell_no_interval\\' + filename
+    filepath = 'E:\\yangman\\31-34\\' + filename
     montage = mne.channels.make_standard_montage('standard_1020')
     raw_cnt = mne.io.read_raw_cnt(filepath, eog=['HEO', 'VEO'], emg=['EMG'], ecg=['EKG'],
             preload=True, verbose=False)
-
     events, events_id = mne.events_from_annotations(raw_cnt)
-
-    drop_chans = ['M1', 'M2']
-    picks = mne.pick_types(raw_cnt.info, emg=False, eeg=True, stim=False, eog=False, exclude=drop_chans)
+    picks = mne.pick_types(raw_cnt.info, emg=False, eeg=True, stim=False, eog=False)
     picks_ch_names = [raw_cnt.ch_names[i] for i in picks]
+    tmin, tmax = -1, 2
+    sfreq = 1000
 
-    seg_data = Epochs(raw_cnt, events=events, event_id=1, tmin=tmin, picks=picks, tmax=tmax,
-                baseline=None, preload=True).get_data()
-    data = np.concatenate((data, seg_data[NA,:,26,:]), axis=0)
+    n_events = len(events_id)
+    n_trials = int(events.shape[0] / n_events)
+    n_chans = len(picks)
+    n_times = int((tmax-tmin)*sfreq+1)
 
-del seg_data, raw_cnt, drop_chans, events, events_id, filename, filepath
-del montage, picks, text
+    temp_data = Epochs(raw_cnt, events=events, event_id=1, tmin=tmin, picks=picks, tmax=tmax,
+                        baseline=None, preload=True).get_data() * 1e6
+    if temp_data.shape[0] == 20:
+        temp_data = np.delete(temp_data, 0, axis=0)
+    data[lp*19:(lp+1)*19, ...] = temp_data
 
-data = np.delete(data, 0, axis=0)
+data_path = r'D:\right_31_34.mat'
+io.savemat(data_path, {'data':data, 'chan_info':picks_ch_names})
 
-mean_data = data.mean(axis=1)
+# %%
+text = '2021-1-5-wqy-o1'
+filename = text + '.cnt'
+filepath = 'E:\\2021-1-5-wqy-o1\\' + filename
+montage = mne.channels.make_standard_montage('standard_1020')
+raw_cnt = mne.io.read_raw_cnt(filepath, eog=['HEO', 'VEO'], emg=['EMG'], ecg=['EKG'],
+            preload=True, verbose=False)
+events, events_id = mne.events_from_annotations(raw_cnt)
+picks = mne.pick_types(raw_cnt.info, emg=False, eeg=True, stim=False, eog=False)
+picks_ch_names = [raw_cnt.ch_names[i] for i in picks]
+tmin, tmax = -0.5, 1.5
+sfreq = 1000
 
+n_events = len(events_id)
+n_trials = int(events.shape[0] / n_events)
+n_chans = len(picks)
+n_times = int((tmax-tmin)*sfreq+1)
+
+# %%
+temp_data = Epochs(raw_cnt, events=events, event_id=1, tmin=tmin, picks=picks, tmax=tmax,
+                        baseline=None, preload=True).get_data() * 1e6
+temp_data = filter_data(temp_data, sfreq=sfreq, l_freq=5, h_freq=30, n_jobs=8, method='iir')
+#%%
+psds, freqs = psd_array_welch(temp_data[:,61,:], sfreq=1000, fmin=0, fmax=50, n_fft=1024)
+
+
+# %%
+if temp_data.shape[0] == 20:
+    temp_data = np.delete(temp_data, 0, axis=0)
+data[lp*19:(lp+1)*19, ...] = temp_data
+
+data_path = r'D:\right_31_34.mat'
+io.savemat(data_path, {'data':data, 'chan_info':picks_ch_names})
 # %%
 def trim_axs(axs, N):
     axs = axs.flat

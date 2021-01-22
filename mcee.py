@@ -349,6 +349,7 @@ def corr_coef(X, y):
 
     return corrcoef.mean()
 
+
 # %% Stepwise SRCA
 def SRCA_train(chans, mpara, w, w_target, signal_data, data_target, method='SNR',
                 regression='OLS', alpha=1.0, l1_ratio=1.0, freq=None, phase=None, sfreq=1000):
@@ -927,8 +928,6 @@ def sCCA(data, base_freq, n_bands, sfreq=1000):
     n_points = data.shape[-1]
     signal_time = n_points/sfreq
     r = np.zeros((n_events, n_tests, n_events))
-    filtered_data = np.zeros((n_events, n_events, n_tests, data.shape[2], n_points))
-
     for nete in range(n_events):
         for nte in range(n_tests):
             # preparation
@@ -941,7 +940,6 @@ def sCCA(data, base_freq, n_bands, sfreq=1000):
 
                 # dimensionality reduction
                 trans_X, trans_Y = w_X @ test, w_Y @ model
-                filtered_data[nete, netr, nte, ...] = trans_X
 
                 # compute correlation
                 r[nete, nte, netr] = corr_coef(trans_X, trans_Y)
@@ -954,7 +952,7 @@ def sCCA(data, base_freq, n_bands, sfreq=1000):
                 accuracy += 1
     accuracy /= (n_events*n_tests)
 
-    return accuracy, filtered_data
+    return accuracy
 
 def itCCA(train_data, test_data):
     """
@@ -974,7 +972,6 @@ def itCCA(train_data, test_data):
     n_tests = test_data.shape[1]
     template = train_data.mean(axis=1)  # (n_events, n_chans, n_points)
     r = np.zeros((n_events, n_tests, n_events))
-    filtered_data = np.zeros((n_events, n_events, n_tests, test_data.shape[2], test_data.shape[-1]))
 
     for nete in range(n_events):
         for nte in range(n_tests):
@@ -988,7 +985,6 @@ def itCCA(train_data, test_data):
                 
                 # dimensionality reduction
                 trans_X, trans_Y = w_X @ test, w_Y @ model
-                filtered_data[nete, netr, nte, ...] = trans_X
 
                 # compute correlation
                 r[nete, nte, netr] = corr_coef(trans_X, trans_Y)
@@ -1001,7 +997,7 @@ def itCCA(train_data, test_data):
                 accuracy += 1
     accuracy /= (n_events*n_tests)
 
-    return accuracy, filtered_data
+    return accuracy
 
 
 # %% Target identification: TRCA method (series)
@@ -1093,7 +1089,6 @@ def TRCA(train_data, test_data):
     n_events, n_tests = test_data.shape[0], test_data.shape[1]
     template = train_data.mean(axis=1)  # template data: (n_events, n_chans, n_times)
     w = TRCA_compute(train_data)        # spatial filter W: (n_events, n_chans)
-    filtered_data = np.zeros((n_events, n_events, n_tests, test_data.shape[-2], test_data.shape[-1]))
 
     # target identification
     r = np.zeros((n_events, n_tests, n_events))
@@ -1103,7 +1098,6 @@ def TRCA(train_data, test_data):
                 temp_test = w[netr, :] @ test_data[nete, nte, ...]
                 temp_template = w[netr, :] @ template[netr, ...]
                 r[netr, nte, nete] = corr_coef(temp_test, temp_template)
-                filtered_data[nete, netr, nte, ...] = temp_test
     # compute accuracy
     accuracy = []
     for nete in range(n_events):  # n_events in training dataset
@@ -1112,7 +1106,7 @@ def TRCA(train_data, test_data):
                 accuracy.append(1)
     accuracy = np.sum(accuracy) / (n_events*n_tests)
 
-    return accuracy, filtered_data
+    return accuracy
 
 def eTRCA(train_data, test_data):
     '''
@@ -1664,6 +1658,7 @@ def cvep_TI(code_num, code_length, gap_length, train_data, test_data):
 
     pass
 
+
 # %% Target identification: DCPM
 # discrimination index 1: 2D correlation
 def di1(dataA, dataB):
@@ -1925,12 +1920,9 @@ def corr_detect(test_data, template):
     for nete in range(n_events):  # n_events' loop in test dataset
         for ntte in range(n_trials):  # n_trials' loop in test dataset
             for netr in range(n_events):  # n_events' loop in template (training dataset)
-                rou[nete,ntte,netr] = np.sum(np.tril(np.corrcoef(test_data[nete,ntte,:],template[netr,:]),-1))
-            del netr
-            if np.max(np.where([rou[nete,ntte,:] == np.max(rou[nete,ntte,:])])) == nete:  # correct
+                rou[nete,ntte,netr] = corr_coef(test_data[nete,ntte,:], template[netr,:])
+            if np.argmax(rou[nete,ntte,:]) == nete: # correct
                 acc.append(1)
-        del ntte
-    del nete
     acc = np.sum(acc) 
     for j in range(n_events):
         for k in range(n_events):

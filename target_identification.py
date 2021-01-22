@@ -111,46 +111,28 @@ io.savemat(data_path, {'ori_trca':acc_ori_trca, 'ori_etrca':acc_ori_etrca,
 # %% only origin data
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
 tar_list = [45,51,52,53,54,55,58,59,60]
+freq = [48,52,54,56,58,60,80]
 
-nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
+# nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
 
 # nameList = ['wuqiaoyi','gaorunyuan', 'yangman']
-# nameList = ['wuqiaoyi', 'gaorunyuan']
+nameList = ['wuqiaoyi']
 
-acc_ori_trca = np.zeros((6, len(nameList), 10, 5))
-acc_ori_etrca = np.zeros((6, len(nameList), 10, 5))
+acc_ori_trca = np.zeros((7, len(nameList), 10, 5))
+acc_ori_etrca = np.zeros((7, len(nameList), 10, 5))
 # acc_srca_trca = np.zeros_like(acc_ori_trca)
 # acc_srca_etrca = np.zeros_like(acc_ori_etrca)
-
+loop = 0
 for nPeo in range(len(nameList)):
     people = nameList[nPeo]
     print('Running ' + people + "'s data...")
-    eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\60&80\%s\fir_50_90.mat' %(people))
-    for nloop in range(6):
-        if nloop == 0:
-            f_data = eeg['f_data'][[0,1],...]
-        elif nloop == 1:
-            f_data = eeg['f_data'][[0,2],...]
-        elif nloop == 2:
-            f_data == eeg['f_data'][[0,3],...]
-        elif nloop == 3:
-            f_data == eeg['f_data'][[1,2],...]
-        elif nloop == 4:
-            f_data == eeg['f_data'][[1,3],...]
-        elif nloop == 5:
-            f_data == eeg['f_data'][[2,3],...]
+    for fq in freq:
+        eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\xwt_bishe\%s\f_%d.mat' %(people, fq))
+        f_data = eeg['f_data']
         chans = eeg['chan_info'].tolist()
         n_events = 2  
-        ns = 80
-    
-    # srca_model = io.loadmat(r'D:\SSVEP\realCV\code_VEP\%s\eSNR_0.mat' %(people))
-    # model_info = srca_model['modelInfo'].flatten().tolist()
-    # model_chans = []
-    # for i in range(len(model_info)):
-    #     model_chans.append(model_info[i].tolist())
-    # del model_info, i
-    
-        print('Training trials: ' + str(ns))
+        ns = 40    
+        print('Testing frequency: ' + str(fq) + 'Hz')
         for cv in range(10):  # cross-validation in training
             print('CV: %d turn...' %(cv+1))
             # randomly pick channels for identification
@@ -162,32 +144,21 @@ for nPeo in range(len(nameList)):
                 train_data = f_data[:,randPick[:ns],:,1140:1240+nt*100][...,tar_list,:]
                 test_data = f_data[:,randPick[ns:],:,1140:1240+nt*100][...,tar_list,:]
             
-            # srca_train_data = np.zeros((2,60,9,100+nt*100))
-            # srca_test_data = np.zeros((2,40,9,100+nt*100))
-            # for i in range(n_events):
-            #     srca_train_data[i,...] = mcee.apply_SRCA(train_data[i,...], tar_chans, model_chans, chans)
-            #     srca_test_data[i,...] = mcee.apply_SRCA(test_data[i,...], tar_chans, model_chans, chans)
-            
-            # train_data = train_data[...,1140:][...,[45,51,52,53,54,55,58,59,60],:]
-            # test_data = test_data[...,1140:][...,[45,51,52,53,54,55,58,59,60],:]
-            
                 # target identification main process
-                otrca = mcee.TRCA(train_data, test_data)
-                oetrca = mcee.eTRCA(train_data, test_data)
-                # strca = mcee.TRCA(srca_train_data, srca_test_data)
-                # setrca = mcee.eTRCA(srca_train_data, srca_test_data)
+                otrca = mcee.TRCA(test_data, train_data)
+                oetrca = mcee.eTRCA(test_data, train_data)
                 
                 # save accuracy data
-                acc_ori_trca[nloop, nPeo, cv, nt] = otrca
-                acc_ori_etrca[nloop, nPeo, cv, nt] = oetrca
-                # acc_srca_trca[nPeo, cv, nt] = strca
-                # acc_srca_etrca[nPeo, cv, nt] = setrca
+                acc_ori_trca[loop, nPeo, cv, nt] = otrca
+                acc_ori_etrca[loop, nPeo, cv, nt] = oetrca
+
                 # del otrca, oetrca, strca, setrca
             print(str(cv+1) + 'th cross-validation complete!\n')
-        print(str(ns) + ' training trials complete!\n')
-    print('Mission' + str(nloop) + ' complete!\n')
+        loop += 1
+        print('Frequency ' + str(fq) + ' complete!\n')
+    print('People ' + people + ' complete!\n')
 
-data_path = r'C:\Users\Administrator\Desktop\acc.mat'
+data_path = r'C:\Users\Administrator\Desktop\acc_1.mat'
 io.savemat(data_path, {'ori_trca':acc_ori_trca,
                        'ori_etrca':acc_ori_etrca,})
 

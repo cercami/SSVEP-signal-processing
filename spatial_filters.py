@@ -86,7 +86,6 @@ def zero_mean(data):
 
     return data
 
-
 def corr_coef(X, y):
     """
 
@@ -109,7 +108,6 @@ def corr_coef(X, y):
     corrcoef = cov_yx / (var_xx*var_yy)
 
     return corrcoef.mean()
-
 
 def sinw(freq, time, phase, sfreq=1000):
     """
@@ -136,7 +134,6 @@ def sinw(freq, time, phase, sfreq=1000):
     wave = np.sin(2*pi*freq*time_point + pi*phase)
 
     return wave
-
 
 def real_phase(data, freq, step=100, sfreq=1000):
     """
@@ -172,7 +169,6 @@ def real_phase(data, freq, step=100, sfreq=1000):
 
     return best_phase
 
-
 def time_shift(data, step, axis=None):
     """
 
@@ -201,7 +197,6 @@ def time_shift(data, step, axis=None):
 
     return tf_data
 
-
 def pearson_corr2(data_A, data_B):
     """
 
@@ -223,7 +218,6 @@ def pearson_corr2(data_A, data_B):
     corr2 = numerator / np.sqrt(denominator_A*denominator_B)
 
     return corr2
-
 
 def Imn(m,n):
     """
@@ -247,7 +241,6 @@ def Imn(m,n):
         i += 1
         
     return target
-
 
 def diag_splice(*arg):
     """
@@ -313,16 +306,16 @@ class spatial_filter:
         # if hasattr(self, 'attribute'):
 
 
-    def framework(self, filter_series=None, filter_type=None, **kwargs):
+    def framework(self, filter_core=None, filter_type=None, **kwargs):
         """
         Choose different frameworks for different spatial filter schemes.
         Determine the form of the data matrix and projection matrix.
         Parameters
         ----------
-        filter_series : str
+        filter_core : str
             Filter series. Now supported: TRCA, CCA, LDA, DCPM
         filter_type : list of str
-            Specific filter model. e.g. ['origin','split']
+            Specific filter model. Now supported:
             TRCA : origin, ensemble | reference | split, filter bank
             CCA : origin, individual template, transform template | extended, multi-set |
                     split, filter bank, 
@@ -337,13 +330,14 @@ class spatial_filter:
         self.matrix_A = np.zeros((self.n_events, self.n_chans, self.n_chans))
         self.matrix_B = np.zeros_like(self.matrix_A)
         self.template = np.zeros((self.n_events, self.n_chans, self.n_times))
-
-        self.split = False
-        self.special_design = False  # for TRCA(s)
-        self.ensemble = False        # for eTRCA(s)
         self.frame_type = '1'
 
-        if filter_series == 'TRCA':
+        if filter_core not in self.core_list:
+            raise Exception('Not supported filter core: ' + filter_core)
+        elif filter_type not in self.filter_list:
+            raise Exception('Not supported spatial filters: ' + filter_type)
+
+        if filter_core == 'TRCA':
             # detection order: 
             # (1) whether time domain segmentation is required
             # (2) whether to include a filter bank
@@ -405,7 +399,7 @@ class spatial_filter:
             matrix_A = self.matrix_A
             matrix_B = self.matrix_B
         else:
-            if self.split = True:
+            if self.split == True:
             for ne in range(self.n_events):
                 data = self.combine_data[ne, ...]
                 projection = self.projection[ne, ...]
@@ -419,74 +413,3 @@ class spatial_filter:
             e_va, e_vec = LA.eig(LA.inv(matrix_A[ne, ...]) @ matrix_B[ne, ...])
             w_index = np.argmax(e_va)
             self.w[ne, :] = e_vec[:, w_index].T
-
-
-# special requirements: ensemble, split, filter bank
-def target_identification(spatial_filter, test_data, mode='offline',*arg):
-    """
-    Use the designed spatial filter for target identification
-    Parameters
-    ----------
-    spatial_filter : object
-        spatial_filter class object.
-    test_data : ndarray, (n_events, n_trials, n_chans, n_times)
-        or single trial's data : (n_chans, n_times)
-    mode : str
-        'offline' or 'online'. The default is 'offline'.
-        
-    Returns
-    -------
-    accuracy : float, 0-100 (%)
-    pattern : int.
-        The number indicates the subscript of the category. Only exist if mode == 'online'
-
-    """
-    n_events = spatial_filter.n_events
-    w = spatial_filter.w
-    template = spatial_filter.template
-    
-    if mode == 'offline':
-        n_tests = test_data.shape[1]
-        r = np.zeros((n_events, n_tests, test_data.shape[0]))
-        # 'ensemble' defaults that the spatial filters possessed by different types of signals
-        # should have similar structures
-        if self.ensemble:
-            for netr in range(n_tests):
-                for nte in range(n_tests):
-                    for nete in range(test_data.shape[0]):
-                        temp_test = w @ test_data[nete, nte, ...]     # (n_chans, n_times)
-                        temp_template = w @ template[netr, ...]  # (n_chans, n_times)
-                        r[netr, nte, nete] = pearson_corr2(temp_test, temp_template)
-        else:
-            for netr in range(self.n_events):
-                for nte in range(n_tests):
-                    for nete in range(test_data.shape[0]):
-                        temp_test = self.w[netr, :] @ test_data[nete, nte, ...]     # (n_times,)
-                        temp_template = self.w[netr, :] @ self.template[netr, ...]  # (n_times,)
-                        r[netr, nte, nete] = corr_coef(temp_test, temp_template)
-        # compute accuracy
-        accuracy = 0
-        for nete in range(self.n_events):
-            for nte in range(n_tests):
-                if np.argmax(r[:, nte, nete]) == nete:  # test trials(fixed), template(variable)
-                    accuracy += 1
-        accuracy /= (test_data.shape[0] * n_tests)
-
-        return accuracy
-
-    elif mode == 'online':  # single trial data: (n_chans, n_times)
-        r = np.zeros((self.n_events))
-        if self.ensemble:
-            for netr in range(self.n_events):
-                temp_test = self.w @ test_data                     # (n_chans, n_times)
-                temp_template = self.w @ self.template[netr, ...]  # (n_chans, n_times)
-                r[netr] = pearson_corr2(temp_test, temp_template)
-        else:
-            for netr in range(self.n_events):
-                temp_test = self.w[netr, :] @ test_data                     # (n_times,)
-                temp_template = self.w[netr, :] @ self.template[netr, ...]  # (n_times,)
-                r[netr] = corr_coef(temp_test, temp_template)
-        # pattern recognition
-        target_label = np.argmax(r)
-
-        return target_label

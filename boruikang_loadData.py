@@ -99,3 +99,10 @@ for cv in range(6):
     print(str(cv+1) + 'th cross-validation complete!\n')
 
 # %%
+model = mcee.sin_model(60, 1, 1)
+data_path = r'D:\SSVEP\dataset\preprocessed_data\60&80\zhaowei\fir_50_90.mat'
+eeg = io.loadmat(data_path)
+data = eeg['f_data'][[0,2],:,:,1140:2140][...,[45,51,52,53,54,55,58,59,60],:]
+del eeg
+# %%
+w_Y = mcee.CCA_compute(data[0,0,...], model, mode='model')
