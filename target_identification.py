@@ -110,55 +110,62 @@ io.savemat(data_path, {'ori_trca':acc_ori_trca, 'ori_etrca':acc_ori_etrca,
 
 # %% only origin data
 tar_chans = ['PZ ','PO5','PO3','POZ','PO4','PO6','O1 ','OZ ','O2 ']
+# tar_list = [47,53,54,55,56,57,60,61,62]
 tar_list = [45,51,52,53,54,55,58,59,60]
-freq = [48,52,54,56,58,60,80]
+freq = [48,52,54,56,58,60]
 
 # nameList = ['wanghao', 'wangruiyan', 'wujieyu', 'xiongwentian', 'zhaowei']
 
 # nameList = ['wuqiaoyi','gaorunyuan', 'yangman']
 nameList = ['wuqiaoyi']
+#nameList = ['dingrumeng','zhangcongyu']
 
-acc_ori_trca = np.zeros((7, len(nameList), 10, 5))
-acc_ori_etrca = np.zeros((7, len(nameList), 10, 5))
+acc_ori_trca = np.zeros((len(nameList), len(freq), 20, 5))
+acc_ori_etrca = np.zeros((len(nameList), len(freq), 20, 5))
 # acc_srca_trca = np.zeros_like(acc_ori_trca)
 # acc_srca_etrca = np.zeros_like(acc_ori_etrca)
-loop = 0
+
 for nPeo in range(len(nameList)):
     people = nameList[nPeo]
     print('Running ' + people + "'s data...")
+    loop = 0
     for fq in freq:
-        eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\xwt_bishe\%s\f_%d.mat' %(people, fq))
+        eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\xwt_bishe\%s\1-31\f_%d.mat' 
+                        %(people, fq))
+        #eeg = io.loadmat(r'D:\SSVEP\dataset\preprocessed_data\xwt_bishe\%s\f_%d.mat' 
+        #                %(people, fq))
         f_data = eeg['f_data']
         chans = eeg['chan_info'].tolist()
-        n_events = 2  
-        ns = 40    
+        # n_events = 12
+        ns = 40
         print('Testing frequency: ' + str(fq) + 'Hz')
-        for cv in range(10):  # cross-validation in training
+        for cv in range(20):
             print('CV: %d turn...' %(cv+1))
-            # randomly pick channels for identification
             randPick = np.arange(f_data.shape[1])
             np.random.shuffle(randPick)
             for nt in range(5): 
                 print('Data length: %d00ms' %(nt+1))
-                # extract origin data with correct trials & correct length [45,51,52,53,54,55,58,59,60]
-                train_data = f_data[:,randPick[:ns],:,1140:1240+nt*100][...,tar_list,:]
-                test_data = f_data[:,randPick[ns:],:,1140:1240+nt*100][...,tar_list,:]
-            
-                # target identification main process
-                otrca = mcee.TRCA(test_data, train_data)
-                oetrca = mcee.eTRCA(test_data, train_data)
-                
-                # save accuracy data
-                acc_ori_trca[loop, nPeo, cv, nt] = otrca
-                acc_ori_etrca[loop, nPeo, cv, nt] = oetrca
+                sp = 1140
+                ep = 1240 + nt*100
+                train_data = f_data[:,randPick[:ns],:,sp:ep][...,tar_list,:]
+                test_data = f_data[:,randPick[ns:],:,sp:ep][...,tar_list,:]
+                    
+                otrca = mcee.TRCA(train_data, test_data)
+                oetrca = mcee.eTRCA(train_data, test_data)
 
-                # del otrca, oetrca, strca, setrca
+                acc_ori_trca[nPeo, loop, cv, nt] = otrca
+                acc_ori_etrca[nPeo, loop, cv, nt] = oetrca
+
+                # del ot.rca, oetrca, strca, setrca
             print(str(cv+1) + 'th cross-validation complete!\n')
         loop += 1
-        print('Frequency ' + str(fq) + ' complete!\n')
-    print('People ' + people + ' complete!\n')
+print('Frequency ' + str(fq) + ' complete!\n')
 
-data_path = r'C:\Users\Administrator\Desktop\acc_1.mat'
+acc_ori_trca = acc_ori_trca.mean(axis=-2)
+acc_ori_etrca = acc_ori_etrca.mean(axis=-2)
+
+#%%
+data_path = r'C:\Users\Administrator\Desktop\acc.mat'
 io.savemat(data_path, {'ori_trca':acc_ori_trca,
                        'ori_etrca':acc_ori_etrca,})
 
@@ -669,21 +676,21 @@ plt.savefig(r'C:\Users\brynh\Desktop\9-5组会\wfsrca5-cq-split-te.png', dpi=600
 
 #%% DataFrame Preparation
 # load accuracy data from excel file
-excel_path = r'D:\SSVEP\results\code-VEP\8 code with interval.xlsx'
+excel_path = r'C:\Users\Administrator\Desktop\10train40test.xlsx'
 excel_file = xlrd.open_workbook(excel_path, encoding_override='utf-8')
 all_sheet = excel_file.sheets()
 
-yangman = []
-for each_row in range(all_sheet[0].nrows):
-    yangman.append(all_sheet[0].row_values(each_row))
-
-gaorunyuan = []
-for each_row in range(all_sheet[1].nrows):
-    gaorunyuan.append(all_sheet[1].row_values(each_row))
-
 wuqiaoyi = []
+for each_row in range(all_sheet[0].nrows):
+    wuqiaoyi.append(all_sheet[0].row_values(each_row))
+
+zhangcongyu = []
+for each_row in range(all_sheet[1].nrows):
+    zhangcongyu.append(all_sheet[1].row_values(each_row))
+
+dingrumeng = []
 for each_row in range(all_sheet[2].nrows):
-    wuqiaoyi.append(all_sheet[2].row_values(each_row))
+    dingrumeng.append(all_sheet[2].row_values(each_row))
 
 # wanghao = []
 # for each_row in range(all_sheet[3].nrows):
@@ -695,81 +702,76 @@ for each_row in range(all_sheet[2].nrows):
 
 del excel_path, excel_file, all_sheet, each_row
 
-#%% strings' preparation
-people = wuqiaoyi
+# %% strings' preparation
+freq_list = ['48Hz','52Hz','54Hz','56Hz','58Hz','60Hz']
+freqs = []
+for x in freq_list:
+    freqs += 10*[x]
+freqs *= 5
+del freq_list
 
-length = []
+time_list = ['100ms', '200ms', '300ms', '400ms', '500ms']
+time_length = []
+for x in time_list:
+    time_length += 60*[x]
+del time_list, x
+
+# %% data extraction
+people = dingrumeng
+l1,l2,l3,l4,l5 = [],[],[],[],[]
+l1e,l2e,l3e,l4e,l5e = [],[],[],[],[]
+
+# 48Hz
 for i in range(5):
-    length += [(str(100*(i+1))+'ms') for j in range(5)]
-total_length = length*4
-del i, length
+    for j in range(10):
+        exec('l%d.append(people[2+%d][%d+1])' %(i+1, j, i))
+        exec('l%de.append(people[2+%d][%d+7])' %(i+1, j, i))
 
-name = []
-# name += ['yangman' for i in range(36)]
-name += ['gaorunyuan' for i in range(36)]
-name += ['wuqiaoyi' for i in range(36)]
+# 52Hz
+for i in range(5):
+    for j in range(10):
+        exec('l%d.append(people[2+%d][%d+14])' %(i+1, j, i))
+        exec('l%de.append(people[2+%d][%d+20])' %(i+1, j, i))
 
-# group hue
-group_list = ['Origin+TRCA', 'Origin+eTRCA',
-              'SRCA(eSNR)+TRCA','SRCA(eSNR)+eTRCA',
-              'SRCA(epCORR)+TRCA','SRCA(epCORR)+eTRCA']
-total_group = []
-for i in range(len(group_list)):
-    total_group += [group_list[i] for j in range(6)]
-del i, group_list
-total_group *= 2
+# 54Hz
+for i in range(5):
+    for j in range(10):
+        exec('l%d.append(people[15+%d][%d+1])' %(i+1, j, i))
+        exec('l%de.append(people[15+%d][%d+7])' %(i+1, j, i))
 
-# %% data extraction 
-trca = []
-etrca = []
+# 56Hz
+for i in range(5):
+    for j in range(10):
+        exec('l%d.append(people[15+%d][%d+14])' %(i+1, j, i))
+        exec('l%de.append(people[15+%d][%d+20])' %(i+1, j, i))
 
-stesnr = []
-setesnr = []
+# 58Hz
+for i in range(5):
+    for j in range(10):
+        exec('l%d.append(people[28+%d][%d+1])' %(i+1, j, i))
+        exec('l%de.append(people[28+%d][%d+7])' %(i+1, j, i))
 
-stepcorr = []
-setepcorr = []
+# 60Hz
+for i in range(5):
+    for j in range(10):
+        exec('l%d.append(people[28+%d][%d+14])' %(i+1, j, i))
+        exec('l%de.append(people[28+%d][%d+20])' %(i+1, j, i))
+del i,j
 
-for i in range(6):
-    trca.append(people[28][i+1])
-    etrca.append(people[31][i+1])
-    
-    stesnr.append(people[29][i+1])
-    setesnr.append(people[32][i+1])
-    
-    stepcorr.append(people[30][i+1])
-    setepcorr.append(people[33][i+1])
+drm_trca = np.hstack((l1,l2,l3,l4,l5))*1e2
+drm_etrca = np.hstack((l1e,l2e,l3e,l4e,l5e))*1e2
+del l1, l2, l3, l4, l5
+del l1e, l2e, l3e, l4e, l5e
 
-people1_data = np.hstack((trca,etrca,stesnr,setesnr,stepcorr,setepcorr))*1e2
-# %%
-temp1 = np.hstack((ori, sesnr, sepcorr))*1e2
-# %%
-temp2 = np.hstack((ori, sesnr, sepcorr))*1e2
-# %%
-temp3 = np.hstack((ori, sesnr, sepcorr))*1e2
-# %%
-data = np.hstack((people_data, people1_data))
-del people_data, people1_data
-# %% dataframe
-acc_ym = np.hstack((otrca, oetrca, strca, setrca))*1e2
-data_ym = pd.DataFrame({'acc':acc_ym, 'length':total_length, 'group':total_group})
-del acc_ym
 
 # %% dataframe
-acc_gry = np.hstack((otrca, oetrca, strca, setrca))*1e2
-data_gry = pd.DataFrame({'acc':acc_gry, 'length':total_length, 'group':total_group})
-del acc_gry
+ave_trca = (wqy_trca + zcy_trca + drm_trca)/3
+ave_etrca = (wqy_etrca + zcy_etrca + drm_etrca)/3
+acc_wqy = pd.DataFrame({'acc':wqy_trca, 'freqs':freqs, 'time':time_length})
+acc_zcy = pd.DataFrame({'acc':zcy_trca, 'freqs':freqs, 'time':time_length})
+acc_drm = pd.DataFrame({'acc':drm_trca, 'freqs':freqs, 'time':time_length})
+acc_ave = pd.DataFrame({'acc':ave_trca, 'freqs':freqs, 'time':time_length})
 
-# %% dataframe
-acc_wqy = np.hstack((otrca, oetrca, strca, setrca))*1e2
-data_wqy = pd.DataFrame({'acc':acc_wqy, 'length':total_length, 'group':total_group})
-del acc_wqy
-
-# %%
-data_tra = pd.DataFrame({'acc':data, 'name':name, 'group':total_group})
-del data
-# %%
-data_split = pd.DataFrame({'acc':data, 'name':name, 'group':total_group})
-del data
 #%% plotting
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -777,64 +779,68 @@ import seaborn as sns
 
 #color = ['#E31A1C', '#FB9A99', '#FF7F00', '#FDBF6F', '#1F78B4', '#A6CEE3', '#33A02C', '#B2DF8A']
 color = ['#A6CEE3', '#1F78B4', '#FDBF6F', '#FF7F00','#B2DF8A', '#33A02C']
-# color = ['#1F78B4','#FF7F00','#33A02C']
+color = ['#1F78B4','#FF7F00','#33A02C']
+markers = ['*','o','x','+','>']
 #, '#B2DF8A', '#33A02C', '#A6CEE3',
  #        '#1F78B4', '#CAB2D6', '#6A3D9A']
 #color = ['#E31A1C', '#FDBF6F', '#FF7F00', '#B2DF8A', '#33A02C', '#A6CEE3',
 #         '#1F78B4', '#CAB2D6', '#6A3D9A']
 brynhildr = sns.color_palette(color)
 
-fig = plt.figure(figsize=(12,10))
-gs = GridSpec(2, 1, figure=fig)
+fig = plt.figure(figsize=(25,15))
+gs = GridSpec(3, 4, figure=fig)
 sns.set(style='whitegrid')
 
-ax1 = fig.add_subplot(gs[:1,:])
-ax1.set_title('Traditional (e)TRCA : total length=1700ms', fontsize=20)
-ax1.tick_params(axis='both', labelsize=16)
-ax1 = sns.barplot(x='name', y='acc', hue='group', data=data_tra, ci='sd',
-                  palette=brynhildr, saturation=.75)
-ax1.set_xlabel('Name', fontsize=18)
-ax1.set_ylabel('Accuracy/%', fontsize=18)
-ax1.set_ylim([0, 105])
-ax1.set_yticks(range(0,105,20))
-ax1.legend(loc='lower right', fontsize=16)
+ax1 = fig.add_subplot(gs[:,:3])
+ax1.set_title('Average accuracy', fontsize=30)
+ax1.tick_params(axis='both', labelsize=24)
+ax1 = sns.pointplot(x='freqs', y='acc', hue='time', data=acc_ave, dodge=True,
+                    markers=markers, ci=None, palette='tab10', scale=1.5)
+ax1.set_xlabel('Frequency/Hz', fontsize=26)
+ax1.set_ylabel('Accuracy/%', fontsize=26)
+ax1.set_ylim([70, 90])
+ax1.set_yticks(range(70,90,1))
+ax1.legend(loc='best', fontsize=26)
 
-ax2 = fig.add_subplot(gs[1:,:])
-ax2.set_title('Split-(e)TRCA : stepwidth=600ms, total length=1800ms', fontsize=20)
+ax2 = fig.add_subplot(gs[:1,3:])
+ax2.set_title('Sub1 - WuQiaoi', fontsize=20)
 ax2.tick_params(axis='both', labelsize=16)
-ax2 = sns.barplot(x='name', y='acc', hue='group', data=data_split, ci='sd',
-                  palette=brynhildr, saturation=.75)
-ax2.set_xlabel('Name', fontsize=18)
+ax2 = sns.pointplot(x='freqs', y='acc', hue='time', data=acc_wqy,
+                    dodge=True, markers=markers, ci='sd', capsize=.2,
+                    palette='tab10', scale=1.5)
+ax2.set_xlabel('Frequency/Hz', fontsize=18)
 ax2.set_ylabel('Accuracy/%', fontsize=18)
-ax2.set_ylim([0, 105])
-ax2.set_yticks(range(0,105,20))
-ax2.legend(loc='lower right', fontsize=16)
+ax2.set_ylim([60, 105])
+ax2.set_yticks(range(60,105,5))
+ax2.legend(loc='best', fontsize=16)
 
-#ax3 = fig.add_subplot(gs[1:,:1])
-#ax3.set_title('Sub3 - wuqiaoyi', fontsize=20)
-#ax3.tick_params(axis='both', labelsize=16)
-#ax3 = sns.barplot(x='length', y='acc', hue='group', data=data_wqy, ci='sd',
-#                  palette=brynhildr, saturation=.75)
-#ax3.set_xlabel('Time/ms', fontsize=16)
-#ax3.set_ylabel('Accuracy/%', fontsize=16)
-#ax3.set_ylim([50, 105])
-#ax3.set_yticks(range(50,110,10))
-#ax3.legend(loc='lower right', fontsize=16)
+ax3 = fig.add_subplot(gs[1:2,3:])
+ax3.set_title('Sub2 - ZhangCongyu', fontsize=20)
+ax3.tick_params(axis='both', labelsize=16)
+ax3 = sns.pointplot(x='freqs', y='acc', hue='time', data=acc_zcy,
+                    dodge=True, markers=markers, ci='sd', capsize=.2,
+                    palette='tab10', scale=1.5)
+ax3.set_xlabel('Frequency/Hz', fontsize=18)
+ax3.set_ylabel('Accuracy/%', fontsize=18)
+ax3.set_ylim([82, 102])
+ax3.set_yticks(range(82,102,2))
+ax3.legend(loc='best', fontsize=16)
 
-# ax4 = fig.add_subplot(gs[1:,1:])
-# ax4.set_title('sub4 - wanghao', fontsize=16)
-# ax4.tick_params(axis='both', labelsize=14)
-# ax4 = sns.barplot(x='length', y='acc', hue='group', data=wanghao_ori, ci=None,
-#                   palette=brynhildr, saturation=.75)
-# ax4.set_xlabel('Time/ms', fontsize=14)
-# ax4.set_ylabel('Accuracy/%', fontsize=14)
-# ax4.set_ylim([40, 105])
-# ax4.set_yticks(range(40,110,10))
-# ax4.legend(loc='upper right', fontsize=14)
+ax4 = fig.add_subplot(gs[2:,3:])
+ax4.set_title('Sub3 - DingRumeng', fontsize=20)
+ax4.tick_params(axis='both', labelsize=16)
+ax4 = sns.pointplot(x='freqs', y='acc', hue='time', data=acc_drm,
+                    dodge=True, markers=markers, ci='sd', capsize=.2,
+                    palette='tab10', scale=1.5)
+ax4.set_xlabel('Frequency/Hz', fontsize=18)
+ax4.set_ylabel('Accuracy/%', fontsize=18)
+ax4.set_ylim([40, 75])
+ax4.set_yticks(range(40,75,5))
+ax4.legend(loc='best', fontsize=16)
 
 fig.tight_layout()
 plt.show()
-plt.savefig(r'C:\Users\Administrator\Desktop\1-2-3.png', dpi=600)
+plt.savefig(r'C:\Users\Administrator\Desktop\1-27-scale-less.png', dpi=600)
 
 #%%
 data1 = d_ori_re

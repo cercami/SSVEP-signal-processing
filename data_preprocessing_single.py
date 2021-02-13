@@ -198,27 +198,49 @@ plt.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 plt.legend(loc='best')
 
 # %%
+data_path = r'D:\SSVEP\dataset\photocell_interval=0.0125s\photocell.mat'
+data = io.loadmat(data_path)
+data = data['data']
+del data_path
+
+code_series = np.array(([0,1,1],
+                        [1,0,1],
+                        [0,0,0],
+                        [1,1,0],
+                        [0,0,1],
+                        [0,1,0],
+                        [1,0,0],
+                        [1,1,1]))
+symbols = 'ABCDEFGH'
+# %%
 fig = plt.figure(figsize=(24,18))
 gs = GridSpec(4,1, figure=fig)
 sns.set(style='whitegrid')
+mean_data = data.mean(axis=1)
 
 title = []
-for i in range(32):
+for i in range(8):
     title.append("code-'" + symbols[i] + "': " + str(code_series[:,i]))
 
-m = 7
+m = 0
 k = m*4
 
 ax1 = fig.add_subplot(gs[:1,:])
 ax1.set_title(title[k], fontsize=24)
 ax1.tick_params(axis='both', labelsize=20)
-for i in range(5):
-    if code_series[i,k] == 0:
-        ax1.plot(np.arange(301)+i*300, mean_data[k, 112+i*300:413+i*300],
-                 color='tab:blue')
-    elif code_series[i,k] == 1:
-        ax1.plot(np.arange(301)+i*300, mean_data[k, 112+i*300:413+i*300],
-                 color='tab:orange')
+ax1.plot(mean_data[0,:], color='black')
+if code_series[k,0] == 0:
+    ax1.plot(np.arange(16)+i*500, mean_data[k, 16:516], color='tab:blue')
+elif code_series[k,0] == 1:
+    ax1.plot(np.arange(16)+i*500, mean_data[k, 16:516], color='tab:orange')
+if code_series[k,1] == 0:
+    ax1.plot(np.arange(16)+i*500, mean_data[k, 16:516], color='tab:blue')
+elif code_series[k,1] == 1:
+    ax1.plot(np.arange(16)+i*500, mean_data[k, 16:516], color='tab:orange')
+if code_series[k,2] == 0:
+    ax1.plot(np.arange(16)+i*500, mean_data[k, 16:516], color='tab:blue')
+elif code_series[k,2] == 1:
+    ax1.plot(np.arange(16)+i*500, mean_data[k, 16:516], color='tab:orange')
 # ax1.plot(np.arange(112), mean_data[k, :112], color='black')
 # ax1.plot(np.arange(89)+2012, mean_data[k, -89:], color='black')
 # for i in range(4):
@@ -228,14 +250,6 @@ ax1.vlines(300, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax1.vlines(600, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax1.vlines(900, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax1.vlines(1200, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax1.vlines(512, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax1.vlines(812, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax1.vlines(912, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax1.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax1.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax1.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax1.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax1.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax1.set_xlabel('Time/ms', fontsize=24)
 ax1.set_ylabel('Amplitude/V', fontsize=24)
 
@@ -256,11 +270,6 @@ ax2.vlines(300, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax2.vlines(600, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax2.vlines(900, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax2.vlines(1200, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax2.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax2.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax2.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax2.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax2.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax2.set_xlabel('Time/ms', fontsize=24)
 ax2.set_ylabel('Amplitude/V', fontsize=24)
 
@@ -281,11 +290,6 @@ ax3.vlines(300, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax3.vlines(600, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax3.vlines(900, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax3.vlines(1200, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax3.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax3.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax3.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax3.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax3.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax3.set_xlabel('Time/ms', fontsize=24)
 ax3.set_ylabel('Amplitude/V', fontsize=24)
 
@@ -306,16 +310,11 @@ ax4.vlines(300, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax4.vlines(600, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax4.vlines(900, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax4.vlines(1200, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax4.vlines(1212, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax4.vlines(1312, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax4.vlines(1612, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax4.vlines(1712, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
-# ax4.vlines(2012, 0.025, 0.225, colors='black', linewidth=2, linestyle='dashed')
 ax4.set_xlabel('Time/ms', fontsize=24)
 ax4.set_ylabel('Amplitude/V', fontsize=24)
 
 plt.tight_layout()
 plt.show()
-plt.savefig(r'C:\Users\Administrator\Desktop\photocell_noInterval_7', dpi=600)
+plt.savefig(r'C:\Users\Administrator\Desktop\1-27-8codes-1', dpi=600)
 
 # %%

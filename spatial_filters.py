@@ -2,19 +2,28 @@
 """
 @ author: Brynhildr Wu
 @ email: brynhildrwu@gmail.com
-Created on Sat Nov 28 14:22:28 2020
-Version: 0.1
 
-A toolbox for target identification algorithms using Unified Framework
-Refer: Wong C M, et al. Spatial Filtering in SSVEP-based BCIs: Unified Framework and New Improvements
-    [J]. IEEE Transactions on Biomedical Engineering, 2020, PP(99):1-1.
+A toolbox for constructing commonly used spatial filters based on Unified Framework,
+    and other spatial filters with special design.
+Main Refer: 
+    [1] Wong C M, et al. Spatial Filtering in SSVEP-based BCIs: Unified Framework and New Improvements[J].
+        IEEE Transactions on Biomedical Engineering, 2020, PP(99):1-1.
+    [2] 
+
+Requirements:
+1. data format: 
+    (1) balanced sample
+        4-D data: (n_events, n_trials, n_chans, n_times)
+    (2) unbalanced sample
+        3-D data: (n_trials, n_chans, n_times)
+        1-D label: (labels,)
 
 Prefunctions:
-1. zero_mean:
+1. zero_mean: (Non-sensitive to sample balance, i.e. 'non-sensitive' in the following)
     zero-mean normalization (if necessary). 
         Generally speaking, the data preprocessed by bandpass filtering from MNE has been
-        zero-averaged already. However, who knows how you guys preprocess the EEG data?
-2. corr_coef:
+        zero-averaged already. Well, who knows how you guys preprocess the EEG data?
+2. corr_coef: (non-sensitive)
     compute Pearson Correlation Coefficient
 3. sinw:
     make a piece of sinusoidal wave
@@ -22,9 +31,11 @@ Prefunctions:
     compute best initial phase for training dataset
 5. time_shift:
     cyclic rotate time sequence to destroy the time correlation of noise
-6. Imn:
+6. pearson_corr2: 
+    compute 2-D Pearson coefficient
+7. Imn:
     concatenate multiple unit matrices vertically
-7. diag_splice:
+8. diag_splice:
     the operator for diagonal concatenation
 
 Special design:
@@ -44,14 +55,15 @@ Target identification functions
     (add sin-cos reference): TRCA-R, eTRCA-R
     (split in time-domain): split-...
     (add filter banks): fb-...
+
 (Not included in unified framework)
 3. DCPM series:
     DSP, DCPM, PCA-DCPM
 4. LDA series:
     LDA, stepwise-LDA, SKLDA, BLDA, STDA
-    
-update: 2020/12/12
-updating...
+5. Latest algorithms:(unstable)
+
+update: 2021/2/8
 
 """
 
@@ -59,8 +71,8 @@ updating...
 import numpy as np
 from numpy import newaxis as NA
 from numpy import linalg as LA
+from numpy import (sin, cos, pi, sqrt, diagonal)
 from sympy import diag
-from math import pi
 from sklearn import linear_model
 
 from copy import deepcopy
@@ -71,7 +83,6 @@ import matplotlib.pyplot as plt
 # %% Prefunctions
 def zero_mean(data):
     """
-
     Parameters
     ----------
     data : ndarray, (n_trials, n_channels, n_times)
@@ -88,30 +99,32 @@ def zero_mean(data):
 
 def corr_coef(X, y):
     """
-
     Parameters
     ----------
     X : ndarray, (..., n_points)
-        input data array. (could be sequence)
+        input 2-D data array. (could be sequence)
     y : ndarray, (1, n_points)
         input data vector/sequence
 
     Returns
     -------
     corrcoef : float
-        Pearson's Correlation Coefficient. (mean of sequence or single number)
-
+        Pearson's Correlation Coefficient.
     """
     X, y = zero_mean(X), zero_mean(y)
     cov_yx = y @ X.T
-    var_xx, var_yy = np.sqrt(np.diagonal(X @ X.T)), np.sqrt(float(y @ y.T))
+    # 'int' object has no attribute 'ndim', but the dimension of 'float' object is 0
+    if cov_yx.ndim == 0:
+        var_xx = sqrt(X @ X.T)
+    else:
+        var_xx = sqrt(diagonal(X @ X.T))
+    var_yy = sqrt(float(y @ y.T))
     corrcoef = cov_yx / (var_xx*var_yy)
 
     return corrcoef.mean()
 
 def sinw(freq, time, phase, sfreq=1000):
     """
-
     Parameters
     ----------
     freq : float
@@ -127,17 +140,15 @@ def sinw(freq, time, phase, sfreq=1000):
     -------
     wave : ndarray, (time*sfreq,)
         sinusoidal sequence.
-
     """
     n_point = int(time*sfreq)
     time_point = np.linspace(0, (n_point-1)/sfreq, n_point)
-    wave = np.sin(2*pi*freq*time_point + pi*phase)
+    wave = sin(2*pi*freq*time_point + pi*phase)
 
     return wave
 
 def real_phase(data, freq, step=100, sfreq=1000):
     """
-
     Parameters
     ----------
     data : ndarray, (n_trials, n_points)
@@ -150,28 +161,23 @@ def real_phase(data, freq, step=100, sfreq=1000):
 
     Returns
     -------
-    best_phase : float
+    phase : float
         0-2.
-
     """
     time = data.shape[-1] / sfreq
     step = [2*x/step for x in range(step)]
     corr = np.zeros((step))
 
-    signal_mean = data.mean(axis=0)[NA, :]
-
+    signal_mean = data.mean(axis=0, keepdims=True)  # (1, n_points)
     for i in range(step):
-        template = sinw(freq=freq, time=time, phase=step[i], sfreq=sfreq)
+        template = sinw(freq, time, step[i], sfreq)
         corr[i] = corr_coef(signal_mean, template[NA,:])
+    phase = np.argmax(corr)*2/100
 
-    phase = np.max(np.where(corr == np.max(corr)))
-    best_phase = phase*2/100
-
-    return best_phase
+    return phase
 
 def time_shift(data, step, axis=None):
     """
-
     Parameters
     ----------
     data : ndarray, (n_channels, n_points)
@@ -187,7 +193,6 @@ def time_shift(data, step, axis=None):
     -------
     tf_data : ndarray, (n_channels, n_points)
         Data containing background EEG with corrupted temporal and spatial correlation.
-
     """
     n_chans = data.shape[0]
     tf_data = np.zeros_like(data)
@@ -215,7 +220,7 @@ def pearson_corr2(data_A, data_B):
     numerator = np.sum((data_A-mean_A) * (data_B-mean_B))
     denominator_A = np.sum((data_A-mean_A)**2)
     denominator_B = np.sum((data_B-mean_B)**2)
-    corr2 = numerator / np.sqrt(denominator_A*denominator_B)
+    corr2 = numerator / sqrt(denominator_A*denominator_B)
 
     return corr2
 
@@ -413,3 +418,6 @@ class spatial_filter:
             e_va, e_vec = LA.eig(LA.inv(matrix_A[ne, ...]) @ matrix_B[ne, ...])
             w_index = np.argmax(e_va)
             self.w[ne, :] = e_vec[:, w_index].T
+
+
+# %% DCPM Series
